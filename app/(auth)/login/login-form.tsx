@@ -256,12 +256,12 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
     return (
         <div>
             <div className="mb-[clamp(1rem,2vw,1.5rem)]">
-                <h1 className="mb-1 text-2xl font-medium text-neutral-950 dark:text-neutral-50">
-                    Welcome back
+                <h1 className="mb-1 text-3xl font-medium text-neutral-950 dark:text-neutral-50">
+                    Welcome!
                 </h1>
                 <p className="text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
                     {emailEnabled
-                        ? "Sign in with Google or receive a code by email."
+                        ? "Enter your email to get started."
                         : "Continue with Google to get started."}
                 </p>
             </div>
