@@ -31,11 +31,7 @@ export const SIGNUP_PER_IP_PER_HOUR = 10;
 
 // ─── R2 storage ─────────────────────────────────────────────────────────────
 // Public URL base for objects in the `storage.film-maker.net` R2 bucket.
-// All Film-maker v0 objects are namespaced under R2_KEY_PREFIX so they
-// cannot collide with objects from the prior ConveX experiment in the same
-// bucket.
 export const R2_STORAGE_BASE_URL = "https://storage.film-maker.net";
-export const R2_KEY_PREFIX = "film-maker/v1";
 
 // ─── Gemini API ─────────────────────────────────────────────────────────────
 // We use the Gemini API directly for v0. In v1 this moves to Vertex AI for

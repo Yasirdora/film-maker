@@ -112,6 +112,10 @@ export async function generateImage(
                 numberOfImages: 1,
                 negativePrompt: params.negativePrompt || undefined,
                 aspectRatio: params.aspectRatio ?? "1:1",
+                // JPEG output: ~64% smaller than PNG with negligible
+                // quality loss for photographic content. Saves R2 storage
+                // and improves loading performance.
+                outputMimeType: "image/jpeg",
                 includeRaiReason: true,
                 personGeneration: PersonGeneration.ALLOW_ADULT,
             },
