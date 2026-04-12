@@ -42,6 +42,7 @@ const buttonVariants = cva(
                 sm: "h-9 px-3",
                 md: "h-11 px-5", // 44px — meets iOS HIG touch-target minimum
                 lg: "h-12 px-6 text-base",
+                xl: "h-14 px-6 text-[1.0625rem]",
             },
             fullWidth: {
                 true: "w-full",

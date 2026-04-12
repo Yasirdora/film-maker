@@ -9,9 +9,8 @@
  *   /api/auth/session             (session read)
  *   ...
  *
- * We invoke `getAuth()` per request so the underlying Better Auth instance
+ * `getAuth()` runs per request so the underlying Better Auth instance
  * can grab the request-scoped D1 binding from the Cloudflare context.
- * `getAuth()` is async because the D1 accessor is async.
  */
 
 import { getAuth } from "@/lib/auth";
