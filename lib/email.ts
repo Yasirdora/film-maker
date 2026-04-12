@@ -1,19 +1,8 @@
 /**
  * Transactional email via the Gmail REST API.
  *
- * Runs natively on Cloudflare Workers — no SMTP, no Resend, no extra service.
- * Uses an OAuth2 refresh-token flow against a Google account (Workspace or
- * personal) to obtain short-lived access tokens, then POSTs a base64url-
- * encoded RFC-2822 message to `users.messages.send`.
- *
- * Ported from the anthropist reference project. If you change the sending
- * pattern, update anthropist's too so the two projects stay in sync.
- *
- * Env vars required:
- *   GMAIL_CLIENT_ID          OAuth2 client id
- *   GMAIL_CLIENT_SECRET      OAuth2 client secret
- *   GMAIL_REFRESH_TOKEN      Long-lived refresh token for the sender account
- *   GMAIL_SENDER             The email address that appears in the From header
+ * Runs natively on Cloudflare Workers — no SMTP, no extra service.
+ * Ported from the anthropist reference project.
  */
 
 import { escapeHtml } from "./utils";
@@ -73,11 +62,9 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
         throw new Error("GMAIL_SENDER is not configured");
     }
 
-    // Sanitize headers — strip newlines to prevent header injection.
     const safeTo = to.replace(/[\r\n]/g, "");
     const safeSubject = subject.replace(/[\r\n]/g, "");
 
-    // Build an RFC-2822 message.
     const messageParts = [
         `From: Film-maker <${from}>`,
         `To: ${safeTo}`,
@@ -89,8 +76,6 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
     ];
     const rawMessage = messageParts.join("\r\n");
 
-    // Base64url encode. We iterate byte-by-byte to avoid call-stack limits
-    // on large messages (String.fromCharCode(...bytes) blows up past ~100KB).
     const bytes = new TextEncoder().encode(rawMessage);
     let binary = "";
     for (let i = 0; i < bytes.length; i++) {
@@ -119,24 +104,25 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
     }
 }
 
-// ─── Magic-link email template ──────────────────────────────────────────────
+// ─── Verification email template ────────────────────────────────────────────
 
-interface SendMagicLinkParams {
+interface SendVerificationParams {
     email: string;
+    code: string;
     url: string;
 }
 
 /**
- * Sends a styled magic-link email for a sign-in request.
- *
- * The URL comes directly from Better Auth's magicLink plugin and already
- * contains the one-shot token. We pass it through unmodified.
+ * Sends a styled verification email containing both a 6-digit code
+ * (for manual entry) AND a clickable auto-verify link.
  */
-export async function sendMagicLinkEmail({
+export async function sendVerificationEmail({
     email,
+    code,
     url,
-}: SendMagicLinkParams): Promise<void> {
+}: SendVerificationParams): Promise<void> {
     const safeUrl = escapeHtml(url);
+    const safeCode = escapeHtml(code);
 
     const html = `
 <!doctype html>
@@ -157,13 +143,18 @@ export async function sendMagicLinkEmail({
                 Film-maker
               </div>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#0a0a0a;line-height:1.3;">
-                Sign in to your account
+                Your verification code
               </h1>
-              <p style="margin:0 0 32px;font-size:15px;line-height:1.6;color:#525252;">
-                Click the button below to sign in. This link will expire in 15 minutes and can only be used once.
+              <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#525252;">
+                Enter this code in the app to sign in, or click the button below.
+                This code expires in 15 minutes.
               </p>
 
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 32px;">
+              <div style="background:#f4f4f5;border-radius:12px;padding:20px;font-family:ui-monospace,'SF Mono','Fira Code',monospace;font-size:32px;font-weight:700;color:#0a0a0a;text-align:center;letter-spacing:0.3em;margin:0 0 28px;">
+                ${safeCode}
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
                 <tr>
                   <td style="border-radius:10px;background:#0a0a0a;">
                     <a href="${safeUrl}"
@@ -174,16 +165,9 @@ export async function sendMagicLinkEmail({
                 </tr>
               </table>
 
-              <p style="margin:0 0 8px;font-size:13px;line-height:1.6;color:#737373;">
-                Or copy and paste this URL into your browser:
-              </p>
-              <p style="margin:0 0 32px;font-size:12px;line-height:1.6;color:#a3a3a3;word-break:break-all;font-family:ui-monospace,monospace;">
-                ${safeUrl}
-              </p>
-
               <div style="padding-top:24px;border-top:1px solid #f4f4f5;">
                 <p style="margin:0;font-size:12px;line-height:1.5;color:#a3a3a3;">
-                  If you didn't request this email, you can safely ignore it. No one will be able to sign in without this link.
+                  If you didn&rsquo;t request this, you can safely ignore this email.
                 </p>
               </div>
             </td>
@@ -191,7 +175,7 @@ export async function sendMagicLinkEmail({
         </table>
 
         <p style="margin:24px 0 0;font-size:12px;color:#a3a3a3;">
-          Film-maker · film-maker.net
+          Film-maker &middot; film-maker.net
         </p>
       </td>
     </tr>
@@ -202,7 +186,7 @@ export async function sendMagicLinkEmail({
 
     await sendEmail({
         to: email,
-        subject: "Sign in to Film-maker",
+        subject: `${code} is your Film-maker code`,
         html,
     });
 }

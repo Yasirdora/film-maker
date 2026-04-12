@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { sendMagicLinkEmail } from "@/lib/email";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function GET(request: Request): Promise<Response> {
     if (process.env.NODE_ENV === "production") {
@@ -41,8 +41,9 @@ export async function GET(request: Request): Promise<Response> {
     };
 
     try {
-        await sendMagicLinkEmail({
+        await sendVerificationEmail({
             email: to,
+            code: "123456",
             url: "https://film-maker.net/__dev_test__",
         });
         return NextResponse.json({ ok: true, sentTo: to, envStatus });

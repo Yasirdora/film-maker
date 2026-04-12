@@ -3,24 +3,20 @@
 /**
  * Login form — client component.
  *
- * Visual shell ported from the ConveX two-pane signin design; auth wiring
- * is unchanged. Two real sign-in paths:
- *   1. Google OAuth (delegates to Better Auth's social-sign-in endpoint)
- *   2. Email magic link (calls the magic-link plugin, shows a success state)
+ * Two sign-in paths:
+ *   1. Google OAuth
+ *   2. Email OTP (6-digit code + auto-verify link in the same email)
  *
- * The email section only renders when the server tells us Gmail OAuth is
- * configured (`emailEnabled` prop). This avoids showing users a form that
- * always fails with 500 because the upstream Gmail REST API isn't set up
- * yet. When email eventually lands, the prop flips and the UI expands.
+ * The email section only renders when the server tells us Gmail OAuth
+ * is configured (`emailEnabled` prop).
  *
- * The `from` query param is sanitized to same-origin absolute paths to
- * prevent open-redirect abuse, and preserved across sign-in so the user
- * lands back where they came from.
+ * Flow: enter email → receive email with code + link → either type the
+ * code into the app OR click the link in the email.
  */
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { useSearchParams, useRouter } from "next/navigation";
+import { authClient, signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -28,7 +24,8 @@ type Status =
     | { kind: "idle" }
     | { kind: "submitting-google" }
     | { kind: "submitting-email" }
-    | { kind: "email-sent"; email: string }
+    | { kind: "code-entry"; email: string }
+    | { kind: "verifying" }
     | { kind: "error"; message: string };
 
 const DEFAULT_CALLBACK = "/dashboard";
@@ -46,20 +43,23 @@ interface LoginFormProps {
 
 export function LoginForm({ emailEnabled }: LoginFormProps) {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const callbackURL = sanitizeCallback(searchParams.get("from"));
 
     const [email, setEmail] = useState("");
+    const [code, setCode] = useState("");
     const [status, setStatus] = useState<Status>({ kind: "idle" });
 
     const isSubmitting =
         status.kind === "submitting-google" ||
-        status.kind === "submitting-email";
+        status.kind === "submitting-email" ||
+        status.kind === "verifying";
 
+    // ─── Google OAuth ───────────────────────────────────────────────
     async function handleGoogle() {
         setStatus({ kind: "submitting-google" });
         try {
             await signIn.social({ provider: "google", callbackURL });
-            // signIn.social navigates to Google — execution halts here.
         } catch (err) {
             setStatus({
                 kind: "error",
@@ -71,6 +71,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
         }
     }
 
+    // ─── Email OTP — request code ───────────────────────────────────
     async function handleEmail(e: React.FormEvent) {
         e.preventDefault();
         const trimmed = email.trim().toLowerCase();
@@ -81,33 +82,162 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
 
         setStatus({ kind: "submitting-email" });
         try {
-            const { error } = await signIn.magicLink({
+            const { error } = await authClient.emailOtp.sendVerificationOtp({
                 email: trimmed,
-                callbackURL,
+                type: "sign-in",
             });
             if (error) {
                 setStatus({
                     kind: "error",
-                    message: error.message ?? "Couldn't send the link. Try again.",
+                    message: error.message ?? "Couldn't send the code. Try again.",
                 });
                 return;
             }
-            setStatus({ kind: "email-sent", email: trimmed });
+            setCode("");
+            setStatus({ kind: "code-entry", email: trimmed });
         } catch (err) {
             setStatus({
                 kind: "error",
                 message:
                     err instanceof Error
                         ? err.message
-                        : "Couldn't send the link. Try again.",
+                        : "Couldn't send the code. Try again.",
             });
         }
     }
 
-    if (status.kind === "email-sent") {
-        return <EmailSentCard email={status.email} onReset={() => setStatus({ kind: "idle" })} />;
+    // ─── Email OTP — verify code ────────────────────────────────────
+    async function handleVerifyCode(e: React.FormEvent) {
+        e.preventDefault();
+        if (status.kind !== "code-entry") return;
+        const trimmedCode = code.trim();
+        if (!trimmedCode) return;
+
+        setStatus({ kind: "verifying" });
+        try {
+            const { error } = await signIn.emailOtp({
+                email: status.email,
+                otp: trimmedCode,
+            });
+            if (error) {
+                setStatus({
+                    kind: "error",
+                    message: error.message ?? "Invalid or expired code. Try again.",
+                });
+                return;
+            }
+            router.push(callbackURL);
+            router.refresh();
+        } catch (err) {
+            setStatus({
+                kind: "error",
+                message:
+                    err instanceof Error
+                        ? err.message
+                        : "Verification failed. Try again.",
+            });
+        }
     }
 
+    // ─── Resend code ────────────────────────────────────────────────
+    async function handleResend() {
+        if (status.kind !== "code-entry") return;
+        const targetEmail = status.email;
+        setStatus({ kind: "submitting-email" });
+        try {
+            await authClient.emailOtp.sendVerificationOtp({
+                email: targetEmail,
+                type: "sign-in",
+            });
+            setCode("");
+            setStatus({ kind: "code-entry", email: targetEmail });
+        } catch {
+            setStatus({ kind: "code-entry", email: targetEmail });
+        }
+    }
+
+    // ─── Code entry state ───────────────────────────────────────────
+    if (status.kind === "code-entry" || status.kind === "verifying") {
+        const sentEmail = status.kind === "code-entry" ? status.email : email;
+        return (
+            <div>
+                <div className="mb-[clamp(1rem,2vw,1.5rem)]">
+                    <h1 className="mb-1 text-2xl font-medium text-neutral-950 dark:text-neutral-50">
+                        Check your email
+                    </h1>
+                    <p className="text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                        We sent a 6-digit code to{" "}
+                        <span className="font-medium text-neutral-800 dark:text-neutral-200">
+                            {sentEmail}
+                        </span>
+                        . Enter it below or click the link in the email.
+                    </p>
+                </div>
+
+                <form onSubmit={handleVerifyCode} noValidate>
+                    <label htmlFor="otp" className="sr-only">
+                        Verification code
+                    </label>
+                    <Input
+                        id="otp"
+                        name="otp"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        enterKeyHint="done"
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        maxLength={6}
+                        placeholder="000000"
+                        value={code}
+                        onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                            setCode(val);
+                        }}
+                        disabled={status.kind === "verifying"}
+                        className="h-14 px-5 text-center text-2xl font-mono tracking-[0.3em] placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
+                        autoFocus
+                    />
+
+                    <Button
+                        type="submit"
+                        variant="primary"
+                        size="xl"
+                        fullWidth
+                        disabled={status.kind === "verifying" || code.length < 6}
+                        className="mt-[clamp(1rem,2vw,1.5rem)]"
+                    >
+                        {status.kind === "verifying" ? "Verifying…" : "Verify code"}
+                    </Button>
+                </form>
+
+                <div className="mt-6 flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={status.kind === "verifying"}
+                        className="text-sm text-neutral-500 underline underline-offset-2 hover:text-neutral-900 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-50"
+                    >
+                        Resend code
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCode("");
+                            setStatus({ kind: "idle" });
+                        }}
+                        disabled={status.kind === "verifying"}
+                        className="text-sm text-neutral-500 underline underline-offset-2 hover:text-neutral-900 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-50"
+                    >
+                        Use a different email
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ─── Idle / submitting / error state ────────────────────────────
     return (
         <div>
             <div className="mb-[clamp(1rem,2vw,1.5rem)]">
@@ -116,7 +246,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                 </h1>
                 <p className="text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
                     {emailEnabled
-                        ? "Sign in with Google or receive a magic link by email."
+                        ? "Sign in with Google or receive a code by email."
                         : "Continue with Google to get started."}
                 </p>
             </div>
@@ -166,7 +296,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                         className="mt-[clamp(1rem,2vw,1.5rem)]"
                     >
                         {status.kind === "submitting-email"
-                            ? "Sending link…"
+                            ? "Sending code…"
                             : "Continue with Email"}
                     </Button>
                 </form>
@@ -229,52 +359,15 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
 
 function Divider({ label }: { label: string }) {
     return (
-        <div className="my-[clamp(1.5rem,3vw,2rem)] flex items-center text-[0.8125rem] uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-            <span className="flex-1 border-b border-neutral-200 dark:border-neutral-800" />
-            <span className="px-[clamp(1rem,2vw,1.5rem)]">{label}</span>
-            <span className="flex-1 border-b border-neutral-200 dark:border-neutral-800" />
-        </div>
-    );
-}
-
-function EmailSentCard({ email, onReset }: { email: string; onReset: () => void }) {
-    return (
-        <div>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-900">
-                <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                >
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                </svg>
-            </div>
-            <h1 className="text-center text-2xl font-medium text-neutral-950 dark:text-neutral-50">
-                Check your email
-            </h1>
-            <p className="mt-2 text-center text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
-                We sent a sign-in link to{" "}
-                <span className="font-medium text-neutral-900 dark:text-neutral-100">
-                    {email}
-                </span>
-                . The link expires in 15 minutes.
-            </p>
-            <Button
-                variant="ghost"
-                size="md"
-                fullWidth
-                className="mt-6"
-                onClick={onReset}
-            >
-                Use a different email
-            </Button>
+        <div
+            role="separator"
+            aria-orientation="horizontal"
+            className="relative mb-[clamp(1rem,2vw,1.5rem)] text-center text-[11px] uppercase tracking-[0.12em] text-neutral-400 dark:text-neutral-500"
+        >
+            <span className="relative z-10 bg-white px-3 dark:bg-[rgba(18,18,20,0.65)]">
+                {label}
+            </span>
+            <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-neutral-200 dark:bg-neutral-700/60" />
         </div>
     );
 }
@@ -282,8 +375,8 @@ function EmailSentCard({ email, onReset }: { email: string; onReset: () => void 
 function GoogleIcon() {
     return (
         <svg
-            width="20"
-            height="20"
+            width="18"
+            height="18"
             viewBox="0 0 24 24"
             aria-hidden
             className="shrink-0"
