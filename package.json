@@ -17,7 +17,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply film-maker-db --remote",
     "db:query:local": "wrangler d1 execute film-maker-db --local --command",
     "db:query:remote": "wrangler d1 execute film-maker-db --remote --command",
-    "auth:secret": "openssl rand -hex 32"
+    "auth:secret": "openssl rand -hex 32",
+    "stripe:setup": "node --env-file=.dev.vars scripts/stripe-setup.mjs",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
     "@google/genai": "^1.49.0",
