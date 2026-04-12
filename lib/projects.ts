@@ -251,6 +251,49 @@ export async function listProjects(
     });
 }
 
+/**
+ * Lists a user's archived projects. Same shape as listProjects but
+ * filters for archived_at IS NOT NULL. Ordered by archive date (newest first).
+ */
+export async function listArchivedProjects(
+    userId: string,
+): Promise<ProjectSummary[]> {
+    const db = await getDb();
+    const { results } = await db
+        .prepare(
+            `SELECT
+                p.uid,
+                p.name,
+                p.created_at,
+                p.updated_at,
+                COUNT(g.id) as generation_count,
+                (SELECT output_r2_keys FROM generation
+                  WHERE project_id = p.id AND status = 'done'
+                  ORDER BY created_at DESC LIMIT 1
+                ) as cover_r2_key
+             FROM project p
+             LEFT JOIN generation g ON g.project_id = p.id
+             WHERE p.user_id = ? AND p.archived_at IS NOT NULL
+             GROUP BY p.id
+             ORDER BY p.archived_at DESC`,
+        )
+        .bind(userId)
+        .all<RawProjectSummary>();
+
+    return results.map((r) => {
+        let firstKey: string | null = null;
+        if (r.cover_r2_key) {
+            try {
+                const keys = JSON.parse(r.cover_r2_key);
+                firstKey = Array.isArray(keys) ? keys[0] ?? null : null;
+            } catch {
+                firstKey = null;
+            }
+        }
+        return mapSummary({ ...r, cover_r2_key: firstKey });
+    });
+}
+
 // ─── Update ────────────────────────────────────────────────────────────────
 
 export interface UpdateProjectParams {

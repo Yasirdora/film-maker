@@ -14,9 +14,10 @@ import Link from "next/link";
 
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
-import { listProjects } from "@/lib/projects";
+import { listProjects, listArchivedProjects } from "@/lib/projects";
 import { AppNav } from "@/components/app-nav";
 import { NewProjectButton } from "./new-project-dialog";
+import { ArchivedProjects } from "./archived-projects";
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -25,9 +26,10 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
     const { user } = await requireOnboardedUser();
 
-    const [balance, projects] = await Promise.all([
+    const [balance, projects, archivedProjects] = await Promise.all([
         getBalance(user.id),
         listProjects(user.id),
+        listArchivedProjects(user.id),
     ]);
 
     const totalCredits =
@@ -75,6 +77,9 @@ export default async function DashboardPage() {
                         ))}
                     </div>
                 </section>
+
+                {/* Archived projects — collapsible */}
+                <ArchivedProjects projects={archivedProjects} />
             </main>
         </div>
     );
