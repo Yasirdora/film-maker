@@ -50,7 +50,9 @@
       "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}')",
       "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\n---STATUS %{http_code}---\\\\n\")",
       "Bash(curl -sS \"http://localhost:3000/api/dev/test-magic-link?to=ysrdora@gmail.com\")",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")"
+      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -sS -o /tmp/authlink.html -w \"HTTP %{http_code}\\\\n\" \"https://film-maker.net/auth/link?verify=bogus&callbackURL=%2Fdashboard\")",
+      "Bash(curl -sI \"https://film-maker.net/auth/link?verify=bogus_test&callbackURL=%2Fdashboard\")"
     ]
   }
 }

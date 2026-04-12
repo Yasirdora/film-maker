@@ -24,6 +24,28 @@
     animation: auth-card-entrance 1s var(--ease-snappy) forwards;
 }
 
+@keyframes clapperboard-clap {
+    0% {
+        transform: rotate(-15deg);
+    }
+    30% {
+        transform: rotate(-45deg);
+    }
+    35% {
+        transform: rotate(0deg);
+    }
+    45% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(-15deg);
+    }
+}
+
+.clapperboard-clap {
+    animation: clapperboard-clap 0.8s ease-in-out forwards;
+}
+
 :root {
     --background: #ffffff;
     --foreground: #0a0a0a;
