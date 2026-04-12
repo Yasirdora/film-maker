@@ -10,11 +10,15 @@
  * State machine:
  *   idle → generating → done/error → idle (reset)
  *
+ * Every generation is scoped to a project. The project UID is passed
+ * as a prop from the server component and sent with each API request.
+ *
  * The form generates a UUID v4 idempotency key on each submit to
  * prevent double-charge on network retry.
  */
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 const ASPECT_RATIOS = [
@@ -40,6 +44,8 @@ interface Model {
 }
 
 interface GenerateFormProps {
+    projectUid: string;
+    projectName: string;
     models: Model[];
     availableResolutions: string[];
     planName: string;
@@ -54,6 +60,8 @@ type FormState =
     | { kind: "error"; message: string };
 
 export function GenerateForm({
+    projectUid,
+    projectName,
     models,
     availableResolutions,
     planName,
@@ -97,6 +105,7 @@ export function GenerateForm({
                     model,
                     resolution,
                     aspectRatio,
+                    projectUid,
                     idempotencyKey,
                 }),
                 signal: abortRef.current.signal,
@@ -150,11 +159,38 @@ export function GenerateForm({
             {/* ─── Form panel ─────────────────────────────────── */}
             <div className="space-y-5">
                 <div>
-                    <h1 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                        Create
-                    </h1>
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={`/projects/${projectUid}`}
+                            className="text-sm text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                            aria-label="Back to project"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden
+                            >
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </Link>
+                        <h1 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                            Create
+                        </h1>
+                    </div>
                     <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                        Describe the image you want to generate.
+                        Generating in{" "}
+                        <Link
+                            href={`/projects/${projectUid}`}
+                            className="font-medium text-neutral-700 underline underline-offset-2 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-50"
+                        >
+                            {projectName}
+                        </Link>
                     </p>
                 </div>
 

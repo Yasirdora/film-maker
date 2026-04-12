@@ -4,6 +4,11 @@
  * Manages the `generation` table lifecycle: create (pending), update
  * (done/failed), list (for dashboard + API).
  *
+ * Every generation belongs to a project. The R2 key structure reflects
+ * this ownership hierarchy:
+ *
+ *   film-maker/v1/{userUid}/{projectUid}/image/{generationUid}.{ext}
+ *
  * The generation row is the single source of truth for the lifecycle
  * of an image generation request. It's created BEFORE credits are
  * deducted so there's always a reference for refunds if the generation
@@ -11,7 +16,7 @@
  */
 
 import { getDb } from "./db";
-import { R2_KEY_PREFIX, R2_STORAGE_BASE_URL } from "./constants";
+import { getImageUrl } from "./image-url";
 import { generateUid } from "./utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -20,6 +25,7 @@ export interface GenerationRow {
     id: number;
     uid: string;
     userId: string;
+    projectId: number | null;
     model: string;
     prompt: string;
     negativePrompt: string | null;
@@ -28,7 +34,12 @@ export interface GenerationRow {
     sampleCount: number;
     status: "pending" | "done" | "failed";
     outputR2Keys: string[] | null;
+    /** Preview-quality URLs (1024px, used in auteur canvas + detail views). */
     outputUrls: string[] | null;
+    /** Thumbnail URLs (400px, used in gallery grids + project cards). */
+    thumbnailUrls: string[] | null;
+    /** Full-resolution URLs (original size, used for downloads). */
+    downloadUrls: string[] | null;
     errorMessage: string | null;
     creditCost: number;
     createdAt: number;
@@ -39,6 +50,7 @@ interface RawGenerationRow {
     id: number;
     uid: string;
     user_id: string;
+    project_id: number | null;
     model: string;
     prompt: string;
     negative_prompt: string | null;
@@ -53,6 +65,12 @@ interface RawGenerationRow {
     completed_at: number | null;
 }
 
+/** Column list used by all SELECT queries — single source of truth. */
+const GENERATION_COLUMNS = `id, uid, user_id, project_id, model, prompt, negative_prompt,
+    resolution, aspect_ratio, sample_count, status,
+    output_r2_keys, error_message, credit_cost,
+    created_at, completed_at`;
+
 function mapRow(r: RawGenerationRow): GenerationRow {
     const keys: string[] | null = r.output_r2_keys
         ? JSON.parse(r.output_r2_keys)
@@ -61,6 +79,7 @@ function mapRow(r: RawGenerationRow): GenerationRow {
         id: r.id,
         uid: r.uid,
         userId: r.user_id,
+        projectId: r.project_id,
         model: r.model,
         prompt: r.prompt,
         negativePrompt: r.negative_prompt,
@@ -69,7 +88,9 @@ function mapRow(r: RawGenerationRow): GenerationRow {
         sampleCount: r.sample_count,
         status: r.status as GenerationRow["status"],
         outputR2Keys: keys,
-        outputUrls: keys?.map((k) => `${R2_STORAGE_BASE_URL}/${k}`) ?? null,
+        outputUrls: keys?.map(getImageUrl) ?? null,
+        thumbnailUrls: keys?.map(getImageUrl) ?? null,
+        downloadUrls: keys?.map(getImageUrl) ?? null,
         errorMessage: r.error_message,
         creditCost: r.credit_cost,
         createdAt: r.created_at,
@@ -81,6 +102,7 @@ function mapRow(r: RawGenerationRow): GenerationRow {
 
 export interface CreateGenerationParams {
     userId: string;
+    projectId: number;
     model: string;
     prompt: string;
     negativePrompt?: string;
@@ -107,15 +129,16 @@ export async function createGeneration(
     const result = await db
         .prepare(
             `INSERT INTO generation
-             (uid, user_id, model, prompt, negative_prompt, resolution,
+             (uid, user_id, project_id, model, prompt, negative_prompt, resolution,
               aspect_ratio, sample_count, status, credit_cost,
               request_ip, user_agent, idempotency_key, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
              RETURNING id`,
         )
         .bind(
             uid,
             params.userId,
+            params.projectId,
             params.model,
             params.prompt,
             params.negativePrompt ?? null,
@@ -190,7 +213,32 @@ export async function failGeneration(
 // ─── Read ───────────────────────────────────────────────────────────────────
 
 /**
- * Returns a user's recent generations, newest first.
+ * Returns generations within a specific project, newest first.
+ */
+export async function listGenerationsByProject(
+    projectId: number,
+    userId: string,
+    limit = 50,
+    offset = 0,
+): Promise<GenerationRow[]> {
+    const db = await getDb();
+    const { results } = await db
+        .prepare(
+            `SELECT ${GENERATION_COLUMNS}
+               FROM generation
+              WHERE project_id = ? AND user_id = ?
+              ORDER BY created_at DESC
+              LIMIT ? OFFSET ?`,
+        )
+        .bind(projectId, userId, limit, offset)
+        .all<RawGenerationRow>();
+
+    return results.map(mapRow);
+}
+
+/**
+ * Returns a user's recent generations across all projects, newest first.
+ * Used for the global activity feed / dashboard overview.
  */
 export async function listGenerations(
     userId: string,
@@ -200,10 +248,7 @@ export async function listGenerations(
     const db = await getDb();
     const { results } = await db
         .prepare(
-            `SELECT id, uid, user_id, model, prompt, negative_prompt,
-                    resolution, aspect_ratio, sample_count, status,
-                    output_r2_keys, error_message, credit_cost,
-                    created_at, completed_at
+            `SELECT ${GENERATION_COLUMNS}
                FROM generation
               WHERE user_id = ?
               ORDER BY created_at DESC
@@ -225,10 +270,7 @@ export async function getGeneration(
     const db = await getDb();
     const row = await db
         .prepare(
-            `SELECT id, uid, user_id, model, prompt, negative_prompt,
-                    resolution, aspect_ratio, sample_count, status,
-                    output_r2_keys, error_message, credit_cost,
-                    created_at, completed_at
+            `SELECT ${GENERATION_COLUMNS}
                FROM generation
               WHERE uid = ? AND user_id = ?
               LIMIT 1`,
@@ -256,10 +298,7 @@ export async function findByIdempotencyKey(
     const cutoff = Date.now() - IDEMPOTENCY_TTL_MS;
     const row = await db
         .prepare(
-            `SELECT id, uid, user_id, model, prompt, negative_prompt,
-                    resolution, aspect_ratio, sample_count, status,
-                    output_r2_keys, error_message, credit_cost,
-                    created_at, completed_at
+            `SELECT ${GENERATION_COLUMNS}
                FROM generation
               WHERE user_id = ? AND idempotency_key = ? AND created_at > ?
               LIMIT 1`,
@@ -355,17 +394,32 @@ export async function recoverStaleGenerations(
 // ─── R2 key helpers ─────────────────────────────────────────────────────────
 
 /**
- * Builds the R2 object key for a generated image.
- * Format: film-maker/v1/generations/{userUid}/{generationUid}/{index}.{ext}
+ * Builds the R2 object key for a generated asset.
+ *
+ * Structure:
+ *   generation/{userUid}/{projectUid}/image/{generationUid}.{ext}
+ *   generation/{userUid}/{projectUid}/video/{generationUid}.{ext}
+ *
+ * Produces clean public URLs:
+ *   https://storage.film-maker.net/generation/{userUid}/{projectUid}/image/{generationUid}.webp
+ *
+ * Hierarchy: generation → user → project → content type → asset.
+ * This grouping makes it straightforward to enumerate, migrate, or
+ * delete all assets for a user or project via R2 prefix listing.
  */
 export function buildR2Key(
     userUid: string,
+    projectUid: string,
+    contentType: "image" | "video",
     generationUid: string,
-    index: number,
     mimeType: string,
 ): string {
-    const ext = mimeType.includes("jpeg") || mimeType.includes("jpg")
-        ? "jpg"
-        : "png";
-    return `${R2_KEY_PREFIX}/generations/${userUid}/${generationUid}/${index}.${ext}`;
+    const ext = mimeType.includes("webp")
+        ? "webp"
+        : mimeType.includes("jpeg") || mimeType.includes("jpg")
+            ? "jpg"
+            : mimeType.includes("mp4")
+                ? "mp4"
+                : "png";
+    return `generation/${userUid}/${projectUid}/${contentType}/${generationUid}.${ext}`;
 }

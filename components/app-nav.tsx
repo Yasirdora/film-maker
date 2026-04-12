@@ -1,7 +1,7 @@
 /**
  * AppNav — shared navigation bar for authenticated pages.
  *
- * Renders a fixed top bar with: brand mark → spacer → Create button →
+ * Renders a fixed top bar with: brand mark → spacer → Dashboard link →
  * credits badge → user menu (sign out). Collapses gracefully on mobile
  * (all elements stay visible — no hamburger, just smaller spacing).
  *
@@ -33,10 +33,10 @@ export async function AppNav() {
 
                 <div className="flex-1" />
 
-                {/* Create CTA */}
+                {/* Dashboard / Projects */}
                 <Link
-                    href="/auteur"
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-neutral-900 px-3.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
+                    href="/dashboard"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50"
                 >
                     <svg
                         width="14"
@@ -44,15 +44,14 @@ export async function AppNav() {
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        strokeWidth="2.5"
+                        strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         aria-hidden
                     >
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                     </svg>
-                    <span className="hidden sm:inline">Create</span>
+                    <span className="hidden sm:inline">Projects</span>
                 </Link>
 
                 {/* Credits badge */}

@@ -1,10 +1,11 @@
 /**
  * Dashboard — the home for signed-in users.
  *
- * Shows: credit balance summary, prominent "Create" CTA, and a grid
- * of the user's recent generations. Empty state for new users.
+ * Shows: credit balance summary, project grid with cover images,
+ * and a "New project" CTA. Projects are the primary organizational
+ * unit — all generations live within a project.
  *
- * Server component — fetches balance + generations server-side.
+ * Server component — fetches balance + projects server-side.
  * Client interactivity delegated to child components.
  */
 
@@ -13,9 +14,9 @@ import Link from "next/link";
 
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
-import { listGenerations } from "@/lib/generations";
+import { listProjects } from "@/lib/projects";
 import { AppNav } from "@/components/app-nav";
-import { R2_STORAGE_BASE_URL } from "@/lib/constants";
+import { NewProjectButton } from "./new-project-dialog";
 
 export const metadata: Metadata = {
     title: "Dashboard",
@@ -24,9 +25,9 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
     const { user } = await requireOnboardedUser();
 
-    const [balance, generations] = await Promise.all([
+    const [balance, projects] = await Promise.all([
         getBalance(user.id),
-        listGenerations(user.id, 30),
+        listProjects(user.id),
     ]);
 
     const totalCredits =
@@ -48,181 +49,102 @@ export default async function DashboardPage() {
                             remaining · {balance.plan.charAt(0).toUpperCase() + balance.plan.slice(1)} plan
                         </p>
                     </div>
-                    <Link
-                        href="/auteur"
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-6 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
-                    >
-                        <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden
-                        >
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                        </svg>
-                        Create new image
-                    </Link>
                 </div>
 
-                {/* Generation gallery */}
-                {generations.length === 0 ? (
-                    <EmptyState />
-                ) : (
-                    <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {generations.map((gen) => (
-                            <GenerationCard
-                                key={gen.uid}
-                                uid={gen.uid}
-                                prompt={gen.prompt}
-                                status={gen.status}
-                                resolution={gen.resolution}
-                                aspectRatio={gen.aspectRatio}
-                                imageUrl={
-                                    gen.outputR2Keys?.[0]
-                                        ? `${R2_STORAGE_BASE_URL}/${gen.outputR2Keys[0]}`
-                                        : null
-                                }
-                                creditCost={gen.creditCost}
-                                createdAt={gen.createdAt}
-                                errorMessage={gen.errorMessage}
+                {/* Projects section */}
+                <section className="mt-8">
+                    <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+                        Projects
+                    </h2>
+                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                        Organize your generations into projects.
+                    </p>
+
+                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <NewProjectButton />
+
+                        {projects.map((project) => (
+                            <ProjectCard
+                                key={project.uid}
+                                uid={project.uid}
+                                name={project.name}
+                                coverImageUrl={project.coverImageUrl}
+                                generationCount={project.generationCount}
+                                updatedAt={project.updatedAt}
                             />
                         ))}
                     </div>
-                )}
+                </section>
             </main>
         </div>
     );
 }
 
-// ─── Empty state ────────────────────────────────────────────────────────────
+// ─── Project card ───────────────────────────────────────────────────────────
 
-function EmptyState() {
-    return (
-        <div className="mt-16 flex flex-col items-center text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-100 dark:bg-neutral-900">
-                <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-neutral-400"
-                    aria-hidden
-                >
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                </svg>
-            </div>
-            <h2 className="mt-4 text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                No images yet
-            </h2>
-            <p className="mt-2 max-w-sm text-sm text-neutral-500 dark:text-neutral-400">
-                Describe a shot, pick a style, and Film-maker will generate a
-                production-ready image in seconds.
-            </p>
-            <Link
-                href="/auteur"
-                className="mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-6 text-sm font-medium text-white transition-colors hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200"
-            >
-                Create your first image
-            </Link>
-        </div>
-    );
-}
-
-// ─── Generation card ────────────────────────────────────────────────────────
-
-interface GenerationCardProps {
+interface ProjectCardProps {
     uid: string;
-    prompt: string;
-    status: "pending" | "done" | "failed";
-    resolution: string;
-    aspectRatio: string | null;
-    imageUrl: string | null;
-    creditCost: number;
-    createdAt: number;
-    errorMessage: string | null;
+    name: string;
+    coverImageUrl: string | null;
+    generationCount: number;
+    updatedAt: number;
 }
 
-function GenerationCard({
-    prompt,
-    status,
-    resolution,
-    aspectRatio,
-    imageUrl,
-    creditCost,
-    createdAt,
-    errorMessage,
-}: GenerationCardProps) {
-    const timeAgo = formatTimeAgo(createdAt);
-
+function ProjectCard({
+    uid,
+    name,
+    coverImageUrl,
+    generationCount,
+    updatedAt,
+}: ProjectCardProps) {
     return (
-        <div className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950 dark:hover:shadow-neutral-900/30">
-            {/* Image / status area */}
-            <div className="relative aspect-square bg-neutral-100 dark:bg-neutral-900">
-                {status === "done" && imageUrl ? (
+        <Link
+            href={`/projects/${uid}`}
+            className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950 dark:hover:shadow-neutral-900/30"
+        >
+            {/* Cover image */}
+            <div className="relative aspect-[16/10] bg-neutral-100 dark:bg-neutral-900">
+                {coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                        src={imageUrl}
-                        alt={prompt}
-                        className="h-full w-full object-cover"
+                        src={coverImageUrl}
+                        alt={name}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                         loading="lazy"
                     />
-                ) : status === "pending" ? (
-                    <div className="flex h-full items-center justify-center">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-700 dark:border-neutral-700 dark:border-t-neutral-300" />
-                    </div>
                 ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+                    <div className="flex h-full items-center justify-center">
                         <svg
-                            width="20"
-                            height="20"
+                            width="32"
+                            height="32"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-red-400"
+                            className="text-neutral-300 dark:text-neutral-700"
                             aria-hidden
                         >
-                            <circle cx="12" cy="12" r="10" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                         </svg>
-                        <span className="text-xs text-neutral-500 dark:text-neutral-400">
-                            {errorMessage ?? "Generation failed"}
-                        </span>
                     </div>
                 )}
-
-                {/* Resolution badge */}
-                <div className="absolute bottom-2 right-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
-                    {resolution}{aspectRatio && aspectRatio !== "1:1" ? ` · ${aspectRatio}` : ""}
-                </div>
             </div>
 
             {/* Info */}
-            <div className="p-3">
-                <p className="line-clamp-2 text-sm text-neutral-700 dark:text-neutral-300">
-                    {prompt}
-                </p>
-                <div className="mt-2 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500">
-                    <span>{timeAgo}</span>
-                    <span>{creditCost} cr</span>
+            <div className="p-4">
+                <h3 className="truncate text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                    {name}
+                </h3>
+                <div className="mt-1.5 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500">
+                    <span>
+                        {generationCount} image{generationCount !== 1 ? "s" : ""}
+                    </span>
+                    <span>{formatTimeAgo(updatedAt)}</span>
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }
 
