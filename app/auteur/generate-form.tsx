@@ -424,27 +424,13 @@ export function GenerateForm({
                         <p className="text-sm text-neutral-600 dark:text-neutral-400">
                             {state.message}
                         </p>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={() => {
-                                    setState({ kind: "idle" });
-                                    // Trigger generation on next tick after state resets.
-                                    setTimeout(handleGenerate, 0);
-                                }}
-                                disabled={!prompt.trim() || credits < creditCost}
-                            >
-                                Retry
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleReset}
-                            >
-                                Edit prompt
-                            </Button>
-                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleReset}
+                        >
+                            Try again
+                        </Button>
                     </div>
                 )}
             </div>
