@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "film-maker",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "binding": "ASSETS",
+    "directory": ".open-next/assets"
+  },
+
+  // Production custom domain routes.
+  // Commented out until DNS is pointed at Cloudflare and the zone is active.
+  // "routes": [
+  //   { "pattern": "film-maker.net", "custom_domain": true },
+  //   { "pattern": "www.film-maker.net", "custom_domain": true }
+  // ],
+
+  // Public (non-secret) environment variables. Secrets go in .dev.vars for
+  // local development and `wrangler secret put <name>` for production.
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+    "NEXT_PUBLIC_STORAGE_URL": "https://storage.film-maker.net"
+  },
+
+  // Cloudflare D1 — bindings pulled into process via OpenNext.
+  // Run `npm run db:create` once, then paste the returned database_id here.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "film-maker-db",
+      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Cloudflare R2 — reusing the existing `storage.film-maker.net` bucket.
+  // Replace the bucket_name with the actual bucket that domain points to.
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "REPLACE_WITH_EXISTING_BUCKET_NAME"
+    }
+  ]
+}

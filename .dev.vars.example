@@ -1,0 +1,34 @@
+# Copy this file to .dev.vars and fill in the values.
+# .dev.vars is gitignored — real secrets never get committed.
+# Wrangler dev reads .dev.vars automatically and injects into the Worker env.
+
+# ─── Stripe ──────────────────────────────────────────────────────────────────
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+STRIPE_WEBHOOK_SECRET=
+
+# ─── Better Auth ─────────────────────────────────────────────────────────────
+# Generate: openssl rand -hex 32
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:3000
+
+# ─── Google OAuth (Better Auth provider) ────────────────────────────────────
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# ─── Gmail (transactional sender via REST API + OAuth2 refresh token) ───────
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_REFRESH_TOKEN=
+GMAIL_SENDER=
+
+# ─── Google Gemini API (image generation) ──────────────────────────────────
+GOOGLE_GEMINI_API_KEY=
+
+# ─── Cloudflare Turnstile (bot protection) ─────────────────────────────────
+TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+
+# ─── Sentry (error tracking) ────────────────────────────────────────────────
+SENTRY_DSN=
+NEXT_PUBLIC_SENTRY_DSN=

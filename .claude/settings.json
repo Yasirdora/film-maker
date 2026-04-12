@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/x/Documents/Antigravity/AI/**)",
+      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/ConveX/.env.local)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(wait %1)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
