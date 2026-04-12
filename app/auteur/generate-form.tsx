@@ -424,13 +424,23 @@ export function GenerateForm({
                         <p className="text-sm text-neutral-600 dark:text-neutral-400">
                             {state.message}
                         </p>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleReset}
-                        >
-                            Try again
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={handleGenerate}
+                                disabled={!prompt.trim() || credits < creditCost}
+                            >
+                                Retry
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleReset}
+                            >
+                                Edit prompt
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>
