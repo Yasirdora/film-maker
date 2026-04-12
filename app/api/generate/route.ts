@@ -68,6 +68,8 @@ import {
     buildR2Key,
 } from "@/lib/generations";
 import { getProject } from "@/lib/projects";
+import { isUserGenerationRateLimited } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit";
 
 const ASPECT_RATIOS = [
     "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9",
@@ -155,6 +157,14 @@ export async function POST(request: Request): Promise<Response> {
                 cached: true,
             });
         }
+    }
+
+    // ─── Per-user rate limit ────────────────────────────────────────
+    if (await isUserGenerationRateLimited(userId)) {
+        return NextResponse.json(
+            { error: "You've reached the generation limit. Please wait before generating more." },
+            { status: 429 },
+        );
     }
 
     // ─── Stale generation recovery ──────────────────────────────────
@@ -327,6 +337,23 @@ export async function POST(request: Request): Promise<Response> {
 
     // ─── Complete generation ────────────────────────────────────────
     await completeGeneration(generation.id, [r2Key]);
+
+    // ─── Audit log ──────────────────────────────────────────────────
+    await logAudit({
+        userId,
+        action: "generation.complete",
+        targetType: "generation",
+        targetId: generation.uid,
+        metadata: {
+            model: input.model,
+            resolution: input.resolution,
+            aspectRatio: input.aspectRatio,
+            creditCost,
+            projectUid: project.uid,
+            converted: optimized.converted,
+        },
+        ip: requestIp,
+    });
 
     return NextResponse.json({
         uid: generation.uid,

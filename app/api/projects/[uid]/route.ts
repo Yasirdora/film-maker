@@ -18,6 +18,7 @@ import {
     MAX_PROJECT_NAME_LENGTH,
     MAX_PROJECT_DESCRIPTION_LENGTH,
 } from "@/lib/projects";
+import { logAudit } from "@/lib/audit";
 
 type RouteContext = { params: Promise<{ uid: string }> };
 
@@ -113,6 +114,14 @@ export async function DELETE(
     if (!archived) {
         return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
+
+    await logAudit({
+        userId: session.user.id,
+        action: "project.archive",
+        targetType: "project",
+        targetId: uid,
+        ip: request.headers.get("cf-connecting-ip"),
+    });
 
     return NextResponse.json({ ok: true });
 }

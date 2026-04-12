@@ -28,6 +28,7 @@ import {
     getPlan,
     isFreePlan,
     SOLO_DAILY_CREDIT_LIMIT,
+    MONTHLY_TOPUP_USD_CENTS_CEILING,
     SUBSCRIPTION_PLANS,
 } from "./constants";
 import { generateUid } from "./utils";
@@ -495,4 +496,88 @@ async function provisionProfileOnDemand(userId: string): Promise<void> {
         )
         .bind(userId, uid, SOLO_PLAN.credits, now, now)
         .run();
+}
+
+// ─── Monthly topup ceiling ─────────────────────────────────────────────────
+
+/**
+ * Checks whether a user has exceeded the monthly USD spend ceiling
+ * for credit top-ups. The counter resets at the start of each
+ * calendar month (UTC).
+ *
+ * Returns the remaining allowance in cents. If zero or negative,
+ * the user cannot purchase more credits this month.
+ */
+export async function getMonthlyTopupAllowance(
+    userId: string,
+): Promise<{ usedCents: number; remainingCents: number }> {
+    const db = await getDb();
+
+    const row = await db
+        .prepare(
+            "SELECT monthly_topup_usd_cents_used, monthly_topup_reset_at FROM user_profile WHERE user_id = ?",
+        )
+        .bind(userId)
+        .first<{ monthly_topup_usd_cents_used: number; monthly_topup_reset_at: number }>();
+
+    if (!row) {
+        return { usedCents: 0, remainingCents: MONTHLY_TOPUP_USD_CENTS_CEILING };
+    }
+
+    // Check if the counter needs resetting (new calendar month UTC).
+    const now = Date.now();
+    const currentMonthStart = getMonthStartMs();
+
+    if (row.monthly_topup_reset_at < currentMonthStart) {
+        // New month — reset the counter.
+        await db
+            .prepare(
+                `UPDATE user_profile
+                    SET monthly_topup_usd_cents_used = 0,
+                        monthly_topup_reset_at = ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(now, now, userId)
+            .run();
+        return { usedCents: 0, remainingCents: MONTHLY_TOPUP_USD_CENTS_CEILING };
+    }
+
+    const used = row.monthly_topup_usd_cents_used;
+    return {
+        usedCents: used,
+        remainingCents: Math.max(0, MONTHLY_TOPUP_USD_CENTS_CEILING - used),
+    };
+}
+
+/**
+ * Records a topup purchase against the monthly ceiling.
+ * Called from the Stripe webhook after a successful checkout.
+ */
+export async function recordTopupSpend(
+    userId: string,
+    amountCents: number,
+): Promise<void> {
+    const db = await getDb();
+    const now = Date.now();
+
+    await db
+        .prepare(
+            `UPDATE user_profile
+                SET monthly_topup_usd_cents_used = monthly_topup_usd_cents_used + ?,
+                    monthly_topup_reset_at = CASE
+                        WHEN monthly_topup_reset_at < ? THEN ?
+                        ELSE monthly_topup_reset_at
+                    END,
+                    updated_at = ?
+              WHERE user_id = ?`,
+        )
+        .bind(amountCents, getMonthStartMs(), now, now, userId)
+        .run();
+}
+
+/** Returns the Unix ms timestamp of the start of the current UTC month. */
+function getMonthStartMs(): number {
+    const now = new Date();
+    return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
 }

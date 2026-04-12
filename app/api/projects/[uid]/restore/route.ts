@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
 import { restoreProject } from "@/lib/projects";
+import { logAudit } from "@/lib/audit";
 
 type RouteContext = { params: Promise<{ uid: string }> };
 
@@ -33,6 +34,14 @@ export async function POST(
             { status: 404 },
         );
     }
+
+    await logAudit({
+        userId: session.user.id,
+        action: "project.restore",
+        targetType: "project",
+        targetId: uid,
+        ip: request.headers.get("cf-connecting-ip"),
+    });
 
     return NextResponse.json({ ok: true });
 }

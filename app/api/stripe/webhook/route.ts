@@ -37,8 +37,9 @@ import {
     getUserIdByStripeCustomer,
     upsertSubscription,
 } from "@/lib/stripe";
-import { downgradeToSolo, grantSubscriptionCredits } from "@/lib/credits";
+import { downgradeToSolo, grantSubscriptionCredits, recordTopupSpend } from "@/lib/credits";
 import { getPlan } from "@/lib/constants";
+import { logAudit } from "@/lib/audit";
 
 // Stripe requires raw body for signature verification. Next's built-in
 // `request.text()` returns the raw body as a string — perfect.
@@ -195,6 +196,17 @@ async function handleCheckoutCompleted(
         idempotencyKey: session.id,
         description: `${plan.name} plan — monthly credits`,
     });
+
+    // Record spend against monthly ceiling.
+    await recordTopupSpend(userId, plan.priceUsdCents);
+
+    await logAudit({
+        userId,
+        action: "plan.upgrade",
+        targetType: "subscription",
+        targetId: subscriptionId,
+        metadata: { planId, planName: plan.name, priceUsdCents: plan.priceUsdCents },
+    });
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
@@ -288,5 +300,13 @@ async function handleSubscriptionDeleted(
     await downgradeToSolo({
         userId,
         idempotencyKey: `downgrade_${subscription.id}`,
+    });
+
+    await logAudit({
+        userId,
+        action: "plan.downgrade",
+        targetType: "subscription",
+        targetId: subscription.id,
+        metadata: { reason: "subscription_deleted" },
     });
 }

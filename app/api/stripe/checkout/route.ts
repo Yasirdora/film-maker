@@ -22,7 +22,8 @@ import {
     getStripe,
     getStripePriceId,
 } from "@/lib/stripe";
-import { isFreePlan } from "@/lib/constants";
+import { isFreePlan, getPlan } from "@/lib/constants";
+import { getMonthlyTopupAllowance } from "@/lib/credits";
 
 const BodySchema = z.object({
     planId: z.enum(["indie", "creator", "studio"]),
@@ -60,6 +61,21 @@ export async function POST(request: Request): Promise<Response> {
             { error: "Cannot checkout the free plan" },
             { status: 400 },
         );
+    }
+
+    // ─── Monthly topup ceiling ──────────────────────────────────────
+    const plan = getPlan(parsed.planId);
+    if (plan) {
+        const { remainingCents } = await getMonthlyTopupAllowance(user.id);
+        if (remainingCents < plan.priceUsdCents) {
+            return NextResponse.json(
+                {
+                    error: "You've reached the monthly spending limit. " +
+                        "Contact support if you need to increase it.",
+                },
+                { status: 403 },
+            );
+        }
     }
 
     // ─── Stripe ─────────────────────────────────────────────────────
