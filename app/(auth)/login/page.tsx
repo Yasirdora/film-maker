@@ -3,7 +3,9 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { getSession } from "@/lib/auth-server";
 import { AuthCard } from "../auth-card";
 import { LoginForm } from "./login-form";
 
@@ -21,7 +23,13 @@ function isEmailSignInAvailable(): boolean {
     );
 }
 
-export default function LoginPage() {
+export default async function LoginPage() {
+    // Already signed in — send them where they belong.
+    const session = await getSession();
+    if (session?.user) {
+        redirect(session.user.name ? "/dashboard" : "/welcome");
+    }
+
     const emailEnabled = isEmailSignInAvailable();
 
     return (

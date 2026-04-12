@@ -26,6 +26,7 @@ export interface ClapperboardIconHandle {
 
 interface ClapperboardIconProps {
     className?: string;
+    style?: React.CSSProperties;
     autoClap?: boolean;
     autoDelay?: number;
 }
@@ -34,7 +35,7 @@ export const ClapperboardIcon = forwardRef<
     ClapperboardIconHandle,
     ClapperboardIconProps
 >(function ClapperboardIcon(
-    { className, autoClap = false, autoDelay = 500 },
+    { className, style, autoClap = false, autoDelay = 500 },
     ref,
 ) {
     const [isClapping, setIsClapping] = useState(false);
@@ -59,6 +60,7 @@ export const ClapperboardIcon = forwardRef<
     return (
         <svg
             className={className}
+            style={style}
             data-clapping={isClapping || undefined}
             viewBox="870 420 75 60"
             xmlns="http://www.w3.org/2000/svg"

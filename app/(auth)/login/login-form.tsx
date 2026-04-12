@@ -209,7 +209,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                     {codeError && (
                         <p
                             role="alert"
-                            className="mt-3 text-sm text-red-500 dark:text-red-400"
+                            className="mt-3 text-sm text-[var(--destructive)]"
                         >
                             {codeError}
                         </p>
@@ -296,7 +296,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                     {status.kind === "error" && (
                         <p
                             role="alert"
-                            className="mt-3 text-sm text-red-500 dark:text-red-400"
+                            className="mt-3 text-sm text-[var(--destructive)]"
                         >
                             {status.message}
                         </p>
@@ -323,7 +323,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                 status.kind === "error" && (
                     <p
                         role="alert"
-                        className="mb-4 text-sm text-red-500 dark:text-red-400"
+                        className="mb-4 text-sm text-[var(--destructive)]"
                     >
                         {status.message}
                     </p>
@@ -379,7 +379,7 @@ function Divider({ label }: { label: string }) {
             aria-orientation="horizontal"
             className="relative mb-[clamp(1rem,2vw,1.5rem)] text-center text-[11px] uppercase tracking-[0.12em] text-neutral-400 dark:text-neutral-500"
         >
-            <span className="relative z-10 bg-white px-3 dark:bg-[rgba(18,18,20,0.65)]">
+            <span className="relative z-10 px-3" style={{ backgroundColor: "var(--card-bg)" }}>
                 {label}
             </span>
             <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-neutral-200 dark:bg-neutral-700/60" />
