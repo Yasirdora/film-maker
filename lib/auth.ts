@@ -133,7 +133,18 @@ export async function getAuth() {
                 // Built-in rate limit: 5 requests per 60s per identifier.
                 rateLimit: { window: 60, max: 5 },
                 sendMagicLink: async ({ email, url }) => {
-                    await sendMagicLinkEmail({ email, url });
+                    try {
+                        await sendMagicLinkEmail({ email, url });
+                    } catch (err) {
+                        // Surface the root cause in the dev server log.
+                        // Without this Better Auth swallows the error and
+                        // the browser only sees an opaque 500.
+                        console.error("[magic-link] sendMagicLinkEmail failed:", err);
+                        if (err instanceof Error && err.stack) {
+                            console.error(err.stack);
+                        }
+                        throw err;
+                    }
                 },
             }),
 

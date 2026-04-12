@@ -17,7 +17,8 @@
       "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/anthropist/.env.local)",
       "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/Film-maker/.env.local)",
       "Bash(node -e ':*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(node --env-file=.env.local -e ':*)"
     ]
   }
 }
