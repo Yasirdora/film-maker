@@ -16,7 +16,7 @@ npm install
 ## 2. Secrets (local development)
 
 ```bash
-cp .dev.vars.example .dev.vars
+cp .env.local.example .env.local
 ```
 
 Then fill in the values:
@@ -43,7 +43,7 @@ flow is:
 3. Use an OAuth playground or your own script to obtain a refresh token for
    the sender account (`yasirdora@gmail.com` for dev, a Workspace address for prod).
 4. Store `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`,
-   `GMAIL_SENDER` in `.dev.vars`.
+   `GMAIL_SENDER` in `.env.local`.
 
 > **Note**: using a personal Gmail as sender is fine for development but
 > hurts deliverability and branding in production. Switch to a Google
@@ -54,7 +54,7 @@ flow is:
 for development. Migration to Vertex AI happens in v1.
 
 ### `STRIPE_*`
-Stripe Dashboard → Developers → API keys. Use **test mode** keys for `.dev.vars`.
+Stripe Dashboard → Developers → API keys. Use **test mode** keys for `.env.local`.
 - `STRIPE_SECRET_KEY` = `sk_test_...`
 - `STRIPE_PUBLISHABLE_KEY` = `pk_test_...`
 - `STRIPE_WEBHOOK_SECRET` — generated after you set up the webhook endpoint
@@ -132,7 +132,7 @@ stripe listen --forward-to localhost:3000/api/stripe/webhook
 ```
 
 The CLI prints a webhook signing secret starting with `whsec_...`. Paste it
-into `.dev.vars` as `STRIPE_WEBHOOK_SECRET`. The dev server will now receive
+into `.env.local` as `STRIPE_WEBHOOK_SECRET`. The dev server will now receive
 live webhook events from your Stripe test account.
 
 ## 7. Run the dev server

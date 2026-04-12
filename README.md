@@ -13,8 +13,8 @@ AI-powered filmmaking, simplified. A simpler alternative to Google Flow, built o
 npm install
 
 # 2. Copy local env template and fill in the secrets
-cp .dev.vars.example .dev.vars
-# then edit .dev.vars
+cp .env.local.example .env.local
+# then edit .env.local
 
 # 3. Create the D1 database (once per environment)
 npm run db:create
@@ -116,7 +116,7 @@ touching related code:
 ## Contributing
 
 Commit messages: imperative mood, under 72 characters, explain WHY.
-Don't commit `.dev.vars`, `.env*`, or anything under `.wrangler/` or `.open-next/`.
+Don't commit `.env.local`, `.env*`, or anything under `.wrangler/` or `.open-next/`.
 
 ## License
 

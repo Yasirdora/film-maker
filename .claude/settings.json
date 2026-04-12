@@ -11,7 +11,13 @@
       "Bash(git remote:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
-      "Bash(grep -rn \"initOpenNextCloudflareForDev\\\\|getCloudflareContext\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@opennextjs/cloudflare/dist/api/*.d.ts)"
+      "Bash(grep -rn \"initOpenNextCloudflareForDev\\\\|getCloudflareContext\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@opennextjs/cloudflare/dist/api/*.d.ts)",
+      "Bash(ls -la /Users/x/Documents/Antigravity/AI/anthropist/.env* /Users/x/Documents/Antigravity/AI/anthropist/.dev.vars*)",
+      "Bash(ls -la /Users/x/Documents/Antigravity/AI/anthropist/.env*)",
+      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/anthropist/.env.local)",
+      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/Film-maker/.env.local)",
+      "Bash(node -e ':*)",
+      "Bash(git mv:*)"
     ]
   }
 }

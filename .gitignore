@@ -15,12 +15,15 @@ next-env.d.ts
 cloudflare-env.d.ts
 
 # Environment & secrets — NEVER commit
-.dev.vars
-.dev.vars.*
-!.dev.vars.example
+# .env.local is Next.js's native dev-env file and is loaded automatically.
+# Production secrets go through `wrangler secret put <NAME>`.
 .env
 .env.local
 .env.*.local
+!.env.local.example
+# Legacy Wrangler convention (unused by this project — kept ignored as a safety net).
+.dev.vars
+.dev.vars.*
 
 # OS
 .DS_Store
