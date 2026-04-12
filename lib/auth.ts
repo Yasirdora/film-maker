@@ -44,6 +44,45 @@ import { SUBSCRIPTION_PLANS } from "./constants";
 
 const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 
+// ─── Pretty magic-link URL ──────────────────────────────────────────────────
+// Builds the clean /auth/verify?key=... link we put in the email.
+// The middleware rewrites this to Better Auth's real verify endpoint.
+
+function getAppUrl(): string {
+    return (
+        process.env.BETTER_AUTH_URL ??
+        process.env.NEXT_PUBLIC_APP_URL ??
+        "http://localhost:3000"
+    );
+}
+
+function buildPrettyMagicLink({
+    defaultUrl,
+    token,
+}: {
+    defaultUrl: string;
+    token: string;
+}): string {
+    const appUrl = getAppUrl();
+    const pretty = new URL("/auth/link", appUrl);
+    pretty.searchParams.set("verify", token);
+
+    // Preserve any callbackURL the client originally passed — Better Auth
+    // embeds it in the default URL query string, and we forward it so
+    // the post-verify redirect still lands on the right page.
+    try {
+        const parsed = new URL(defaultUrl);
+        const callbackURL = parsed.searchParams.get("callbackURL");
+        if (callbackURL) {
+            pretty.searchParams.set("callbackURL", callbackURL);
+        }
+    } catch {
+        // defaultUrl is always a valid URL in practice — swallow defensively.
+    }
+
+    return pretty.toString();
+}
+
 /**
  * Constructs a Better Auth instance bound to the current request's D1 binding.
  * Call inside a Next.js route handler, middleware, or server component.
@@ -132,9 +171,20 @@ export async function getAuth() {
                 storeToken: "hashed",
                 // Built-in rate limit: 5 requests per 60s per identifier.
                 rateLimit: { window: 60, max: 5 },
-                sendMagicLink: async ({ email, url }) => {
+                sendMagicLink: async ({ email, url: defaultUrl, token }) => {
+                    // Build a prettier URL than Better Auth's default
+                    // (/api/auth/magic-link/verify?token=...). The middleware
+                    // rewrites /auth/verify?key=... → the real endpoint at
+                    // the edge, so the browser only ever sees the clean path.
+                    //
+                    // We preserve `callbackURL` from Better Auth's default
+                    // URL so the post-sign-in redirect target is unchanged.
+                    const prettyUrl = buildPrettyMagicLink({
+                        defaultUrl,
+                        token,
+                    });
                     try {
-                        await sendMagicLinkEmail({ email, url });
+                        await sendMagicLinkEmail({ email, url: prettyUrl });
                     } catch (err) {
                         // Surface the root cause in the dev server log.
                         // Without this Better Auth swallows the error and

@@ -36,7 +36,26 @@ function isProtected(pathname: string): boolean {
 }
 
 export function middleware(request: NextRequest): NextResponse {
-    const { pathname, search } = request.nextUrl;
+    const { pathname, search, searchParams } = request.nextUrl;
+
+    // ─── Pretty magic-link URL rewrite ──────────────────────────────
+    // Users click `/auth/link?verify=TOKEN` from the email; we rewrite
+    // internally to Better Auth's real verify endpoint. The rewrite is
+    // edge-local — the browser's URL bar stays on /auth/link until the
+    // handler's own redirect to callbackURL takes over.
+    if (pathname === "/auth/link") {
+        const verify = searchParams.get("verify");
+        if (verify) {
+            const url = request.nextUrl.clone();
+            url.pathname = "/api/auth/magic-link/verify";
+            url.searchParams.delete("verify");
+            url.searchParams.set("token", verify);
+            return NextResponse.rewrite(url);
+        }
+        // No verify token — fall through to the regular (un)protected
+        // flow, which will surface a 404 since we don't ship a physical
+        // page for this path.
+    }
 
     if (!isProtected(pathname)) {
         return NextResponse.next();
