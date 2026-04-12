@@ -1,22 +1,27 @@
 /**
  * POST /api/stripe/portal
  *
- * Creates a Stripe Customer Portal session and returns its URL. The client
- * redirects to it; the user can manage their subscription, update payment
- * method, view invoices, and cancel from Stripe's hosted UI.
+ * Creates a Stripe Customer Portal session and returns its URL.
  *
- * Auth: requires an authenticated user with an existing Stripe customer.
- * If no customer exists we 404 rather than creating one — there's nothing
- * to manage for a user who has never paid.
+ * Security:
+ *   • Session-authenticated — unauthenticated requests get 401.
+ *   • Origin-validated — rejects cross-origin POST (CSRF defense).
+ *   • Stripe errors logged but not leaked to client.
  */
 
 import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth-server";
+import { validateOrigin } from "@/lib/security";
 import { getStripe } from "@/lib/stripe";
 import { getDb } from "@/lib/db";
 
 export async function POST(request: Request): Promise<Response> {
+    // ─── CSRF ───────────────────────────────────────────────────────
+    const originError = validateOrigin(request);
+    if (originError) return originError;
+
+    // ─── Auth ───────────────────────────────────────────────────────
     const result = await getSession();
     if (!result?.user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,12 +56,7 @@ export async function POST(request: Request): Promise<Response> {
     } catch (err) {
         console.error("Stripe portal error:", err);
         return NextResponse.json(
-            {
-                error:
-                    err instanceof Error
-                        ? err.message
-                        : "Failed to create portal session",
-            },
+            { error: "Could not open billing portal. Please try again." },
             { status: 500 },
         );
     }

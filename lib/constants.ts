@@ -204,7 +204,13 @@ export function computePhotoCreditCost(
     sampleCount: number,
 ): number {
     const model = getPhotoModel(modelId);
-    if (!model) return 0;
+    if (!model) {
+        throw new Error(
+            `Unknown model "${modelId}". Cannot compute credit cost ` +
+            `for an unrecognized model — this would allow zero-cost ` +
+            `generations that consume API resources without deducting credits.`,
+        );
+    }
     const resMult = RESOLUTION_MULTIPLIERS[resolution] ?? 1;
     return model.creditBase * resMult * Math.max(1, sampleCount);
 }

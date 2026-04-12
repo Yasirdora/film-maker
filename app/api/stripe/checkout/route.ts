@@ -5,31 +5,18 @@
  * returns the hosted checkout URL. The client redirects the browser to
  * that URL; Stripe handles payment collection end-to-end.
  *
- * Auth:
- *   Requires an authenticated user. Unauthenticated requests get 401
- *   and the client is expected to redirect to /login?from=/pricing.
- *
- * Input (JSON body):
- *   { planId: "indie" | "creator" | "studio" }
- *
- * Output:
- *   { url: string }
- *
- * Side effects:
- *   • Ensures a Stripe Customer exists for the user (idempotent).
- *   • Creates a Stripe Checkout Session in `subscription` mode.
- *   • Passes client_reference_id = userId + metadata so the webhook
- *     handler can recover the user from the session object.
- *
- * The user's credit grant happens in the webhook handler
- * (`checkout.session.completed`), not here — Stripe may have to capture
- * 3DS, SCA, or bank authorization before the payment settles.
+ * Security:
+ *   • Session-authenticated — unauthenticated requests get 401.
+ *   • Origin-validated — rejects cross-origin POST (CSRF defense).
+ *   • Stripe errors are logged server-side but never leaked to the
+ *     client — only generic user-facing messages are returned.
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { getSession } from "@/lib/auth-server";
+import { validateOrigin } from "@/lib/security";
 import {
     ensureStripeCustomer,
     getStripe,
@@ -42,7 +29,11 @@ const BodySchema = z.object({
 });
 
 export async function POST(request: Request): Promise<Response> {
-    // ─── Auth ────────────────────────────────────────────────────────
+    // ─── CSRF ───────────────────────────────────────────────────────
+    const originError = validateOrigin(request);
+    if (originError) return originError;
+
+    // ─── Auth ───────────────────────────────────────────────────────
     const result = await getSession();
     if (!result?.user) {
         return NextResponse.json(
@@ -52,7 +43,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     const { user } = result;
 
-    // ─── Input ───────────────────────────────────────────────────────
+    // ─── Input ──────────────────────────────────────────────────────
     let parsed: z.infer<typeof BodySchema>;
     try {
         const body = await request.json();
@@ -71,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
         );
     }
 
-    // ─── Stripe ──────────────────────────────────────────────────────
+    // ─── Stripe ─────────────────────────────────────────────────────
     const appUrl =
         process.env.NEXT_PUBLIC_APP_URL ??
         process.env.BETTER_AUTH_URL ??
@@ -115,21 +106,18 @@ export async function POST(request: Request): Promise<Response> {
 
         if (!checkoutSession.url) {
             return NextResponse.json(
-                { error: "Stripe did not return a checkout URL" },
+                { error: "Could not start checkout. Please try again." },
                 { status: 500 },
             );
         }
 
         return NextResponse.json({ url: checkoutSession.url });
     } catch (err) {
+        // Log the real Stripe error server-side for debugging.
         console.error("Stripe checkout error:", err);
+        // Return a generic message — never expose Stripe internals.
         return NextResponse.json(
-            {
-                error:
-                    err instanceof Error
-                        ? err.message
-                        : "Failed to create checkout session",
-            },
+            { error: "Could not start checkout. Please try again." },
             { status: 500 },
         );
     }

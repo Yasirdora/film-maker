@@ -90,8 +90,14 @@ interface EnsureCustomerParams {
 
 /**
  * Returns the user's Stripe customer id, creating the customer on Stripe
- * if this is the first time. Idempotent — the next call returns the same
- * id without creating anything.
+ * if this is the first time.
+ *
+ * Race-safe: if two concurrent requests both see `stripe_customer_id IS
+ * NULL` and both create a Stripe customer, the conditional UPDATE
+ * (`WHERE stripe_customer_id IS NULL`) ensures only the first writer
+ * wins. The loser re-reads the row to get the winner's customer ID.
+ * The orphaned Stripe customer object is harmless (never charged) and
+ * can be cleaned up via Stripe's dashboard if desired.
  */
 export async function ensureStripeCustomer({
     userId,
@@ -100,6 +106,7 @@ export async function ensureStripeCustomer({
 }: EnsureCustomerParams): Promise<string> {
     const db = await getDb();
 
+    // Fast path — customer already exists.
     const existing = await db
         .prepare("SELECT stripe_customer_id FROM user_profile WHERE user_id = ? LIMIT 1")
         .bind(userId)
@@ -109,6 +116,7 @@ export async function ensureStripeCustomer({
         return existing.stripe_customer_id;
     }
 
+    // Create the Stripe customer.
     const stripe = getStripe();
     const customer = await stripe.customers.create({
         email,
@@ -116,14 +124,36 @@ export async function ensureStripeCustomer({
         metadata: { film_maker_user_id: userId },
     });
 
-    await db
+    // Conditional UPDATE: only write if no one else has set it yet.
+    // If another request raced us and already wrote a different customer
+    // ID, this UPDATE touches zero rows and we fall through to re-read.
+    const result = await db
         .prepare(
-            "UPDATE user_profile SET stripe_customer_id = ?, updated_at = ? WHERE user_id = ?",
+            `UPDATE user_profile
+                SET stripe_customer_id = ?, updated_at = ?
+              WHERE user_id = ? AND stripe_customer_id IS NULL`,
         )
         .bind(customer.id, Date.now(), userId)
         .run();
 
-    return customer.id;
+    if (result.meta.changes > 0) {
+        // We won the race — our customer ID is the canonical one.
+        return customer.id;
+    }
+
+    // Another request set the customer ID first. Re-read to get theirs.
+    const winner = await db
+        .prepare("SELECT stripe_customer_id FROM user_profile WHERE user_id = ? LIMIT 1")
+        .bind(userId)
+        .first<{ stripe_customer_id: string | null }>();
+
+    if (!winner?.stripe_customer_id) {
+        // Should never happen — the conditional UPDATE failed because
+        // someone else wrote a value, so the re-read must find it.
+        throw new Error(`Failed to resolve Stripe customer for user ${userId}`);
+    }
+
+    return winner.stripe_customer_id;
 }
 
 // ─── Subscription mirror ────────────────────────────────────────────────────

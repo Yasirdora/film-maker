@@ -41,6 +41,10 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
             setError("Please enter your name.");
             return;
         }
+        if (trimmed.length > 100) {
+            setError("Name must be 100 characters or fewer.");
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -154,6 +158,7 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                     autoComplete="name"
                     enterKeyHint="done"
                     placeholder="Your name"
+                    maxLength={100}
                     value={name}
                     onChange={(e) => {
                         setName(e.target.value);

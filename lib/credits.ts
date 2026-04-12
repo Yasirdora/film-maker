@@ -24,7 +24,8 @@
  */
 
 import { getDb } from "./db";
-import { getPlan, isFreePlan } from "./constants";
+import { getPlan, isFreePlan, SUBSCRIPTION_PLANS } from "./constants";
+import { generateUid } from "./utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -40,12 +41,14 @@ export interface CreditBalance {
 // ─── Reads ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns the current credit balance for a user, or null if the
- * user_profile row doesn't exist (should only happen pre-provisioning).
+ * Returns the current credit balance for a user. If the user_profile
+ * row is missing (databaseHooks.user.create.after failed — e.g., D1
+ * timeout or UID collision), provisions it on-demand so the user isn't
+ * stuck in a broken state. Logs an error so we know the hook failed.
  */
-export async function getBalance(userId: string): Promise<CreditBalance | null> {
+export async function getBalance(userId: string): Promise<CreditBalance> {
     const db = await getDb();
-    const row = await db
+    let row = await db
         .prepare(
             `SELECT subscription_credits, purchased_credits, use_extra_credits,
                     plan, daily_credits_used, last_daily_reset
@@ -63,7 +66,32 @@ export async function getBalance(userId: string): Promise<CreditBalance | null> 
             last_daily_reset: number;
         }>();
 
-    if (!row) return null;
+    if (!row) {
+        // Self-healing: the signup hook should have created this row.
+        // If it didn't (e.g., D1 timeout), create it now so the user
+        // isn't stuck. Log so we know the hook is misbehaving.
+        console.error(
+            `[credits] user_profile missing for user ${userId} — ` +
+            `creating on-demand (signup hook may have failed)`,
+        );
+        await provisionProfileOnDemand(userId);
+        row = await db
+            .prepare(
+                `SELECT subscription_credits, purchased_credits, use_extra_credits,
+                        plan, daily_credits_used, last_daily_reset
+                   FROM user_profile
+                  WHERE user_id = ?
+                  LIMIT 1`,
+            )
+            .bind(userId)
+            .first();
+
+        if (!row) {
+            throw new Error(
+                `Failed to create user_profile for user ${userId}`,
+            );
+        }
+    }
 
     return {
         subscriptionCredits: row.subscription_credits,
@@ -239,4 +267,31 @@ export async function listRecentTransactions(
         pool: r.pool,
         createdAt: r.created_at,
     }));
+}
+
+// ─── Self-healing profile provision ─────────────────────────────────────────
+
+const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
+
+/**
+ * Creates a user_profile row on-demand when `getBalance()` discovers
+ * the signup hook failed. Uses INSERT OR IGNORE so a concurrent call
+ * doesn't double-provision.
+ */
+async function provisionProfileOnDemand(userId: string): Promise<void> {
+    const db = await getDb();
+    const uid = generateUid(16);
+    const now = Date.now();
+
+    await db
+        .prepare(
+            `INSERT OR IGNORE INTO user_profile
+             (user_id, uid, plan, subscription_credits, purchased_credits,
+              use_extra_credits, daily_credits_used, last_daily_reset,
+              monthly_topup_usd_cents_used, monthly_topup_reset_at,
+              onboarded_at, created_at, updated_at)
+             VALUES (?, ?, 'solo', ?, 0, 1, 0, 0, 0, 0, NULL, ?, ?)`,
+        )
+        .bind(userId, uid, SOLO_PLAN.credits, now, now)
+        .run();
 }

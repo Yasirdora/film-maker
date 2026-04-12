@@ -27,7 +27,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "jose": "^6.2.2",
     "lucide-react": "^1.8.0",
     "motion": "^12.38.0",
     "next": "^16.2.3",
@@ -42,7 +41,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260411.1",
     "@opennextjs/cloudflare": "^1.19.1",
-    "@sentry/nextjs": "^10.48.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^20.17.0",
     "@types/react": "^19.2.0",

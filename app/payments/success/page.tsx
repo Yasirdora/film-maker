@@ -16,14 +16,14 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { requireSession } from "@/lib/auth-server";
+import { requireOnboardedUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
     title: "Thank you",
 };
 
 export default async function PaymentsSuccessPage() {
-    await requireSession();
+    await requireOnboardedUser();
 
     return (
         <main className="min-h-dvh flex items-center justify-center px-6 bg-neutral-50 dark:bg-neutral-950">

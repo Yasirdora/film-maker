@@ -11,11 +11,26 @@
  * in the response, and redirects to /dashboard (or whatever
  * callbackURL was passed).
  *
- * Users who prefer typing the code do so from the login form directly
- * — this route is only for the click path.
+ * Security:
+ *   • callbackURL is sanitized to same-origin paths only — rejects
+ *     absolute URLs and protocol-relative URLs to prevent open redirect.
+ *   • Referrer-Policy: no-referrer on the redirect response so the OTP
+ *     code in the inbound URL never leaks to downstream sites via the
+ *     Referer header.
  */
 
 import { getAuth } from "@/lib/auth";
+
+/**
+ * Validates callbackURL is a safe same-origin path. Rejects absolute
+ * URLs, protocol-relative URLs, and anything that doesn't start with
+ * a single forward slash. Same logic as the login form's sanitizer.
+ */
+function sanitizeCallback(raw: string | null): string {
+    if (!raw) return "/dashboard";
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+    return raw;
+}
 
 export async function GET(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -45,11 +60,17 @@ export async function GET(request: Request): Promise<Response> {
     const response = await auth.handler(forwarded);
 
     if (response.ok) {
-        const callbackURL =
-            url.searchParams.get("callbackURL") || "/dashboard";
+        const callbackURL = sanitizeCallback(
+            url.searchParams.get("callbackURL"),
+        );
         const redirect = new Response(null, {
             status: 302,
-            headers: { Location: callbackURL },
+            headers: {
+                Location: callbackURL,
+                // Prevent the OTP code (visible in the inbound URL) from
+                // leaking to downstream sites via the Referer header.
+                "Referrer-Policy": "no-referrer",
+            },
         });
         // Forward all Set-Cookie headers so the session is established.
         for (const cookie of response.headers.getSetCookie()) {

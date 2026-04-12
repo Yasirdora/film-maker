@@ -240,7 +240,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     await grantSubscriptionCredits({
         userId,
         planId,
-        idempotencyKey: invoice.id ?? `inv_${invoice.number ?? Date.now()}`,
+        idempotencyKey: invoice.id!,
         description: `${plan.name} plan — monthly credits (renewal)`,
     });
 

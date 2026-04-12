@@ -54,7 +54,13 @@
       "Bash(curl -sS -o /tmp/authlink.html -w \"HTTP %{http_code}\\\\n\" \"https://film-maker.net/auth/link?verify=bogus&callbackURL=%2Fdashboard\")",
       "Bash(curl -sI \"https://film-maker.net/auth/link?verify=bogus_test&callbackURL=%2Fdashboard\")",
       "Bash(curl -sS -X POST https://film-maker.net/api/auth/sign-in/social -H 'Content-Type: application/json' -H 'Origin: https://film-maker.net' -d '{\"provider\":\"google\",\"callbackURL\":\"/dashboard\"}' -D /tmp/social-headers.txt -o /tmp/social-body.txt)",
-      "Bash(curl -sI \"https://www.film-maker.net/login\")"
+      "Bash(curl -sI \"https://www.film-maker.net/login\")",
+      "Bash(npm search:*)",
+      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/.env*)",
+      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/middleware* /Users/x/Documents/Antigravity/AI/Film-maker/app/middleware*)",
+      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/app/error* /Users/x/Documents/Antigravity/AI/Film-maker/app/not-found*)",
+      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/sentry* /Users/x/Documents/Antigravity/AI/Film-maker/instrumentation*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

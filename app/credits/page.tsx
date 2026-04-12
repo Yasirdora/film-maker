@@ -14,7 +14,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireSession } from "@/lib/auth-server";
+import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance, listRecentTransactions } from "@/lib/credits";
 import { getPlan, isFreePlan, SOLO_DAILY_CREDIT_LIMIT } from "@/lib/constants";
 
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CreditsPage() {
-    const { user } = await requireSession();
+    const { user } = await requireOnboardedUser();
 
     const [balance, transactions] = await Promise.all([
         getBalance(user.id),
@@ -63,7 +63,7 @@ export default async function CreditsPage() {
                     </div>
                     <div className="mt-2 flex items-baseline gap-2">
                         <div className="text-5xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                            {total.toLocaleString()}
+                            {Intl.NumberFormat("en-US").format(total)}
                         </div>
                         <div className="text-sm text-neutral-500 dark:text-neutral-400">
                             credits
@@ -76,7 +76,7 @@ export default async function CreditsPage() {
                                 Subscription
                             </div>
                             <div className="mt-1 font-medium text-neutral-900 dark:text-neutral-50">
-                                {balance.subscriptionCredits.toLocaleString()}
+                                {Intl.NumberFormat("en-US").format(balance.subscriptionCredits)}
                             </div>
                         </div>
                         <div>
@@ -84,7 +84,7 @@ export default async function CreditsPage() {
                                 Purchased
                             </div>
                             <div className="mt-1 font-medium text-neutral-900 dark:text-neutral-50">
-                                {balance.purchasedCredits.toLocaleString()}
+                                {Intl.NumberFormat("en-US").format(balance.purchasedCredits)}
                             </div>
                         </div>
                     </div>
