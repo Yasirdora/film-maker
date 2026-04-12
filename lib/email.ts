@@ -146,7 +146,7 @@ export async function sendVerificationEmail({
                 Your verification code
               </h1>
               <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#525252;">
-                Enter this code in the app to sign in, or click the button below.
+                Enter this code in the app, or click the button below.
                 This code expires in 15 minutes.
               </p>
 

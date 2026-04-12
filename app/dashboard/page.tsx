@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { requireSession } from "@/lib/auth-server";
 import { SignOutButton } from "./sign-out-button";
 
@@ -16,6 +17,12 @@ export const metadata: Metadata = {
 
 export default async function DashboardPage() {
     const { user } = await requireSession();
+
+    // New users created via email OTP have no name yet — send them
+    // through the onboarding flow before they land on the dashboard.
+    if (!user.name) {
+        redirect("/welcome");
+    }
 
     return (
         <main className="min-h-dvh flex items-center justify-center px-6">
