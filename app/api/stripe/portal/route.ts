@@ -41,10 +41,9 @@ export async function POST(request: Request): Promise<Response> {
         );
     }
 
-    const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ??
-        process.env.BETTER_AUTH_URL ??
-        new URL(request.url).origin;
+    // Use the actual request origin — reliable on Cloudflare Workers and
+    // avoids build-time env vars (NEXT_PUBLIC_*) baking in localhost.
+    const appUrl = new URL(request.url).origin;
 
     try {
         const stripe = getStripe();

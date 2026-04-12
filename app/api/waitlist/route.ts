@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSession } from "@/lib/auth-server";
+import { validateOrigin } from "@/lib/security";
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
+    const originError = validateOrigin(request);
+    if (originError) return originError;
     const session = await getSession();
     if (!session?.user?.email) {
         return NextResponse.json(
