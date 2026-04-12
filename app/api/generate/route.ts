@@ -55,7 +55,6 @@ import {
     type Resolution,
 } from "@/lib/constants";
 import { getImageUrl } from "@/lib/image-url";
-import { optimizeImage } from "@/lib/image-optimize";
 import { generateImage, GenerationError } from "@/lib/gemini";
 import {
     createGeneration,
@@ -287,15 +286,9 @@ export async function POST(request: Request): Promise<Response> {
         );
     }
 
-    // ─── Optimize + upload to R2 ────────────────────────────────────
-    // Convert from Imagen's output format (JPEG/PNG) to WebP before
-    // storing. This reduces R2 storage by ~79% with no visible quality
-    // loss. If conversion fails, the original format is stored and the
-    // CDN serves WebP to browsers via Image Resizing.
-    const optimized = await optimizeImage(
-        imageResult.imageData,
-        imageResult.mimeType,
-    );
+    // ─── Upload to R2 ─────────────────────────────────────────────────
+    // Imagen returns WebP directly (configured via outputMimeType), so
+    // no server-side conversion is needed. Store as-is.
 
     const { getDb } = await import("@/lib/db");
     const db = await getDb();
@@ -310,14 +303,14 @@ export async function POST(request: Request): Promise<Response> {
         project.uid,
         "image",
         generation.uid,
-        optimized.mimeType,
+        imageResult.mimeType,
     );
 
     try {
         const r2 = await getR2();
-        await r2.put(r2Key, optimized.data, {
+        await r2.put(r2Key, imageResult.imageData, {
             httpMetadata: {
-                contentType: optimized.mimeType,
+                contentType: imageResult.mimeType,
             },
         });
     } catch (err) {
