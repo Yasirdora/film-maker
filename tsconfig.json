@@ -44,6 +44,8 @@
     "node_modules",
     ".next",
     ".open-next",
-    ".wrangler"
+    ".wrangler",
+    "tests",
+    "vitest.config.ts"
   ]
 }

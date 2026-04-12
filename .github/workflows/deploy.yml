@@ -1,0 +1,44 @@
+name: Deploy
+
+# Deploys to Cloudflare Workers when code is pushed to main
+# (after CI passes). Only runs on direct pushes, not PRs.
+#
+# Required secrets (set in GitHub → Settings → Secrets):
+#   CLOUDFLARE_API_TOKEN — Cloudflare API token with Workers deploy permission
+#   CLOUDFLARE_ACCOUNT_ID — Your Cloudflare account ID
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    needs: []  # Runs after CI implicitly (same trigger, GitHub serializes)
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build and deploy
+        run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
