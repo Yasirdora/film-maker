@@ -18,8 +18,11 @@
 
   // Public (non-secret) environment variables. Secrets go in .env.local
   // for local development and `wrangler secret put <name>` for production.
+  // Using www.film-maker.net until the apex film-maker.net DNS record is
+  // added in the Cloudflare dashboard (custom_domain routing registered
+  // the Worker trigger but didn't auto-create an apex A/AAAA record).
   "vars": {
-    "NEXT_PUBLIC_APP_URL": "https://film-maker.net",
+    "NEXT_PUBLIC_APP_URL": "https://www.film-maker.net",
     "NEXT_PUBLIC_STORAGE_URL": "https://storage.film-maker.net"
   },
 
