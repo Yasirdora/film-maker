@@ -7,7 +7,26 @@ export const metadata: Metadata = {
     description: "Sign in to Film-maker",
 };
 
+/**
+ * Returns true if all Gmail OAuth env vars are populated. We check at
+ * render time so the login UI can silently drop the magic-link option
+ * when the email pipeline isn't configured yet, instead of showing a
+ * form that always fails. Same page, no redeploy required — flip the
+ * vars in .dev.vars or `wrangler secret put`, restart dev, and the
+ * section reappears.
+ */
+function isEmailSignInAvailable(): boolean {
+    return Boolean(
+        process.env.GMAIL_CLIENT_ID &&
+        process.env.GMAIL_CLIENT_SECRET &&
+        process.env.GMAIL_REFRESH_TOKEN &&
+        process.env.GMAIL_SENDER,
+    );
+}
+
 export default function LoginPage() {
+    const emailEnabled = isEmailSignInAvailable();
+
     return (
         <div>
             <div className="space-y-2 text-center sm:text-left">
@@ -15,12 +34,14 @@ export default function LoginPage() {
                     Sign in to Film-maker
                 </h1>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                    Use Google or enter your email to receive a sign-in link.
+                    {emailEnabled
+                        ? "Use Google or enter your email to receive a sign-in link."
+                        : "Continue with Google to get started."}
                 </p>
             </div>
 
             <Suspense fallback={null}>
-                <LoginForm />
+                <LoginForm emailEnabled={emailEnabled} />
             </Suspense>
 
             <p className="mt-10 text-center text-xs text-neutral-500 dark:text-neutral-400">

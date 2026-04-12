@@ -7,13 +7,17 @@
  *   1. Google OAuth (delegates to Better Auth's social-sign-in endpoint)
  *   2. Email magic link (calls the magic-link plugin, shows a success state)
  *
+ * The email section only renders when the server tells us Gmail OAuth is
+ * configured (`emailEnabled` prop). This avoids showing users a form that
+ * always fails with 500 because the upstream Gmail REST API isn't set up
+ * yet. When email eventually lands, the prop flips and the UI expands.
+ *
  * UX details:
  *   • The `from` query param is preserved so post-sign-in redirect lands
  *     the user back where they came from.
- *   • Inline error messaging — no modals, no toasts (fewer moving parts).
+ *   • Inline error messaging — no modals, no toasts.
  *   • Loading states on both buttons, disabled during submission.
- *   • On magic-link success we swap to a "check your email" view that
- *     still allows retry after 30s.
+ *   • On magic-link success we swap to a "check your email" view.
  */
 
 import { useState } from "react";
@@ -38,7 +42,11 @@ function sanitizeCallback(raw: string | null): string {
     return raw;
 }
 
-export function LoginForm() {
+interface LoginFormProps {
+    emailEnabled: boolean;
+}
+
+export function LoginForm({ emailEnabled }: LoginFormProps) {
     const searchParams = useSearchParams();
     const callbackURL = sanitizeCallback(searchParams.get("from"));
 
@@ -165,52 +173,56 @@ export function LoginForm() {
                 )}
             </Button>
 
-            <div
-                role="separator"
-                aria-orientation="horizontal"
-                className="relative text-center text-xs uppercase tracking-wider text-neutral-400"
-            >
-                <span className="relative z-10 bg-neutral-50 px-3 dark:bg-neutral-950">
-                    or
-                </span>
-                <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-neutral-200 dark:bg-neutral-800" />
-            </div>
+            {emailEnabled && (
+                <>
+                    <div
+                        role="separator"
+                        aria-orientation="horizontal"
+                        className="relative text-center text-xs uppercase tracking-wider text-neutral-400"
+                    >
+                        <span className="relative z-10 bg-neutral-50 px-3 dark:bg-neutral-950">
+                            or
+                        </span>
+                        <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-neutral-200 dark:bg-neutral-800" />
+                    </div>
 
-            <form onSubmit={handleEmail} className="space-y-3" noValidate>
-                <label htmlFor="email" className="sr-only">
-                    Email address
-                </label>
-                <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    enterKeyHint="send"
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    required
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (status.kind === "error") setStatus({ kind: "idle" });
-                    }}
-                    disabled={isSubmitting}
-                />
-                <Button
-                    type="submit"
-                    variant="primary"
-                    size="lg"
-                    fullWidth
-                    disabled={isSubmitting || !email}
-                >
-                    {status.kind === "submitting-email"
-                        ? "Sending…"
-                        : "Send sign-in link"}
-                </Button>
-            </form>
+                    <form onSubmit={handleEmail} className="space-y-3" noValidate>
+                        <label htmlFor="email" className="sr-only">
+                            Email address
+                        </label>
+                        <Input
+                            id="email"
+                            name="email"
+                            type="email"
+                            inputMode="email"
+                            autoComplete="email"
+                            enterKeyHint="send"
+                            autoCapitalize="off"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            required
+                            placeholder="you@example.com"
+                            value={email}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+                                if (status.kind === "error") setStatus({ kind: "idle" });
+                            }}
+                            disabled={isSubmitting}
+                        />
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="lg"
+                            fullWidth
+                            disabled={isSubmitting || !email}
+                        >
+                            {status.kind === "submitting-email"
+                                ? "Sending…"
+                                : "Send sign-in link"}
+                        </Button>
+                    </form>
+                </>
+            )}
 
             {status.kind === "error" && (
                 <p
