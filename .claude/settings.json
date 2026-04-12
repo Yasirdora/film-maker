@@ -60,7 +60,8 @@
       "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/middleware* /Users/x/Documents/Antigravity/AI/Film-maker/app/middleware*)",
       "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/app/error* /Users/x/Documents/Antigravity/AI/Film-maker/app/not-found*)",
       "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/sentry* /Users/x/Documents/Antigravity/AI/Film-maker/instrumentation*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(grep -rn \"generateImage\\\\|imagen\\\\|ImageGeneration\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@google/genai/dist/*.d.ts)"
     ]
   }
 }

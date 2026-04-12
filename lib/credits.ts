@@ -24,7 +24,12 @@
  */
 
 import { getDb } from "./db";
-import { getPlan, isFreePlan, SUBSCRIPTION_PLANS } from "./constants";
+import {
+    getPlan,
+    isFreePlan,
+    SOLO_DAILY_CREDIT_LIMIT,
+    SUBSCRIPTION_PLANS,
+} from "./constants";
 import { generateUid } from "./utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -267,6 +272,202 @@ export async function listRecentTransactions(
         pool: r.pool,
         createdAt: r.created_at,
     }));
+}
+
+// ─── Credit deduction ───────────────────────────────────────────────────────
+
+export class InsufficientCreditsError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "InsufficientCreditsError";
+    }
+}
+
+export class DailyLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "DailyLimitError";
+    }
+}
+
+export interface DeductionResult {
+    fromSubscription: number;
+    fromPurchased: number;
+}
+
+/** Returns the start-of-day (midnight UTC) timestamp in ms. */
+function todayStartUtc(): number {
+    const now = new Date();
+    return Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+    );
+}
+
+/**
+ * Atomically deducts credits from a user's two-pool balance.
+ *
+ * Rules:
+ *   • Subscription credits are consumed first (they expire).
+ *   • Purchased credits cover the remainder IF `useExtraCredits` is on.
+ *   • Solo (free) plan has a daily credit cap — enforced here.
+ *   • The deduction + transaction log are written in a D1 batch so they
+ *     succeed or fail together.
+ *
+ * Throws:
+ *   • `InsufficientCreditsError` if the user doesn't have enough.
+ *   • `DailyLimitError` if the Solo plan's daily cap would be exceeded.
+ */
+export async function deductCredits(params: {
+    userId: string;
+    cost: number;
+    generationId: number;
+    description: string;
+}): Promise<DeductionResult> {
+    const { userId, cost, generationId, description } = params;
+
+    if (cost <= 0) {
+        throw new Error("Credit cost must be positive");
+    }
+
+    const db = await getDb();
+    const now = Date.now();
+    const dayStart = todayStartUtc();
+
+    // Read current state.
+    const profile = await db
+        .prepare(
+            `SELECT subscription_credits, purchased_credits,
+                    use_extra_credits, plan, daily_credits_used,
+                    last_daily_reset
+               FROM user_profile
+              WHERE user_id = ?`,
+        )
+        .bind(userId)
+        .first<{
+            subscription_credits: number;
+            purchased_credits: number;
+            use_extra_credits: number;
+            plan: string;
+            daily_credits_used: number;
+            last_daily_reset: number;
+        }>();
+
+    if (!profile) {
+        throw new Error(`No user_profile for user ${userId}`);
+    }
+
+    // Daily limit check — Solo plan only.
+    const isFree = isFreePlan(profile.plan);
+    const dailyUsed =
+        profile.last_daily_reset < dayStart ? 0 : profile.daily_credits_used;
+
+    if (isFree && dailyUsed + cost > SOLO_DAILY_CREDIT_LIMIT) {
+        const remaining = Math.max(0, SOLO_DAILY_CREDIT_LIMIT - dailyUsed);
+        throw new DailyLimitError(
+            `Daily limit reached. Solo plan allows ${SOLO_DAILY_CREDIT_LIMIT} ` +
+            `credits per day. You have ${remaining} remaining today. ` +
+            `Upgrade for unlimited daily generations.`,
+        );
+    }
+
+    // Pool split — subscription first, purchased second.
+    const subCredits = profile.subscription_credits;
+    const purchCredits = profile.purchased_credits;
+    const extraEnabled = profile.use_extra_credits === 1;
+
+    const available = extraEnabled
+        ? subCredits + purchCredits
+        : subCredits;
+
+    if (available < cost) {
+        throw new InsufficientCreditsError(
+            `This costs ${cost} credits but you have ${available}. ` +
+            (extraEnabled
+                ? "Purchase more credits or upgrade your plan."
+                : "Enable extra credits in settings or upgrade."),
+        );
+    }
+
+    const fromSubscription = Math.min(subCredits, cost);
+    const fromPurchased = extraEnabled ? cost - fromSubscription : 0;
+
+    // Atomic batch: deduct balance + log the transaction.
+    await db.batch([
+        db
+            .prepare(
+                `UPDATE user_profile
+                    SET subscription_credits = subscription_credits - ?,
+                        purchased_credits = purchased_credits - ?,
+                        daily_credits_used = ?,
+                        last_daily_reset = ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(
+                fromSubscription,
+                fromPurchased,
+                dailyUsed + cost,
+                dayStart,
+                now,
+                userId,
+            ),
+        db
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, generation_id, created_at)
+                 VALUES (?, ?, 'generation', ?, ?, ?, ?)`,
+            )
+            .bind(
+                userId,
+                -cost,
+                description,
+                fromSubscription > 0
+                    ? fromPurchased > 0
+                        ? "subscription+purchased"
+                        : "subscription"
+                    : "purchased",
+                generationId,
+                now,
+            ),
+    ]);
+
+    return { fromSubscription, fromPurchased };
+}
+
+/**
+ * Refunds credits after a failed generation. Adds the credits back to
+ * the same pools they were deducted from, and logs a refund transaction.
+ */
+export async function refundCredits(params: {
+    userId: string;
+    cost: number;
+    generationId: number;
+    deduction: DeductionResult;
+}): Promise<void> {
+    const { userId, cost, generationId, deduction } = params;
+    const db = await getDb();
+    const now = Date.now();
+
+    await db.batch([
+        db
+            .prepare(
+                `UPDATE user_profile
+                    SET subscription_credits = subscription_credits + ?,
+                        purchased_credits = purchased_credits + ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(deduction.fromSubscription, deduction.fromPurchased, now, userId),
+        db
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, generation_id, created_at)
+                 VALUES (?, ?, 'refund', 'Generation failed — credits refunded', NULL, ?, ?)`,
+            )
+            .bind(userId, cost, generationId, now),
+    ]);
 }
 
 // ─── Self-healing profile provision ─────────────────────────────────────────
