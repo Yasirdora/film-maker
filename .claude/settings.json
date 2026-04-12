@@ -37,7 +37,14 @@
       "Bash(dig +short www.film-maker.net)",
       "Bash(dig +short CNAME www.film-maker.net)",
       "Bash(curl -s -o /tmp/home.html -w \"HTTP %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}B\\\\n\" https://www.film-maker.net/)",
-      "Bash(curl -s -o /tmp/home2.html -w \"HTTP %{http_code}\\\\n\" https://www.film-maker.net/)"
+      "Bash(curl -s -o /tmp/home2.html -w \"HTTP %{http_code}\\\\n\" https://www.film-maker.net/)",
+      "Bash(curl -sI https://www.film-maker.net/auth/link?verify=bogus)",
+      "Bash(curl -sI https://www.film-maker.net/)",
+      "Read(//Users/x/Library/Preferences/.wrangler/**)",
+      "Read(//Users/x/**)",
+      "Bash(dig +short film-maker.net A)",
+      "Bash(dig +short film-maker.net AAAA)",
+      "Bash(curl -sI https://film-maker.net/)"
     ]
   }
 }
