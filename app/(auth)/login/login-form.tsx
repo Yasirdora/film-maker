@@ -24,8 +24,8 @@ type Status =
     | { kind: "idle" }
     | { kind: "submitting-google" }
     | { kind: "submitting-email" }
-    | { kind: "code-entry"; email: string }
-    | { kind: "verifying" }
+    | { kind: "code-entry"; email: string; error?: string }
+    | { kind: "verifying"; email: string }
     | { kind: "error"; message: string };
 
 const DEFAULT_CALLBACK = "/dashboard";
@@ -113,25 +113,30 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
         const trimmedCode = code.trim();
         if (!trimmedCode) return;
 
-        setStatus({ kind: "verifying" });
+        const targetEmail = status.email;
+        setStatus({ kind: "verifying", email: targetEmail });
         try {
             const { error } = await signIn.emailOtp({
-                email: status.email,
+                email: targetEmail,
                 otp: trimmedCode,
             });
             if (error) {
+                setCode("");
                 setStatus({
-                    kind: "error",
-                    message: error.message ?? "Invalid or expired code. Try again.",
+                    kind: "code-entry",
+                    email: targetEmail,
+                    error: error.message ?? "Invalid or expired code. Try again.",
                 });
                 return;
             }
             router.push(callbackURL);
             router.refresh();
         } catch (err) {
+            setCode("");
             setStatus({
-                kind: "error",
-                message:
+                kind: "code-entry",
+                email: targetEmail,
+                error:
                     err instanceof Error
                         ? err.message
                         : "Verification failed. Try again.",
@@ -158,7 +163,8 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
 
     // ─── Code entry state ───────────────────────────────────────────
     if (status.kind === "code-entry" || status.kind === "verifying") {
-        const sentEmail = status.kind === "code-entry" ? status.email : email;
+        const sentEmail = status.email;
+        const codeError = status.kind === "code-entry" ? status.error : undefined;
         return (
             <div>
                 <div className="mb-[clamp(1rem,2vw,1.5rem)]">
@@ -199,6 +205,15 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                         className="h-14 px-5 text-center text-2xl font-mono tracking-[0.3em] placeholder:text-neutral-300 dark:placeholder:text-neutral-600"
                         autoFocus
                     />
+
+                    {codeError && (
+                        <p
+                            role="alert"
+                            className="mt-3 text-sm text-red-500 dark:text-red-400"
+                        >
+                            {codeError}
+                        </p>
+                    )}
 
                     <Button
                         type="submit"
