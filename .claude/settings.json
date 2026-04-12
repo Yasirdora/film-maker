@@ -18,7 +18,25 @@
       "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/Film-maker/.env.local)",
       "Bash(node -e ':*)",
       "Bash(git mv:*)",
-      "Bash(node --env-file=.env.local -e ':*)"
+      "Bash(node --env-file=.env.local -e ':*)",
+      "Bash(npx wrangler:*)",
+      "Bash(npm run:*)",
+      "Bash(awk -F= '/^STRIPE_PRICE_/ {print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET>\" : \"<EMPTY>\"\\)}' .env.local)",
+      "Read(//tmp/**)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(awk -F= '{if \\($1 ~ /BETTER_AUTH|GOOGLE_CLIENT/\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
+      "Bash(awk -F= '{print NR, $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET>\" : \"\"\\)}' .env.local)",
+      "Bash(awk -F= '{if \\($1 ~ /^\\(GOOGLE_CLIENT_|BETTER_AUTH_SECRET|STRIPE_SECRET_KEY|GMAIL_CLIENT_ID\\)$/\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
+      "Bash(awk -F= '{if \\($1 == \"GOOGLE_CLIENT_ID\" || $1 == \"GOOGLE_CLIENT_SECRET\"\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
+      "Bash(npx opennextjs-cloudflare:*)",
+      "Bash(curl -s -o /tmp/home.html -w \"HTTP %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}B\\\\n\" https://film-maker.net/)",
+      "Bash(curl -v https://film-maker.net/)",
+      "Bash(curl -s -o /tmp/wd.html -w \"HTTP %{http_code}\\\\n\" https://film-maker.yasirdora.workers.dev/)",
+      "Bash(dig +short NS film-maker.net)",
+      "Bash(dig +short film-maker.net)",
+      "Bash(dig +short www.film-maker.net)",
+      "Bash(dig +short CNAME www.film-maker.net)",
+      "Bash(curl -s -o /tmp/home.html -w \"HTTP %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}B\\\\n\" https://www.film-maker.net/)"
     ]
   }
 }

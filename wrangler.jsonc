@@ -11,45 +11,33 @@
   },
 
   // Production custom domain routes.
-  // Commented out until DNS is pointed at Cloudflare and the zone is active.
-  // "routes": [
-  //   { "pattern": "film-maker.net", "custom_domain": true },
-  //   { "pattern": "www.film-maker.net", "custom_domain": true }
-  // ],
+  "routes": [
+    { "pattern": "film-maker.net", "custom_domain": true },
+    { "pattern": "www.film-maker.net", "custom_domain": true }
+  ],
 
-  // Public (non-secret) environment variables. Secrets go in .dev.vars for
-  // local development and `wrangler secret put <name>` for production.
+  // Public (non-secret) environment variables. Secrets go in .env.local
+  // for local development and `wrangler secret put <name>` for production.
   "vars": {
-    "NEXT_PUBLIC_APP_URL": "http://localhost:3000",
+    "NEXT_PUBLIC_APP_URL": "https://film-maker.net",
     "NEXT_PUBLIC_STORAGE_URL": "https://storage.film-maker.net"
   },
 
   // Cloudflare D1 — request-scoped binding.
-  //
-  // For LOCAL development wrangler uses `database_name` to route queries
-  // to a SQLite file under `.wrangler/state/v3/d1/` — the zeroed UUID
-  // below is a placeholder that passes format validation but will NOT
-  // work for a remote `wrangler deploy`.
-  //
-  // Before deploying to production:
-  //   1. Run `npm run db:create`
-  //   2. Paste the returned `database_id` here (replacing the zero UUID)
-  //   3. Run `npm run db:migrate:remote`
+  // Remote database created via `wrangler d1 create film-maker-db`.
+  // Local development uses `.wrangler/state/v3/d1/` regardless of this id.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "film-maker-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "2cdb82d3-eaa6-4db6-9560-1f415927eefd",
       "migrations_dir": "migrations"
     }
   ],
 
-  // Cloudflare R2 — reusing the existing `storage.film-maker.net` bucket.
-  //
-  // For LOCAL development the bucket is created on demand under
-  // `.wrangler/state/v3/r2/`. For production, replace this with the
-  // existing bucket name backing `storage.film-maker.net`:
-  //   npx wrangler r2 bucket list
+  // Cloudflare R2 — bucket created via `wrangler r2 bucket create`.
+  // To attach the custom domain `storage.film-maker.net`:
+  //   npx wrangler r2 bucket domain add film-maker-storage --domain storage.film-maker.net
   "r2_buckets": [
     {
       "binding": "STORAGE",

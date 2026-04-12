@@ -105,7 +105,7 @@ for (const plan of PAID_PLANS) {
     envLines.push(`STRIPE_PRICE_${plan.id.toUpperCase()}=${price.id}`);
 }
 
-console.log("\n─── Paste into .dev.vars (local) ────────────────────────");
+console.log("\n─── Paste into .env.local ───────────────────────────────");
 console.log(envLines.join("\n"));
 console.log("\n─── Or push to production via wrangler ──────────────────");
 for (const line of envLines) {
