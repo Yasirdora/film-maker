@@ -61,7 +61,10 @@
       "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/app/error* /Users/x/Documents/Antigravity/AI/Film-maker/app/not-found*)",
       "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/sentry* /Users/x/Documents/Antigravity/AI/Film-maker/instrumentation*)",
       "Bash(npm uninstall:*)",
-      "Bash(grep -rn \"generateImage\\\\|imagen\\\\|ImageGeneration\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@google/genai/dist/*.d.ts)"
+      "Bash(grep -rn \"generateImage\\\\|imagen\\\\|ImageGeneration\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@google/genai/dist/*.d.ts)",
+      "Bash(node --env-file=.env.local -e \"process.stdout.write\\(process.env.GOOGLE_GEMINI_API_KEY || ''\\)\")",
+      "WebSearch",
+      "WebFetch(domain:stripe.com)"
     ]
   }
 }

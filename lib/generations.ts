@@ -90,6 +90,7 @@ export interface CreateGenerationParams {
     creditCost: number;
     requestIp: string | null;
     userAgent: string | null;
+    idempotencyKey?: string;
 }
 
 /**
@@ -108,8 +109,8 @@ export async function createGeneration(
             `INSERT INTO generation
              (uid, user_id, model, prompt, negative_prompt, resolution,
               aspect_ratio, sample_count, status, credit_cost,
-              request_ip, user_agent, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?)
+              request_ip, user_agent, idempotency_key, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
              RETURNING id`,
         )
         .bind(
@@ -124,6 +125,7 @@ export async function createGeneration(
             params.creditCost,
             params.requestIp,
             params.userAgent,
+            params.idempotencyKey ?? null,
             now,
             now,
         )
@@ -235,6 +237,119 @@ export async function getGeneration(
         .first<RawGenerationRow>();
 
     return row ? mapRow(row) : null;
+}
+
+// ─── Idempotency ────────────────────────────────────────────────────────────
+
+// Idempotency keys are valid for 24 hours (matching Stripe's design).
+const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Finds an existing generation by idempotency key, scoped to a user.
+ * Returns null if no match or if the key has expired (>24h old).
+ */
+export async function findByIdempotencyKey(
+    userId: string,
+    idempotencyKey: string,
+): Promise<GenerationRow | null> {
+    const db = await getDb();
+    const cutoff = Date.now() - IDEMPOTENCY_TTL_MS;
+    const row = await db
+        .prepare(
+            `SELECT id, uid, user_id, model, prompt, negative_prompt,
+                    resolution, aspect_ratio, sample_count, status,
+                    output_r2_keys, error_message, credit_cost,
+                    created_at, completed_at
+               FROM generation
+              WHERE user_id = ? AND idempotency_key = ? AND created_at > ?
+              LIMIT 1`,
+        )
+        .bind(userId, idempotencyKey, cutoff)
+        .first<RawGenerationRow>();
+
+    return row ? mapRow(row) : null;
+}
+
+// ─── Concurrency control ────────────────────────────────────────────────────
+
+/** Maximum concurrent pending generations per user. */
+export const MAX_PENDING_PER_USER = 2;
+
+/**
+ * Returns the number of generations currently in "pending" status for
+ * a user. Used to enforce concurrency limits.
+ */
+export async function countPendingGenerations(
+    userId: string,
+): Promise<number> {
+    const db = await getDb();
+    const row = await db
+        .prepare(
+            "SELECT COUNT(*) as count FROM generation WHERE user_id = ? AND status = 'pending'",
+        )
+        .bind(userId)
+        .first<{ count: number }>();
+    return row?.count ?? 0;
+}
+
+// ─── Stale generation recovery ──────────────────────────────────────────────
+
+// Generations older than this in "pending" status are considered stale
+// (Worker crashed or timed out before completing). Ported from ConveX's
+// recoverStaleGenerations cron, adapted as lazy per-user recovery.
+const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Finds and marks stale "pending" generations for a specific user as
+ * failed, refunding their credits. Called lazily at the start of each
+ * generation request so orphaned records don't accumulate.
+ *
+ * Returns the number of recovered generations.
+ */
+export async function recoverStaleGenerations(
+    userId: string,
+): Promise<number> {
+    const db = await getDb();
+    const cutoff = Date.now() - STALE_THRESHOLD_MS;
+
+    const { results } = await db
+        .prepare(
+            `SELECT id, credit_cost
+               FROM generation
+              WHERE user_id = ? AND status = 'pending' AND created_at < ?`,
+        )
+        .bind(userId, cutoff)
+        .all<{ id: number; credit_cost: number }>();
+
+    if (results.length === 0) return 0;
+
+    // Lazy import to avoid circular dependency (credits → generations).
+    const { refundCredits } = await import("./credits");
+
+    for (const gen of results) {
+        await failGeneration(gen.id, "Generation timed out. Please try again.");
+
+        if (gen.credit_cost > 0) {
+            // Refund to subscription pool by default — we don't know the
+            // original pool split at this point, but subscription-first is
+            // the safe default since it's the pool that expires.
+            await refundCredits({
+                userId,
+                cost: gen.credit_cost,
+                generationId: gen.id,
+                deduction: {
+                    fromSubscription: gen.credit_cost,
+                    fromPurchased: 0,
+                },
+            });
+        }
+    }
+
+    console.warn(
+        `[generations] Recovered ${results.length} stale generation(s) for user ${userId}`,
+    );
+
+    return results.length;
 }
 
 // ─── R2 key helpers ─────────────────────────────────────────────────────────

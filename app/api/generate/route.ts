@@ -2,25 +2,31 @@
  * POST /api/generate
  *
  * Generates an image from a text prompt. The full lifecycle runs in one
- * request (no queue — Nano Banana Pro returns in <15s):
+ * synchronous request (no queue — Nano Banana Pro returns in <15s):
  *
- *   1. Auth + input validation
- *   2. Plan-based resolution check
- *   3. Create generation row (status=pending)
- *   4. Deduct credits (atomic two-pool, daily-limit enforcement)
- *   5. Call Gemini API
- *   6. Upload image to R2
- *   7. Update generation (status=done, output keys)
- *   8. Return generation UID + image URL
+ *   1. CSRF + auth + input validation
+ *   2. Idempotency check (return cached result if key matches)
+ *   3. Concurrency check (max 2 pending per user)
+ *   4. Stale generation recovery (lazy sweep for orphaned pending rows)
+ *   5. Plan-based resolution check
+ *   6. Create generation row (status=pending)
+ *   7. Deduct credits (atomic two-pool, daily-limit enforcement)
+ *   8. Call Gemini API (with SDK-level retry + 180s timeout)
+ *   9. Upload image to R2
+ *   10. Update generation (status=done, output keys)
+ *   11. Return generation UID + image URL
  *
- * If steps 5-6 fail, credits are refunded and the generation is marked
- * as failed. The user never loses credits for a failed generation.
- *
- * Security:
- *   • Session-authenticated + onboarding check
- *   • Origin-validated (CSRF defense)
- *   • Prompt length capped at 10,000 chars
- *   • Resolution validated against user's plan tier
+ * Resilience:
+ *   • SDK retry — 3 retries on transient Gemini errors (429/500/503),
+ *     exponential backoff with jitter, Retry-After header support.
+ *   • 180s timeout — AbortController kills the request if Gemini hangs,
+ *     with X-Server-Timeout header hinting Google to stop server-side.
+ *   • Idempotency key — client-supplied UUID prevents double-submit
+ *     from creating duplicate generations. 24h TTL.
+ *   • Concurrency limit — max 2 pending generations per user.
+ *   • Stale recovery — pending generations older than 5 minutes are
+ *     swept and refunded on each request (lazy, per-user).
+ *   • Automatic refund — credits refunded on ANY failure after deduction.
  */
 
 import { NextResponse } from "next/server";
@@ -40,6 +46,7 @@ import {
 import {
     computePhotoCreditCost,
     isResolutionAllowedForPlan,
+    R2_STORAGE_BASE_URL,
     RESOLUTIONS,
     type Resolution,
 } from "@/lib/constants";
@@ -48,6 +55,10 @@ import {
     createGeneration,
     completeGeneration,
     failGeneration,
+    findByIdempotencyKey,
+    countPendingGenerations,
+    recoverStaleGenerations,
+    MAX_PENDING_PER_USER,
     buildR2Key,
 } from "@/lib/generations";
 
@@ -62,6 +73,7 @@ const BodySchema = z.object({
     aspectRatio: z.enum(ASPECT_RATIOS).optional().default("1:1"),
     negativePrompt: z.string().max(2000).optional(),
     projectId: z.number().int().positive().optional(),
+    idempotencyKey: z.string().uuid().optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -93,6 +105,56 @@ export async function POST(request: Request): Promise<Response> {
                 ? err.issues.map((i) => i.message).join("; ")
                 : "Invalid request body";
         return NextResponse.json({ error: message }, { status: 400 });
+    }
+
+    // ─── Idempotency check ──────────────────────────────────────────
+    // If the client supplied an idempotency key and a generation with
+    // that key already exists, return the existing result instead of
+    // creating a duplicate.
+    if (input.idempotencyKey) {
+        const existing = await findByIdempotencyKey(
+            userId,
+            input.idempotencyKey,
+        );
+        if (existing) {
+            if (existing.status === "pending") {
+                return NextResponse.json(
+                    {
+                        uid: existing.uid,
+                        status: "pending",
+                        message: "Generation is already in progress.",
+                    },
+                    { status: 409 },
+                );
+            }
+            // done or failed — return the cached result
+            return NextResponse.json({
+                uid: existing.uid,
+                status: existing.status,
+                imageUrl: existing.outputUrls?.[0] ?? null,
+                creditCost: existing.creditCost,
+                error: existing.errorMessage,
+                cached: true,
+            });
+        }
+    }
+
+    // ─── Stale generation recovery ──────────────────────────────────
+    // Sweep any orphaned pending generations for this user (Worker
+    // crashed or timed out on a previous request). This is lazy
+    // per-user recovery — runs once per generation request, adds ~1
+    // query, prevents stale rows from accumulating.
+    await recoverStaleGenerations(userId);
+
+    // ─── Concurrency check ──────────────────────────────────────────
+    const pendingCount = await countPendingGenerations(userId);
+    if (pendingCount >= MAX_PENDING_PER_USER) {
+        return NextResponse.json(
+            {
+                error: `You have ${pendingCount} generation(s) in progress. Please wait for them to complete.`,
+            },
+            { status: 429 },
+        );
     }
 
     // ─── Plan-based resolution check ────────────────────────────────
@@ -131,6 +193,7 @@ export async function POST(request: Request): Promise<Response> {
         creditCost,
         requestIp,
         userAgent,
+        idempotencyKey: input.idempotencyKey,
     });
 
     // ─── Deduct credits ─────────────────────────────────────────────
@@ -143,7 +206,6 @@ export async function POST(request: Request): Promise<Response> {
             description: `Image: ${input.model}, ${input.resolution}, ${input.aspectRatio}`,
         });
     } catch (err) {
-        // Clean up the pending generation row.
         await failGeneration(generation.id, "Credit deduction failed");
 
         if (err instanceof InsufficientCreditsError) {
@@ -172,7 +234,6 @@ export async function POST(request: Request): Promise<Response> {
             aspectRatio: input.aspectRatio,
         });
     } catch (err) {
-        // Refund credits and mark generation as failed.
         await refundCredits({
             userId,
             cost: creditCost,
@@ -202,7 +263,6 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // ─── Upload to R2 ───────────────────────────────────────────────
-    // Get user profile UID for the R2 key path.
     const { getDb } = await import("@/lib/db");
     const db = await getDb();
     const profile = await db
@@ -221,7 +281,6 @@ export async function POST(request: Request): Promise<Response> {
             },
         });
     } catch (err) {
-        // R2 upload failed — refund and mark as failed.
         await refundCredits({
             userId,
             cost: creditCost,
@@ -242,7 +301,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
         uid: generation.uid,
         status: "done",
-        imageUrl: `${process.env.NEXT_PUBLIC_STORAGE_URL ?? "https://storage.film-maker.net"}/${r2Key}`,
+        imageUrl: `${R2_STORAGE_BASE_URL}/${r2Key}`,
         creditCost,
     });
 }

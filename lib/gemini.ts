@@ -27,6 +27,16 @@ import { getPhotoModel, type Resolution } from "./constants";
 
 // ─── Client singleton ───────────────────────────────────────────────────────
 
+// Image generation timeout — 3 minutes. Gemini image gen typically
+// takes 5-15s but can spike under load. The SDK sends an
+// `X-Server-Timeout` header so Google can stop processing server-side.
+const GENERATION_TIMEOUT_MS = 180_000;
+
+// SDK retry config — exponential backoff with jitter, retries on
+// 408, 429, 500, 502, 503, 504 + network errors. The SDK handles
+// `Retry-After` headers from Google automatically.
+const MAX_RETRIES = 3;
+
 let cached: GoogleGenAI | null = null;
 
 function getClient(): GoogleGenAI {
@@ -38,7 +48,13 @@ function getClient(): GoogleGenAI {
             "Set it in .env.local (dev) or via wrangler secret put (prod).",
         );
     }
-    cached = new GoogleGenAI({ apiKey });
+    cached = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+            timeout: GENERATION_TIMEOUT_MS,
+            retryOptions: { attempts: MAX_RETRIES + 1 },
+        },
+    });
     return cached;
 }
 
@@ -110,6 +126,18 @@ export async function generateImage(
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+
+        // Timeout — the SDK aborted after GENERATION_TIMEOUT_MS.
+        if (
+            message.includes("abort") ||
+            message.includes("timeout") ||
+            (err instanceof DOMException && err.name === "AbortError")
+        ) {
+            throw new GenerationError(
+                "Image generation timed out. Please try again.",
+                "api_error",
+            );
+        }
 
         if (message.includes("429") || message.includes("quota")) {
             throw new GenerationError(
