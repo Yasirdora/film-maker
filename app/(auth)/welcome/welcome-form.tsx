@@ -105,19 +105,20 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                         variant="primary"
                         size="xl"
                         fullWidth
+                        onClick={() => router.push("/pricing")}
+                    >
+                        Upgrade
+                    </Button>
+                    <button
+                        type="button"
                         onClick={() => {
                             router.push("/dashboard");
                             router.refresh();
                         }}
+                        className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
                     >
-                        Go to dashboard
-                    </Button>
-                    <Link
-                        href="/pricing"
-                        className="flex h-11 items-center justify-center rounded-xl text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
-                    >
-                        See paid plans
-                    </Link>
+                        Continue as solo for free
+                    </button>
                 </div>
             </div>
         );
