@@ -1,40 +1,35 @@
 /**
  * Gemini image generation client.
  *
- * Uses the `@google/genai` SDK to call the Gemini generateContent API
- * with image output modality. The model generates an image in response
- * to a text prompt and returns the raw bytes + MIME type.
+ * Uses the `@google/genai` SDK's `generateImages` API with Imagen 4.0.
+ * This is a dedicated image generation endpoint — distinct from the
+ * `generateContent` API used for text/chat.
  *
  * Model:
- *   The model ID is read from `lib/constants.ts` (PHOTO_MODELS). For v0
- *   this is a Gemini model that supports image output via the
- *   `generateContent` endpoint. In v1 this may move to the dedicated
- *   Imagen `generateImages` endpoint or to Vertex AI.
+ *   `imagen-4.0-generate-001` — Google's latest image generation model.
+ *   Verified working via the Gemini API key (not Vertex-only).
+ *   The model ID is stored in `lib/constants.ts` and resolved at call
+ *   time so switching models requires no code change.
  *
  * Resolution:
- *   Passed as `imageConfig.imageSize` ("1K", "2K", "4K"). The Gemini
- *   API natively supports this parameter — no scaling needed.
+ *   The Imagen `generateImages` API does not support an explicit
+ *   `imageSize` parameter — output resolution is determined by the
+ *   model. The `aspectRatio` parameter is supported. Credit cost is
+ *   flat per image for v0; resolution-based pricing activates when we
+ *   move to a model/API that supports explicit size control.
  *
  * Error handling:
- *   If the model refuses generation (safety filter), the response
- *   contains text parts with the reason but no image parts. We throw
- *   a `GenerationError` with a user-facing message and a machine-
- *   readable `code` so the caller can decide whether to refund.
+ *   If the model refuses generation (safety filter), the response's
+ *   `raiFilteredReason` field contains the reason. We throw a typed
+ *   `GenerationError` so the caller can decide whether to refund.
  */
 
-import { GoogleGenAI } from "@google/genai";
-import { getPhotoModel, type Resolution } from "./constants";
+import { GoogleGenAI, PersonGeneration } from "@google/genai";
+import { getPhotoModel } from "./constants";
 
 // ─── Client singleton ───────────────────────────────────────────────────────
 
-// Image generation timeout — 3 minutes. Gemini image gen typically
-// takes 5-15s but can spike under load. The SDK sends an
-// `X-Server-Timeout` header so Google can stop processing server-side.
 const GENERATION_TIMEOUT_MS = 180_000;
-
-// SDK retry config — exponential backoff with jitter, retries on
-// 408, 429, 500, 502, 503, 504 + network errors. The SDK handles
-// `Retry-After` headers from Google automatically.
 const MAX_RETRIES = 3;
 
 let cached: GoogleGenAI | null = null;
@@ -80,23 +75,20 @@ export interface GenerateImageParams {
     prompt: string;
     negativePrompt?: string;
     modelId: string;
-    resolution: Resolution;
+    resolution: string;
     aspectRatio?: string;
 }
 
 export interface GenerateImageResult {
-    /** Raw image bytes. */
     imageData: ArrayBuffer;
-    /** MIME type (typically image/png or image/jpeg). */
     mimeType: string;
 }
 
 /**
- * Generates an image from a text prompt using the Gemini API.
+ * Generates an image from a text prompt using the Imagen generateImages API.
  *
- * Returns the raw image bytes + MIME type on success. Throws
- * `GenerationError` on safety-filtered output, empty response,
- * quota issues, or API errors.
+ * Returns raw image bytes + MIME type. Throws `GenerationError` on safety
+ * filter, empty response, quota issues, or API errors.
  */
 export async function generateImage(
     params: GenerateImageParams,
@@ -113,21 +105,20 @@ export async function generateImage(
 
     let response;
     try {
-        response = await ai.models.generateContent({
+        response = await ai.models.generateImages({
             model: model.geminiModelId,
-            contents: params.prompt,
+            prompt: params.prompt,
             config: {
-                responseModalities: ["IMAGE", "TEXT"],
-                imageConfig: {
-                    imageSize: params.resolution,
-                    aspectRatio: params.aspectRatio ?? "1:1",
-                },
+                numberOfImages: 1,
+                negativePrompt: params.negativePrompt || undefined,
+                aspectRatio: params.aspectRatio ?? "1:1",
+                includeRaiReason: true,
+                personGeneration: PersonGeneration.ALLOW_ADULT,
             },
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
 
-        // Timeout — the SDK aborted after GENERATION_TIMEOUT_MS.
         if (
             message.includes("abort") ||
             message.includes("timeout") ||
@@ -152,27 +143,21 @@ export async function generateImage(
         );
     }
 
-    // Extract the image from the response parts.
-    const parts = response.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find(
-        (p) => p.inlineData?.data && p.inlineData.mimeType,
-    );
+    // Extract the generated image.
+    const generatedImage = response?.generatedImages?.[0];
 
-    if (!imagePart?.inlineData) {
-        // Model responded but with no image — typically a safety filter.
-        const textParts = parts
-            .filter((p) => p.text)
-            .map((p) => p.text)
-            .join(" ");
-
+    if (!generatedImage?.image?.imageBytes) {
+        // Check for safety filter reason.
+        const raiReason = generatedImage?.raiFilteredReason;
         throw new GenerationError(
-            textParts || "The model could not generate an image for this prompt.",
-            textParts ? "safety_filtered" : "no_output",
+            raiReason ??
+            "The model could not generate an image for this prompt.",
+            raiReason ? "safety_filtered" : "no_output",
         );
     }
 
     // Decode base64 to ArrayBuffer for R2 upload.
-    const base64 = imagePart.inlineData.data!;
+    const base64 = generatedImage.image.imageBytes;
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
@@ -181,6 +166,6 @@ export async function generateImage(
 
     return {
         imageData: bytes.buffer,
-        mimeType: imagePart.inlineData.mimeType ?? "image/png",
+        mimeType: generatedImage.image.mimeType ?? "image/png",
     };
 }

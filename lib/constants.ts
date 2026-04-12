@@ -158,10 +158,10 @@ export const PHOTO_MODELS = [
         id: "nano-banana-pro",
         name: "Nano Banana Pro",
         description: "Google's flagship image model. Best for cinematic stills.",
-        // Real Gemini model id resolved at the lib layer; the user-facing
-        // name is stable even if we swap the underlying model.
-        // TODO: verify exact Gemini model id when wiring lib/gemini.ts
-        geminiModelId: "gemini-3.1-flash-image-preview",
+        // Resolved model: imagen-4.0-generate-001 via the generateImages API.
+        // The user-facing name "Nano Banana Pro" is stable; swapping the
+        // underlying model requires only changing this field.
+        geminiModelId: "imagen-4.0-generate-001",
         creditBase: 1,
     },
 ] as const;
