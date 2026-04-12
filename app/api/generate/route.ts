@@ -343,7 +343,7 @@ export async function POST(request: Request): Promise<Response> {
             aspectRatio: input.aspectRatio,
             creditCost,
             projectUid: project.uid,
-            converted: optimized.converted,
+            format: imageResult.mimeType,
         },
         ip: requestIp,
     });
