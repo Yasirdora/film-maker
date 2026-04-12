@@ -3,7 +3,8 @@
 /**
  * Login form — client component.
  *
- * Handles both sign-in paths:
+ * Visual shell ported from the ConveX two-pane signin design; auth wiring
+ * is unchanged. Two real sign-in paths:
  *   1. Google OAuth (delegates to Better Auth's social-sign-in endpoint)
  *   2. Email magic link (calls the magic-link plugin, shows a success state)
  *
@@ -12,12 +13,9 @@
  * always fails with 500 because the upstream Gmail REST API isn't set up
  * yet. When email eventually lands, the prop flips and the UI expands.
  *
- * UX details:
- *   • The `from` query param is preserved so post-sign-in redirect lands
- *     the user back where they came from.
- *   • Inline error messaging — no modals, no toasts.
- *   • Loading states on both buttons, disabled during submission.
- *   • On magic-link success we swap to a "check your email" view.
+ * The `from` query param is sanitized to same-origin absolute paths to
+ * prevent open-redirect abuse, and preserved across sign-in so the user
+ * lands back where they came from.
  */
 
 import { useState } from "react";
@@ -34,9 +32,9 @@ type Status =
     | { kind: "error"; message: string };
 
 const DEFAULT_CALLBACK = "/dashboard";
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function sanitizeCallback(raw: string | null): string {
-    // Only allow same-origin absolute paths to prevent open-redirect abuse.
     if (!raw) return DEFAULT_CALLBACK;
     if (!raw.startsWith("/") || raw.startsWith("//")) return DEFAULT_CALLBACK;
     return raw;
@@ -76,11 +74,8 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
     async function handleEmail(e: React.FormEvent) {
         e.preventDefault();
         const trimmed = email.trim().toLowerCase();
-        if (!trimmed || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmed)) {
-            setStatus({
-                kind: "error",
-                message: "Enter a valid email address.",
-            });
+        if (!trimmed || !EMAIL_PATTERN.test(trimmed)) {
+            setStatus({ kind: "error", message: "Enter a valid email address." });
             return;
         }
 
@@ -109,129 +104,177 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
         }
     }
 
-    // ─── Success state ──────────────────────────────────────────────────
     if (status.kind === "email-sent") {
-        return (
-            <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-6 text-center dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-900">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                    >
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                        <polyline points="22,6 12,13 2,6" />
-                    </svg>
-                </div>
-                <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                    Check your email
-                </h2>
-                <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                    We sent a sign-in link to{" "}
-                    <span className="font-medium text-neutral-800 dark:text-neutral-200">
-                        {status.email}
-                    </span>
-                    . The link expires in 15 minutes.
-                </p>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-6"
-                    onClick={() => setStatus({ kind: "idle" })}
-                >
-                    Use a different email
-                </Button>
-            </div>
-        );
+        return <EmailSentCard email={status.email} onReset={() => setStatus({ kind: "idle" })} />;
     }
 
-    // ─── Idle / submitting / error state ────────────────────────────────
     return (
-        <div className="mt-10 space-y-6">
-            <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                fullWidth
-                disabled={isSubmitting}
-                onClick={handleGoogle}
-                aria-label="Continue with Google"
-            >
-                {status.kind === "submitting-google" ? (
-                    <span className="text-neutral-500">Redirecting…</span>
-                ) : (
-                    <>
-                        <GoogleIcon />
-                        <span>Continue with Google</span>
-                    </>
-                )}
-            </Button>
+        <div>
+            <div className="mb-[clamp(1rem,2vw,1.5rem)]">
+                <h1 className="mb-1 text-2xl font-medium text-neutral-950 dark:text-neutral-50">
+                    Welcome back
+                </h1>
+                <p className="text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                    {emailEnabled
+                        ? "Sign in with Google or receive a magic link by email."
+                        : "Continue with Google to get started."}
+                </p>
+            </div>
 
             {emailEnabled && (
-                <>
-                    <div
-                        role="separator"
-                        aria-orientation="horizontal"
-                        className="relative text-center text-xs uppercase tracking-wider text-neutral-400"
-                    >
-                        <span className="relative z-10 bg-neutral-50 px-3 dark:bg-neutral-950">
-                            or
-                        </span>
-                        <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-neutral-200 dark:bg-neutral-800" />
-                    </div>
+                <form onSubmit={handleEmail} className="mb-[clamp(1rem,2vw,1.5rem)]" noValidate>
+                    <label htmlFor="email" className="sr-only">
+                        Email address
+                    </label>
+                    <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        enterKeyHint="send"
+                        autoCapitalize="off"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        required
+                        placeholder="Email address"
+                        value={email}
+                        onChange={(event) => {
+                            setEmail(event.target.value);
+                            if (status.kind === "error") setStatus({ kind: "idle" });
+                        }}
+                        disabled={isSubmitting}
+                        className="h-14 px-5 text-[1.0625rem] placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                        autoFocus
+                    />
 
-                    <form onSubmit={handleEmail} className="space-y-3" noValidate>
-                        <label htmlFor="email" className="sr-only">
-                            Email address
-                        </label>
-                        <Input
-                            id="email"
-                            name="email"
-                            type="email"
-                            inputMode="email"
-                            autoComplete="email"
-                            enterKeyHint="send"
-                            autoCapitalize="off"
-                            autoCorrect="off"
-                            spellCheck={false}
-                            required
-                            placeholder="you@example.com"
-                            value={email}
-                            onChange={(e) => {
-                                setEmail(e.target.value);
-                                if (status.kind === "error") setStatus({ kind: "idle" });
-                            }}
-                            disabled={isSubmitting}
-                        />
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            size="lg"
-                            fullWidth
-                            disabled={isSubmitting || !email}
+                    {status.kind === "error" && (
+                        <p
+                            role="alert"
+                            className="mt-3 text-sm text-red-500 dark:text-red-400"
                         >
-                            {status.kind === "submitting-email"
-                                ? "Sending…"
-                                : "Send sign-in link"}
-                        </Button>
-                    </form>
-                </>
+                            {status.message}
+                        </p>
+                    )}
+
+                    <Button
+                        type="submit"
+                        variant="primary"
+                        size="xl"
+                        fullWidth
+                        disabled={isSubmitting || !email}
+                        className="mt-[clamp(1rem,2vw,1.5rem)]"
+                    >
+                        {status.kind === "submitting-email"
+                            ? "Sending link…"
+                            : "Continue with Email"}
+                    </Button>
+                </form>
             )}
 
-            {status.kind === "error" && (
-                <p
-                    role="alert"
-                    className="text-center text-sm text-red-600 dark:text-red-400"
-                >
-                    {status.message}
-                </p>
+            {emailEnabled ? (
+                <Divider label="or continue with" />
+            ) : (
+                status.kind === "error" && (
+                    <p
+                        role="alert"
+                        className="mb-4 text-sm text-red-500 dark:text-red-400"
+                    >
+                        {status.message}
+                    </p>
+                )
             )}
+
+            <div className={emailEnabled ? "grid grid-cols-1" : ""}>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="xl"
+                    fullWidth
+                    disabled={isSubmitting}
+                    onClick={handleGoogle}
+                    aria-label="Continue with Google"
+                >
+                    {status.kind === "submitting-google" ? (
+                        <span className="text-neutral-500">Redirecting…</span>
+                    ) : (
+                        <>
+                            <GoogleIcon />
+                            <span>Continue with Google</span>
+                        </>
+                    )}
+                </Button>
+            </div>
+
+            <p className="mt-[clamp(2rem,4vw,3rem)] text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+                By continuing, you acknowledge our{" "}
+                <a
+                    href="/privacy"
+                    className="underline decoration-neutral-300 underline-offset-[3px] transition-colors hover:text-neutral-900 hover:decoration-neutral-900 dark:decoration-neutral-700 dark:hover:text-neutral-50 dark:hover:decoration-neutral-50"
+                >
+                    Privacy Policy
+                </a>{" "}
+                and agree to our{" "}
+                <a
+                    href="/terms"
+                    className="underline decoration-neutral-300 underline-offset-[3px] transition-colors hover:text-neutral-900 hover:decoration-neutral-900 dark:decoration-neutral-700 dark:hover:text-neutral-50 dark:hover:decoration-neutral-50"
+                >
+                    Terms of Service
+                </a>
+                .
+            </p>
+        </div>
+    );
+}
+
+function Divider({ label }: { label: string }) {
+    return (
+        <div className="my-[clamp(1.5rem,3vw,2rem)] flex items-center text-[0.8125rem] uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+            <span className="flex-1 border-b border-neutral-200 dark:border-neutral-800" />
+            <span className="px-[clamp(1rem,2vw,1.5rem)]">{label}</span>
+            <span className="flex-1 border-b border-neutral-200 dark:border-neutral-800" />
+        </div>
+    );
+}
+
+function EmailSentCard({ email, onReset }: { email: string; onReset: () => void }) {
+    return (
+        <div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 dark:bg-neutral-900">
+                <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                >
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                </svg>
+            </div>
+            <h1 className="text-center text-2xl font-medium text-neutral-950 dark:text-neutral-50">
+                Check your email
+            </h1>
+            <p className="mt-2 text-center text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                We sent a sign-in link to{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                    {email}
+                </span>
+                . The link expires in 15 minutes.
+            </p>
+            <Button
+                variant="ghost"
+                size="md"
+                fullWidth
+                className="mt-6"
+                onClick={onReset}
+            >
+                Use a different email
+            </Button>
         </div>
     );
 }
@@ -239,8 +282,8 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
 function GoogleIcon() {
     return (
         <svg
-            width="18"
-            height="18"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             aria-hidden
             className="shrink-0"
