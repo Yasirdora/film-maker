@@ -1,20 +1,20 @@
 /**
  * Server-side auth helpers.
  *
- * Use these inside server components, route handlers, and server actions
- * when you need to read or require a session.
+ * Three levels of protection:
+ *   • `getSession()` — read-only, returns null if unauthenticated.
+ *   • `requireSession()` — user is authenticated (may not be onboarded).
+ *     Used by /welcome.
+ *   • `requireOnboardedUser()` — user is authenticated, onboarded, AND
+ *     on the allowlist (if ALLOWED_EMAILS is set). Used by /dashboard,
+ *     /auteur, /credits, and every other protected page.
  *
- * Two levels of protection:
- *   • `requireSession()` — user is authenticated (may or may not have
- *     completed onboarding). Used by the /welcome page.
- *   • `requireOnboardedUser()` — user is authenticated AND has a name
- *     set (onboarding complete). Used by /dashboard, /credits, and
- *     every other protected page. Redirects to /welcome if the user
- *     hasn't completed onboarding yet.
- *
- * This two-function API makes it hard to forget the onboarding check —
- * most pages import `requireOnboardedUser`, and the name is clear
- * enough that a reviewer will catch it if the wrong one is used.
+ * Access control:
+ *   If the `ALLOWED_EMAILS` env var is set (comma-separated list of
+ *   email addresses), only those users can access protected pages.
+ *   Everyone else is redirected to `/`. When the var is unset or empty,
+ *   all authenticated+onboarded users are allowed — remove the var to
+ *   open the app to the public.
  */
 
 import { headers } from "next/headers";
@@ -45,18 +45,37 @@ export async function requireSession(redirectTo = "/login") {
 }
 
 /**
+ * Checks whether the given email is on the access allowlist.
+ *
+ * If ALLOWED_EMAILS is not set or empty, everyone is allowed (open
+ * access). If set, only the listed emails pass. Comparison is
+ * case-insensitive.
+ */
+function isAllowedUser(email: string): boolean {
+    const raw = process.env.ALLOWED_EMAILS;
+    if (!raw || raw.trim() === "") return true; // open access
+    const allowed = raw
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean);
+    return allowed.includes(email.toLowerCase());
+}
+
+/**
  * Returns the current session + user, or redirects:
  *   • Not authenticated → /login
  *   • Authenticated but no name → /welcome (complete onboarding)
+ *   • Onboarded but not on allowlist → / (home page)
  *
- * Use in every protected page except /welcome. This is the default
- * "gate" for the application — import this unless you have a specific
- * reason to use `requireSession()` instead.
+ * Use in every protected page except /welcome.
  */
 export async function requireOnboardedUser() {
     const result = await requireSession();
     if (!result.user.name) {
         redirect("/welcome");
+    }
+    if (!isAllowedUser(result.user.email)) {
+        redirect("/");
     }
     return result;
 }
