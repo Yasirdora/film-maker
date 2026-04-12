@@ -47,9 +47,12 @@ const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 /**
  * Constructs a Better Auth instance bound to the current request's D1 binding.
  * Call inside a Next.js route handler, middleware, or server component.
+ *
+ * Async because `getDb()` is async (see lib/db.ts for the rationale).
+ * Callers must `await getAuth()`.
  */
-export function getAuth() {
-    const d1 = getDb();
+export async function getAuth() {
+    const d1 = await getDb();
     const db = drizzle(d1, { schema: authSchema });
 
     const appUrl =
@@ -127,7 +130,7 @@ export function getAuth() {
 // already committed at this point, so we can safely FK against it.
 
 async function provisionUserProfile(userId: string): Promise<void> {
-    const d1 = getDb();
+    const d1 = await getDb();
     const uid = generateUid(16);
     const now = Date.now();
 

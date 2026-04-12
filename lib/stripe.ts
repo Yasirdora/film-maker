@@ -98,7 +98,7 @@ export async function ensureStripeCustomer({
     email,
     name,
 }: EnsureCustomerParams): Promise<string> {
-    const db = getDb();
+    const db = await getDb();
 
     const existing = await db
         .prepare("SELECT stripe_customer_id FROM user_profile WHERE user_id = ? LIMIT 1")
@@ -144,7 +144,7 @@ export async function upsertSubscription({
     subscription,
     planId,
 }: UpsertSubscriptionParams): Promise<void> {
-    const db = getDb();
+    const db = await getDb();
     const now = Date.now();
 
     // Since the 2025-04-30 API, billing periods moved from the subscription
@@ -198,7 +198,7 @@ export async function upsertSubscription({
  * only maintains the mirror table.
  */
 export async function deleteSubscription(userId: string): Promise<void> {
-    const db = getDb();
+    const db = await getDb();
     await db
         .prepare("DELETE FROM subscription WHERE user_id = ?")
         .bind(userId)
@@ -216,7 +216,7 @@ export async function deleteSubscription(userId: string): Promise<void> {
 export async function getUserIdByStripeCustomer(
     stripeCustomerId: string,
 ): Promise<string | null> {
-    const db = getDb();
+    const db = await getDb();
     const row = await db
         .prepare("SELECT user_id FROM user_profile WHERE stripe_customer_id = ? LIMIT 1")
         .bind(stripeCustomerId)

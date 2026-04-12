@@ -23,7 +23,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     const { user } = result;
 
-    const db = getDb();
+    const db = await getDb();
     const profile = await db
         .prepare("SELECT stripe_customer_id FROM user_profile WHERE user_id = ? LIMIT 1")
         .bind(user.id)

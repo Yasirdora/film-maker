@@ -75,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
         });
     }
 
-    const db = getDb();
+    const db = await getDb();
 
     // ─── Dedupe ──────────────────────────────────────────────────────
     const existing = await db

@@ -44,7 +44,7 @@ export interface CreditBalance {
  * user_profile row doesn't exist (should only happen pre-provisioning).
  */
 export async function getBalance(userId: string): Promise<CreditBalance | null> {
-    const db = getDb();
+    const db = await getDb();
     const row = await db
         .prepare(
             `SELECT subscription_credits, purchased_credits, use_extra_credits,
@@ -78,7 +78,7 @@ export async function getBalance(userId: string): Promise<CreditBalance | null> 
 // ─── Idempotency helper ─────────────────────────────────────────────────────
 
 async function wasAlreadyProcessed(idempotencyKey: string): Promise<boolean> {
-    const db = getDb();
+    const db = await getDb();
     const row = await db
         .prepare("SELECT 1 FROM credit_transaction WHERE stripe_session_id = ? LIMIT 1")
         .bind(idempotencyKey)
@@ -123,7 +123,7 @@ export async function grantSubscriptionCredits(params: {
     // Idempotency: if we've already processed this key, no-op.
     if (await wasAlreadyProcessed(idempotencyKey)) return;
 
-    const db = getDb();
+    const db = await getDb();
     const now = Date.now();
 
     // Atomic batch: balance update + audit row in one round-trip.
@@ -168,7 +168,7 @@ export async function downgradeToSolo(params: {
 
     if (await wasAlreadyProcessed(idempotencyKey)) return;
 
-    const db = getDb();
+    const db = await getDb();
     const now = Date.now();
 
     await db.batch([
@@ -212,7 +212,7 @@ export async function listRecentTransactions(
     userId: string,
     limit = 20,
 ): Promise<CreditTransactionRow[]> {
-    const db = getDb();
+    const db = await getDb();
     const { results } = await db
         .prepare(
             `SELECT id, amount, type, description, pool, created_at

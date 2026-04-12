@@ -11,14 +11,17 @@
  *
  * We invoke `getAuth()` per request so the underlying Better Auth instance
  * can grab the request-scoped D1 binding from the Cloudflare context.
+ * `getAuth()` is async because the D1 accessor is async.
  */
 
 import { getAuth } from "@/lib/auth";
 
 export async function GET(request: Request): Promise<Response> {
-    return getAuth().handler(request);
+    const auth = await getAuth();
+    return auth.handler(request);
 }
 
 export async function POST(request: Request): Promise<Response> {
-    return getAuth().handler(request);
+    const auth = await getAuth();
+    return auth.handler(request);
 }

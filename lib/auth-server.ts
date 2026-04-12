@@ -21,7 +21,7 @@ import { getAuth } from "./auth";
  * Safe to call in any server context.
  */
 export async function getSession() {
-    const auth = getAuth();
+    const auth = await getAuth();
     return auth.api.getSession({ headers: await headers() });
 }
 
