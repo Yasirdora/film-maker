@@ -1,5 +1,16 @@
 "use client";
 
+/**
+ * WelcomeForm — two-step onboarding inside the auth card.
+ *
+ * Step 1: Name entry — matches the login form's visual language
+ *         (same heading size, input height, button size, spacing).
+ * Step 2: Solo plan confirmation — green check, perk list, two CTAs.
+ *
+ * Both steps render inside the AuthCard's right pane, so the brand
+ * pane with the gradient and tagline stays visible throughout.
+ */
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -54,11 +65,12 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
         }
     }
 
+    // ─── Step 2: confirmation ───────────────────────────────────────
     if (step === "complete") {
         return (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-6 sm:p-8 dark:border-neutral-800 dark:bg-neutral-950">
-                <div className="text-center">
-                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400">
+            <div>
+                <div className="mb-[clamp(1.5rem,3vw,2rem)] text-center">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-50 text-green-600 dark:bg-green-950/50 dark:text-green-400">
                         <svg
                             width="20"
                             height="20"
@@ -73,22 +85,22 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                             <polyline points="20 6 9 17 4 12" />
                         </svg>
                     </div>
-                    <h2 className="text-xl font-semibold text-neutral-950 dark:text-neutral-50">
+                    <h1 className="text-2xl font-medium text-neutral-950 dark:text-neutral-50">
                         You&rsquo;re all set, {savedName}!
-                    </h2>
-                    <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">
-                        Your free Solo plan is active. Here&rsquo;s what you get:
+                    </h1>
+                    <p className="mt-2 text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                        Your free Solo plan is active.
                     </p>
                 </div>
 
-                <ul className="mt-6 space-y-3 text-sm">
-                    <SoloPerk label={`${credits} credits every month`} />
-                    <SoloPerk label={`${SOLO_DAILY_CREDIT_LIMIT} credits per day`} />
-                    <SoloPerk label="1K resolution images" />
-                    <SoloPerk label="Personal use license" />
+                <ul className="space-y-3 text-sm">
+                    <Perk label={`${credits} credits every month`} />
+                    <Perk label={`${SOLO_DAILY_CREDIT_LIMIT} credits per day`} />
+                    <Perk label="1K resolution images" />
+                    <Perk label="Personal use license" />
                 </ul>
 
-                <div className="mt-8 space-y-3">
+                <div className="mt-[clamp(1.5rem,3vw,2rem)] space-y-3">
                     <Button
                         variant="primary"
                         size="xl"
@@ -111,9 +123,19 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
         );
     }
 
+    // ─── Step 1: name entry ─────────────────────────────────────────
     return (
-        <form onSubmit={handleSubmit} noValidate>
-            <div className="rounded-2xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-950">
+        <div>
+            <div className="mb-[clamp(1rem,2vw,1.5rem)]">
+                <h1 className="mb-1 text-2xl font-medium text-neutral-950 dark:text-neutral-50">
+                    One last thing
+                </h1>
+                <p className="text-[0.9375rem] leading-relaxed text-neutral-500 dark:text-neutral-400">
+                    What should we call you?
+                </p>
+            </div>
+
+            <form onSubmit={handleSubmit} noValidate>
                 <p className="mb-4 text-sm text-neutral-500 dark:text-neutral-400">
                     Signed in as{" "}
                     <span className="font-medium text-neutral-800 dark:text-neutral-200">
@@ -156,16 +178,16 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                     size="xl"
                     fullWidth
                     disabled={loading || !name.trim()}
-                    className="mt-4"
+                    className="mt-[clamp(1rem,2vw,1.5rem)]"
                 >
                     {loading ? "Saving…" : "Get started"}
                 </Button>
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }
 
-function SoloPerk({ label }: { label: string }) {
+function Perk({ label }: { label: string }) {
     return (
         <li className="flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300">
             <svg
