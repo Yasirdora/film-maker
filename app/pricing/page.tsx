@@ -1,13 +1,16 @@
 /**
  * Public pricing page.
  *
- * Server-rendered from SUBSCRIPTION_PLANS (the single source of truth in
- * lib/constants.ts). Reads the current session to decide which button
- * state to show on each card — signed-in users who are already on a plan
- * see "Current plan" instead of a CTA.
+ * Shows only paid plans (Indie / Creator / Studio). Solo is the
+ * internal free default activated at signup via the /welcome page —
+ * it's not a marketing tier and doesn't appear here. Users who cancel
+ * a paid subscription are silently downgraded to Solo without any UI.
  *
- * Mobile-first: cards stack in a single column on phones, 2x2 on tablets,
- * 1x4 on desktop. Featured plan (Creator) gets a subtle highlight.
+ * Server-rendered from SUBSCRIPTION_PLANS (single source of truth in
+ * lib/constants.ts), filtered to exclude the free tier.
+ *
+ * Mobile-first: cards stack in a single column on phones, 3-col on
+ * desktop. Featured plan (Creator) gets a highlight.
  */
 
 import type { Metadata } from "next";
@@ -23,8 +26,10 @@ import { UpgradeButton } from "./upgrade-button";
 export const metadata: Metadata = {
     title: "Pricing",
     description:
-        "Choose a Film-maker plan. Subscribe monthly or stay on the free Solo tier.",
+        "Upgrade your Film-maker plan for more credits, higher resolution, and no daily limits.",
 };
+
+const PAID_PLANS = SUBSCRIPTION_PLANS.filter((p) => !p.isFree);
 
 export default async function PricingPage() {
     const session = await getSession();
@@ -34,26 +39,26 @@ export default async function PricingPage() {
 
     return (
         <main className="min-h-dvh bg-neutral-50 dark:bg-neutral-950">
-            <header className="mx-auto max-w-6xl px-6 pt-12 pb-8 sm:pt-20 sm:pb-12">
+            <header className="mx-auto max-w-5xl px-6 pt-12 pb-8 sm:pt-20 sm:pb-12">
                 <Link
                     href="/"
                     className="text-sm font-semibold tracking-tight text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
                 >
-                    ← Film-maker
+                    &larr; Film-maker
                 </Link>
                 <h1 className="mt-8 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-5xl dark:text-neutral-50">
-                    Pricing
+                    Upgrade your plan
                 </h1>
                 <p className="mt-4 max-w-2xl text-base text-neutral-500 dark:text-neutral-400">
-                    Start free. Upgrade when you&rsquo;re ready for more. All
-                    plans include monthly credits and Film-maker&rsquo;s full
-                    creative toolset &mdash; no daily limits on paid tiers.
+                    More credits, higher resolution, no daily limits.
+                    All plans include Film-maker&rsquo;s full creative
+                    toolset. Cancel anytime.
                 </p>
             </header>
 
-            <section className="mx-auto max-w-6xl px-6 pb-16 sm:pb-24">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {SUBSCRIPTION_PLANS.map((plan) => (
+            <section className="mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {PAID_PLANS.map((plan) => (
                         <PlanCard
                             key={plan.id}
                             plan={plan}
@@ -132,46 +137,15 @@ function PlanCard({ plan, currentPlan, isAuthenticated }: PlanCardProps) {
             </div>
 
             <div className="mt-8">
-                {plan.isFree ? (
-                    <FreePlanCta
-                        isCurrent={isCurrent}
-                        isAuthenticated={isAuthenticated}
-                    />
-                ) : (
-                    <UpgradeButton
-                        planId={plan.id}
-                        planName={plan.name}
-                        isCurrent={isCurrent}
-                        isAuthenticated={isAuthenticated}
-                        isFeatured={isFeatured}
-                    />
-                )}
+                <UpgradeButton
+                    planId={plan.id}
+                    planName={plan.name}
+                    isCurrent={isCurrent}
+                    isAuthenticated={isAuthenticated}
+                    isFeatured={isFeatured}
+                />
             </div>
         </div>
-    );
-}
-
-function FreePlanCta({
-    isCurrent,
-    isAuthenticated,
-}: {
-    isCurrent: boolean;
-    isAuthenticated: boolean;
-}) {
-    if (isCurrent) {
-        return (
-            <div className="h-11 rounded-xl bg-neutral-100 flex items-center justify-center text-sm font-medium text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
-                Current plan
-            </div>
-        );
-    }
-    return (
-        <Link
-            href={isAuthenticated ? "/dashboard" : "/login"}
-            className="flex h-11 items-center justify-center rounded-xl border border-neutral-200 text-sm font-medium text-neutral-900 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-50 dark:hover:bg-neutral-900"
-        >
-            Get started
-        </Link>
     );
 }
 
