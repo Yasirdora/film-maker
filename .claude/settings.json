@@ -64,7 +64,9 @@
       "Bash(grep -rn \"generateImage\\\\|imagen\\\\|ImageGeneration\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@google/genai/dist/*.d.ts)",
       "Bash(node --env-file=.env.local -e \"process.stdout.write\\(process.env.GOOGLE_GEMINI_API_KEY || ''\\)\")",
       "WebSearch",
-      "WebFetch(domain:stripe.com)"
+      "WebFetch(domain:stripe.com)",
+      "Bash(curl -sI https://film-maker.net/dashboard)",
+      "Bash(curl -sI https://film-maker.net/auteur)"
     ]
   }
 }
