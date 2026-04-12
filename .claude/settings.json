@@ -10,7 +10,8 @@
       "Bash(npx eslint:*)",
       "Bash(git remote:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep -rn \"initOpenNextCloudflareForDev\\\\|getCloudflareContext\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@opennextjs/cloudflare/dist/api/*.d.ts)"
     ]
   }
 }

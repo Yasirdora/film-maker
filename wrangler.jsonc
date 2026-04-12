@@ -24,23 +24,36 @@
     "NEXT_PUBLIC_STORAGE_URL": "https://storage.film-maker.net"
   },
 
-  // Cloudflare D1 — bindings pulled into process via OpenNext.
-  // Run `npm run db:create` once, then paste the returned database_id here.
+  // Cloudflare D1 — request-scoped binding.
+  //
+  // For LOCAL development wrangler uses `database_name` to route queries
+  // to a SQLite file under `.wrangler/state/v3/d1/` — the zeroed UUID
+  // below is a placeholder that passes format validation but will NOT
+  // work for a remote `wrangler deploy`.
+  //
+  // Before deploying to production:
+  //   1. Run `npm run db:create`
+  //   2. Paste the returned `database_id` here (replacing the zero UUID)
+  //   3. Run `npm run db:migrate:remote`
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "film-maker-db",
-      "database_id": "REPLACE_AFTER_WRANGLER_D1_CREATE",
+      "database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
   ],
 
   // Cloudflare R2 — reusing the existing `storage.film-maker.net` bucket.
-  // Replace the bucket_name with the actual bucket that domain points to.
+  //
+  // For LOCAL development the bucket is created on demand under
+  // `.wrangler/state/v3/r2/`. For production, replace this with the
+  // existing bucket name backing `storage.film-maker.net`:
+  //   npx wrangler r2 bucket list
   "r2_buckets": [
     {
       "binding": "STORAGE",
-      "bucket_name": "REPLACE_WITH_EXISTING_BUCKET_NAME"
+      "bucket_name": "film-maker-storage"
     }
   ]
 }
