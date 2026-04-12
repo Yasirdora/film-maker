@@ -60,6 +60,23 @@ export async function getAuth() {
         process.env.NEXT_PUBLIC_APP_URL ??
         "http://localhost:3000";
 
+    // In dev, Next sometimes auto-picks a different port (3001, 3002…) if the
+    // preferred one is busy. Better Auth's origin check would 403 those
+    // requests if we only listed a single localhost port, so we allow the
+    // whole common range during development. In production only the real
+    // app domains are trusted.
+    const isDev = process.env.NODE_ENV !== "production";
+    const devLocalhostOrigins = isDev
+        ? [
+              "http://localhost:3000",
+              "http://localhost:3001",
+              "http://localhost:3002",
+              "http://127.0.0.1:3000",
+              "http://127.0.0.1:3001",
+              "http://127.0.0.1:3002",
+          ]
+        : [];
+
     return betterAuth({
         appName: "Film-maker",
         baseURL: appUrl,
@@ -83,10 +100,12 @@ export async function getAuth() {
             },
         },
 
-        // Production security posture. We explicitly list origins instead of
-        // trusting the baseURL host to defend against misconfigured deployments.
+        // Production security posture: explicitly list origins instead of
+        // trusting the baseURL host, to defend against misconfigured deploys.
+        // Dev mode relaxes this to accept any common localhost port.
         trustedOrigins: [
             appUrl,
+            ...devLocalhostOrigins,
             "https://film-maker.net",
             "https://www.film-maker.net",
         ],
