@@ -5,10 +5,14 @@
  *
  * The user is already authenticated. The API reads their email from the
  * session on the backend. One click to join.
+ *
+ * Turnstile bot protection: if a site key is provided, the widget must
+ * be completed before the join button is enabled.
  */
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 type Status =
     | { kind: "idle" }
@@ -16,8 +20,15 @@ type Status =
     | { kind: "success" }
     | { kind: "error"; message: string };
 
-export function WaitlistForm() {
+interface WaitlistFormProps {
+    turnstileSiteKey: string;
+}
+
+export function WaitlistForm({ turnstileSiteKey }: WaitlistFormProps) {
     const [status, setStatus] = useState<Status>({ kind: "idle" });
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(
+        turnstileSiteKey ? null : "skip",
+    );
 
     async function handleJoin() {
         setStatus({ kind: "submitting" });
@@ -25,6 +36,8 @@ export function WaitlistForm() {
         try {
             const response = await fetch("/api/waitlist", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ turnstileToken }),
             });
 
             if (!response.ok) {
@@ -62,11 +75,17 @@ export function WaitlistForm() {
 
     return (
         <div className="flex flex-col items-center gap-3">
+            <TurnstileWidget
+                siteKey={turnstileSiteKey}
+                onVerify={setTurnstileToken}
+                onExpire={() => setTurnstileToken(null)}
+            />
+
             <Button
                 type="button"
                 variant="primary"
                 size="lg"
-                disabled={status.kind === "submitting"}
+                disabled={status.kind === "submitting" || !turnstileToken}
                 onClick={handleJoin}
                 className="bg-white text-neutral-950 hover:bg-white/90"
             >

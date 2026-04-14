@@ -19,6 +19,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { authClient, signIn } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 
 type Status =
     | { kind: "idle" }
@@ -39,9 +40,10 @@ function sanitizeCallback(raw: string | null): string {
 
 interface LoginFormProps {
     emailEnabled: boolean;
+    turnstileSiteKey: string;
 }
 
-export function LoginForm({ emailEnabled }: LoginFormProps) {
+export function LoginForm({ emailEnabled, turnstileSiteKey }: LoginFormProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const callbackURL = sanitizeCallback(searchParams.get("from"));
@@ -49,6 +51,9 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
     const [email, setEmail] = useState("");
     const [code, setCode] = useState("");
     const [status, setStatus] = useState<Status>({ kind: "idle" });
+    const [turnstileToken, setTurnstileToken] = useState<string | null>(
+        turnstileSiteKey ? null : "skip",
+    );
 
     const isSubmitting =
         status.kind === "submitting-google" ||
@@ -85,6 +90,9 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
             const { error } = await authClient.emailOtp.sendVerificationOtp({
                 email: trimmed,
                 type: "sign-in",
+                fetchOptions: turnstileToken && turnstileToken !== "skip"
+                    ? { headers: { "x-turnstile-token": turnstileToken } }
+                    : undefined,
             });
             if (error) {
                 setStatus({
@@ -268,6 +276,11 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
 
             {emailEnabled && (
                 <form onSubmit={handleEmail} className="mb-[clamp(1rem,2vw,1.5rem)]" noValidate>
+                    <TurnstileWidget
+                        siteKey={turnstileSiteKey}
+                        onVerify={setTurnstileToken}
+                        onExpire={() => setTurnstileToken(null)}
+                    />
                     <label htmlFor="email" className="sr-only">
                         Email address
                     </label>
@@ -307,7 +320,7 @@ export function LoginForm({ emailEnabled }: LoginFormProps) {
                         variant="primary"
                         size="xl"
                         fullWidth
-                        disabled={isSubmitting || !email}
+                        disabled={isSubmitting || !email || !turnstileToken}
                         className="mt-[clamp(1rem,2vw,1.5rem)]"
                     >
                         {status.kind === "submitting-email"

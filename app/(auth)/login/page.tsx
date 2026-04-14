@@ -31,11 +31,15 @@ export default async function LoginPage() {
     }
 
     const emailEnabled = isEmailSignInAvailable();
+    const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY ?? "";
 
     return (
         <AuthCard>
             <Suspense fallback={null}>
-                <LoginForm emailEnabled={emailEnabled} />
+                <LoginForm
+                    emailEnabled={emailEnabled}
+                    turnstileSiteKey={turnstileSiteKey}
+                />
             </Suspense>
         </AuthCard>
     );
