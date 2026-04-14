@@ -184,6 +184,51 @@ export async function grantSubscriptionCredits(params: {
     ]);
 }
 
+// ─── Purchased credit grants ───────────────────────────────────────────────
+
+/**
+ * Adds purchased credits to a user's permanent pool after a successful
+ * one-time payment. Unlike subscription credits, purchased credits
+ * never expire and survive plan changes.
+ *
+ * Idempotent via stripe_session_id UNIQUE constraint — safe to retry.
+ */
+export async function grantPurchasedCredits(params: {
+    userId: string;
+    credits: number;
+    idempotencyKey: string;
+    description: string;
+}): Promise<void> {
+    const { userId, credits, idempotencyKey, description } = params;
+
+    if (credits <= 0) {
+        throw new Error("Credit grant amount must be positive");
+    }
+
+    if (await wasAlreadyProcessed(idempotencyKey)) return;
+
+    const db = await getDb();
+    const now = Date.now();
+
+    await db.batch([
+        db
+            .prepare(
+                `UPDATE user_profile
+                    SET purchased_credits = purchased_credits + ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(credits, now, userId),
+        db
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, stripe_session_id, created_at)
+                 VALUES (?, ?, 'purchase', ?, 'purchased', ?, ?)`,
+            )
+            .bind(userId, credits, description, idempotencyKey, now),
+    ]);
+}
+
 // ─── Downgrade ──────────────────────────────────────────────────────────────
 
 /**

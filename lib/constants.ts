@@ -146,6 +146,48 @@ export function isFreePlan(id: string): boolean {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Credit packs (one-time purchases)
+// ═══════════════════════════════════════════════════════════════════════════
+// Top-up packs add to the `purchased_credits` pool, which is permanent
+// (never expires or resets). Priced at a modest premium over subscription
+// per-credit rates to incentivize subscriptions for heavy users.
+//
+// The monthly spend ceiling (MONTHLY_TOPUP_USD_CENTS_CEILING) caps how
+// much a user can purchase per calendar month — enforced at checkout time.
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const CREDIT_PACKS = [
+    {
+        id: "small",
+        credits: 50,
+        priceUsdCents: 700,
+        priceLabel: "$7",
+        description: "50 credits — try a few ideas",
+    },
+    {
+        id: "medium",
+        credits: 200,
+        priceUsdCents: 2500,
+        priceLabel: "$25",
+        description: "200 credits — extended session",
+    },
+    {
+        id: "large",
+        credits: 500,
+        priceUsdCents: 5500,
+        priceLabel: "$55",
+        description: "500 credits — best value",
+    },
+] as const;
+
+export type CreditPackId = (typeof CREDIT_PACKS)[number]["id"];
+export type CreditPack = (typeof CREDIT_PACKS)[number];
+
+export function getCreditPack(id: string): CreditPack | undefined {
+    return CREDIT_PACKS.find((p) => p.id === id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Photo generation models (v0: image only)
 // ═══════════════════════════════════════════════════════════════════════════
 

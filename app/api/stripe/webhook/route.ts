@@ -18,7 +18,7 @@
  *     credit_transaction.stripe_session_id.
  *
  * Events handled:
- *   checkout.session.completed      First subscription activation
+ *   checkout.session.completed      Subscription activation or credit pack purchase
  *   invoice.paid                    Recurring billing cycle refresh
  *   customer.subscription.updated   Plan change, cancel-at-period-end flip
  *   customer.subscription.deleted   Subscription ended → downgrade
@@ -37,8 +37,13 @@ import {
     getUserIdByStripeCustomer,
     upsertSubscription,
 } from "@/lib/stripe";
-import { downgradeToSolo, grantSubscriptionCredits, recordTopupSpend } from "@/lib/credits";
-import { getPlan } from "@/lib/constants";
+import {
+    downgradeToSolo,
+    grantPurchasedCredits,
+    grantSubscriptionCredits,
+    recordTopupSpend,
+} from "@/lib/credits";
+import { getCreditPack, getPlan } from "@/lib/constants";
 import { logAudit } from "@/lib/audit";
 
 // Stripe requires raw body for signature verification. Next's built-in
@@ -162,9 +167,17 @@ export async function POST(request: Request): Promise<Response> {
 async function handleCheckoutCompleted(
     session: Stripe.Checkout.Session,
 ): Promise<void> {
-    // Only handle subscription-mode checkouts (the only kind we create).
-    if (session.mode !== "subscription") return;
+    if (session.mode === "subscription") {
+        await handleSubscriptionCheckout(session);
+    } else if (session.mode === "payment") {
+        await handleTopupCheckout(session);
+    }
+    // Other modes (e.g. "setup") are ignored.
+}
 
+async function handleSubscriptionCheckout(
+    session: Stripe.Checkout.Session,
+): Promise<void> {
     const userId =
         (session.client_reference_id as string | null) ??
         (session.metadata?.film_maker_user_id as string | undefined);
@@ -197,7 +210,6 @@ async function handleCheckoutCompleted(
         description: `${plan.name} plan — monthly credits`,
     });
 
-    // Record spend against monthly ceiling.
     await recordTopupSpend(userId, plan.priceUsdCents);
 
     await logAudit({
@@ -206,6 +218,41 @@ async function handleCheckoutCompleted(
         targetType: "subscription",
         targetId: subscriptionId,
         metadata: { planId, planName: plan.name, priceUsdCents: plan.priceUsdCents },
+    });
+}
+
+async function handleTopupCheckout(
+    session: Stripe.Checkout.Session,
+): Promise<void> {
+    const userId =
+        (session.client_reference_id as string | null) ??
+        (session.metadata?.film_maker_user_id as string | undefined);
+    const packId = session.metadata?.film_maker_pack_id as string | undefined;
+
+    if (!userId || !packId) {
+        throw new Error(
+            `checkout.session.completed (payment) missing userId or packId (session=${session.id})`,
+        );
+    }
+
+    const pack = getCreditPack(packId);
+    if (!pack) throw new Error(`Unknown credit pack in checkout metadata: ${packId}`);
+
+    await grantPurchasedCredits({
+        userId,
+        credits: pack.credits,
+        idempotencyKey: session.id,
+        description: `Purchased ${pack.credits} credits (${pack.priceLabel})`,
+    });
+
+    await recordTopupSpend(userId, pack.priceUsdCents);
+
+    await logAudit({
+        userId,
+        action: "credits.grant",
+        targetType: "user",
+        targetId: userId,
+        metadata: { packId, credits: pack.credits, priceUsdCents: pack.priceUsdCents },
     });
 }
 

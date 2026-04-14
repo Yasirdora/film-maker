@@ -39,6 +39,13 @@ const PAID_PLANS = [
     { id: "studio", name: "Studio", priceUsdCents: 20000 },
 ];
 
+// ─── Credit pack definitions (mirror of lib/constants.ts CREDIT_PACKS) ────
+const CREDIT_PACKS = [
+    { id: "small", credits: 50, priceUsdCents: 700 },
+    { id: "medium", credits: 200, priceUsdCents: 2500 },
+    { id: "large", credits: 500, priceUsdCents: 5500 },
+];
+
 // ─── Main ──────────────────────────────────────────────────────────────────
 const apiKey = process.env.STRIPE_SECRET_KEY;
 if (!apiKey) {
@@ -103,6 +110,58 @@ for (const plan of PAID_PLANS) {
     }
 
     envLines.push(`STRIPE_PRICE_${plan.id.toUpperCase()}=${price.id}`);
+}
+
+// ─── Credit packs (one-time) ──────────────────────────────────────────────
+
+console.log();
+
+for (const pack of CREDIT_PACKS) {
+    // ─── Find or create the Product ────────────────────────────────────
+    const existingProducts = await stripe.products.search({
+        query: `metadata['film_maker_pack_id']:'${pack.id}'`,
+    });
+
+    let product;
+    if (existingProducts.data.length > 0) {
+        product = existingProducts.data[0];
+        console.log(`✓ Topup product "${pack.credits} credits" already exists: ${product.id}`);
+    } else {
+        product = await stripe.products.create({
+            name: `Film-maker ${pack.credits} Credits`,
+            description: `One-time purchase of ${pack.credits} credits`,
+            metadata: { film_maker_pack_id: pack.id },
+        });
+        console.log(`+ Created topup product "${pack.credits} credits": ${product.id}`);
+    }
+
+    // ─── Find or create the Price (one-time, not recurring) ───────────
+    const existingPrices = await stripe.prices.list({
+        product: product.id,
+        active: true,
+        limit: 100,
+    });
+
+    let price = existingPrices.data.find(
+        (p) =>
+            p.currency === "usd" &&
+            p.unit_amount === pack.priceUsdCents &&
+            !p.recurring,
+    );
+
+    if (price) {
+        console.log(`✓ Topup price for "${pack.credits} credits" already exists: ${price.id}`);
+    } else {
+        price = await stripe.prices.create({
+            product: product.id,
+            unit_amount: pack.priceUsdCents,
+            currency: "usd",
+            metadata: { film_maker_pack_id: pack.id },
+        });
+        console.log(`+ Created topup price for "${pack.credits} credits": ${price.id}`);
+    }
+
+    envLines.push(`STRIPE_PRICE_TOPUP_${pack.id.toUpperCase()}=${price.id}`);
 }
 
 console.log("\n─── Paste into .env.local ───────────────────────────────");

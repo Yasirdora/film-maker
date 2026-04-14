@@ -80,6 +80,46 @@ export function getStripePriceId(planId: string): string {
     return priceId;
 }
 
+// ─── Topup price id lookup ──────────────────────────────────────────────────
+
+const TOPUP_ENV_VARS: Record<string, string> = {
+    small: "STRIPE_PRICE_TOPUP_SMALL",
+    medium: "STRIPE_PRICE_TOPUP_MEDIUM",
+    large: "STRIPE_PRICE_TOPUP_LARGE",
+};
+
+/**
+ * Returns the Stripe price id for a credit pack. Works the same as
+ * `getStripePriceId` — env vars are populated by the setup script.
+ */
+export function getTopupPriceId(packId: string): string {
+    const envVar = TOPUP_ENV_VARS[packId];
+    if (!envVar) {
+        throw new Error(
+            `No Stripe price configured for credit pack "${packId}". ` +
+            `Run 'npm run stripe:setup' and paste the output into .dev.vars.`,
+        );
+    }
+    const priceId = process.env[envVar];
+    if (!priceId) {
+        throw new Error(`Env var ${envVar} is not set`);
+    }
+    return priceId;
+}
+
+/**
+ * Resolves a Stripe price id back to a credit pack id by reverse-lookup
+ * on the topup env vars. Returns null if the price doesn't match any pack.
+ */
+export function getPackIdByStripePriceId(priceId: string): string | null {
+    for (const [packId, envVar] of Object.entries(TOPUP_ENV_VARS)) {
+        if (process.env[envVar] === priceId) {
+            return packId;
+        }
+    }
+    return null;
+}
+
 // ─── Customer helpers ───────────────────────────────────────────────────────
 
 interface EnsureCustomerParams {
