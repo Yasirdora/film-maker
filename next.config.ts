@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // Bridge `next dev` with Cloudflare's platform proxy so bindings (D1, R2,
 // KV, Queues…) are reachable from server components and route handlers
@@ -57,4 +58,14 @@ const nextConfig: NextConfig = {
     },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+    // Source maps: disable upload until SENTRY_AUTH_TOKEN is configured.
+    // Enable later for production stack traces with original source.
+    sourcemaps: { disable: true },
+
+    // Suppress Sentry CLI output during build.
+    silent: true,
+
+    // Disable Sentry build telemetry.
+    telemetry: false,
+});
