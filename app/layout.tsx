@@ -1,5 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Google_Sans } from "next/font/google";
 import "./globals.css";
+
+const googleSans = Google_Sans({
+    subsets: ["latin"],
+    variable: "--font-google-sans",
+});
 
 export const metadata: Metadata = {
     metadataBase: new URL("https://film-maker.net"),
@@ -44,7 +50,7 @@ export default function RootLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="en">
+        <html lang="en" className={googleSans.variable}>
             <body className="min-h-dvh">{children}</body>
         </html>
     );

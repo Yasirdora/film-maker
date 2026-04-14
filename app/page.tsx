@@ -6,16 +6,11 @@
  * they don't bloat the root layout.
  */
 
-import { Google_Sans, Newsreader } from "next/font/google";
+import { Newsreader } from "next/font/google";
 import { requireSession } from "@/lib/auth-server";
 import { LandingBrandMark } from "./landing-brand-mark";
 import { FilmmakerLogo } from "@/components/icons/filmmaker-logo";
 import { WaitlistForm } from "./waitlist-form";
-
-const googleSans = Google_Sans({
-    subsets: ["latin"],
-    variable: "--font-google-sans",
-});
 
 const newsreader = Newsreader({
     subsets: ["latin"],
@@ -29,7 +24,7 @@ export default async function HomePage() {
 
     return (
         <div
-            className={`${googleSans.variable} ${newsreader.variable} relative grid min-h-dvh place-items-center overflow-hidden px-6 py-16 text-white`}
+            className={`${newsreader.variable} relative grid min-h-dvh place-items-center overflow-hidden px-6 py-16 text-white`}
             style={{
                 fontFamily: "var(--font-google-sans), system-ui, sans-serif",
                 background: "var(--brand-gradient)",
@@ -71,7 +66,9 @@ export default async function HomePage() {
                 </p>
 
                 <div className="mt-10 w-full">
-                    <WaitlistForm />
+                    <WaitlistForm
+                        turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? ""}
+                    />
                 </div>
             </div>
 
