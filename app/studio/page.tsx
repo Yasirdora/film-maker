@@ -15,7 +15,7 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { listProjects, listArchivedProjects } from "@/lib/projects";
-import { NavUserMenu } from "@/components/nav-user-menu";
+import { AppNav } from "@/components/app-nav";
 import { NewProjectButton } from "./new-project-dialog";
 import { ArchivedProjects } from "./archived-projects";
 
@@ -39,46 +39,9 @@ export default async function StudioPage() {
 
     return (
         <div className="min-h-dvh bg-[#0f0f11] text-white">
-            {/* Header */}
-            <header className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
-                <Link
-                    href="/studio"
-                    className="text-[14px] font-semibold tracking-tight"
-                >
-                    Film-maker
-                </Link>
+            <AppNav />
 
-                <div className="flex-1" />
-
-                {/* Credits badge */}
-                <Link
-                    href="/credits"
-                    className="flex h-[34px] items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 text-sm tabular-nums text-[#9ca3af] transition-colors hover:border-white/[0.15] hover:text-white"
-                >
-                    <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                    >
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                    </svg>
-                    {Intl.NumberFormat("en-US").format(totalCredits)}
-                </Link>
-
-                {/* User menu */}
-                <NavUserMenu
-                    name={user.name ?? ""}
-                    email={user.email}
-                />
-            </header>
-
-            <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+            <main className="mx-auto max-w-6xl px-4 py-8 pb-16 sm:px-6">
                 {/* Welcome */}
                 <div className="mt-4 sm:mt-6">
                     <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">

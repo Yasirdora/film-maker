@@ -21,22 +21,22 @@ export async function AppNav() {
         balance.subscriptionCredits + balance.purchasedCredits;
 
     return (
-        <nav className="sticky top-0 z-40 border-b border-neutral-200 bg-white/80 backdrop-blur-md dark:border-neutral-800 dark:bg-neutral-950/80">
+        <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0f0f11]/80 backdrop-blur-md">
             <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
                 {/* Brand */}
                 <Link
                     href="/studio"
-                    className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
+                    className="text-sm font-semibold tracking-tight text-white"
                 >
                     Film-maker
                 </Link>
 
                 <div className="flex-1" />
 
-                {/* Dashboard / Projects */}
+                {/* Projects */}
                 <Link
                     href="/studio"
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white"
                 >
                     <svg
                         width="14"
@@ -57,7 +57,7 @@ export async function AppNav() {
                 {/* Credits badge */}
                 <Link
                     href="/credits"
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 text-sm tabular-nums text-neutral-700 transition-colors hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-900"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 text-sm tabular-nums text-[#9ca3af] transition-colors hover:border-white/[0.15] hover:text-white"
                 >
                     <svg
                         width="14"
