@@ -21,11 +21,12 @@ import { emailOTP } from "better-auth/plugins/email-otp";
 import { nextCookies } from "better-auth/next-js";
 import { drizzle } from "drizzle-orm/d1";
 
-import { getDb } from "./db";
+import { getDb, getR2 } from "./db";
 import { authSchema } from "./auth-schema";
 import { sendVerificationEmail } from "./email";
 import { generateUid } from "./utils";
 import { SESSION_MAX_AGE_SECONDS, SUBSCRIPTION_PLANS } from "./constants";
+import { logAudit } from "./audit";
 
 const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 
@@ -71,6 +72,22 @@ export async function getAuth() {
             // regular users don't get logged out mid-workflow. Checked
             // at most once per day to avoid unnecessary DB writes.
             updateAge: 60 * 60 * 24, // 1 day
+        },
+
+        user: {
+            deleteUser: {
+                enabled: true,
+                beforeDelete: async (user) => {
+                    await deleteUserR2Objects(user.id);
+                    await logAudit({
+                        userId: user.id,
+                        action: "user.logout",
+                        targetType: "user",
+                        targetId: user.id,
+                        metadata: { reason: "account_deleted" },
+                    });
+                },
+            },
         },
 
         emailAndPassword: {
@@ -164,4 +181,38 @@ async function provisionUserProfile(userId: string): Promise<void> {
             )
             .bind(userId, SOLO_PLAN.credits, now),
     ]);
+}
+
+// ─── Account deletion — R2 cleanup ────────────────────────────────────────
+
+/**
+ * Deletes all R2 objects belonging to a user. Called from the
+ * `beforeDelete` hook before Better Auth deletes the user row.
+ *
+ * R2 keys are prefixed with `generation/{userUid}/`, so we look up
+ * the user's uid, list all objects under that prefix, and delete them
+ * in batches. DB rows are handled by ON DELETE CASCADE.
+ */
+async function deleteUserR2Objects(userId: string): Promise<void> {
+    const d1 = await getDb();
+
+    const row = await d1
+        .prepare("SELECT uid FROM user_profile WHERE user_id = ? LIMIT 1")
+        .bind(userId)
+        .first<{ uid: string }>();
+
+    if (!row) return; // No profile — nothing to clean up.
+
+    const r2 = await getR2();
+    const prefix = `generation/${row.uid}/`;
+
+    // R2 list returns up to 1000 objects per call. Loop until exhausted.
+    let cursor: string | undefined;
+    do {
+        const listed = await r2.list({ prefix, cursor, limit: 1000 });
+        if (listed.objects.length > 0) {
+            await r2.delete(listed.objects.map((o) => o.key));
+        }
+        cursor = listed.truncated ? listed.cursor : undefined;
+    } while (cursor);
 }
