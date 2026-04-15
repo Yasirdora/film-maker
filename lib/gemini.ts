@@ -1,40 +1,38 @@
 /**
  * Gemini image generation client.
  *
- * Uses the `@google/genai` SDK's `generateImages` API with Imagen 4.0.
- * This is a dedicated image generation endpoint — distinct from the
- * `generateContent` API used for text/chat.
+ * Two generation paths:
  *
- * Model:
- *   `imagen-4.0-generate-001` — Google's latest image generation model.
- *   Verified working via the Gemini API key (not Vertex-only).
- *   The model ID is stored in `lib/constants.ts` and resolved at call
- *   time so switching models requires no code change.
+ *   1. **Text-to-image** (no reference images):
+ *      Uses Imagen 4.0 via `generateImages` API. Supports aspect ratio,
+ *      negative prompt, and person generation controls.
  *
- * Resolution:
- *   The Imagen `generateImages` API does not support an explicit
- *   `imageSize` parameter — output resolution is determined by the
- *   model. The `aspectRatio` parameter is supported. Credit cost is
- *   flat per image for v0; resolution-based pricing activates when we
- *   move to a model/API that supports explicit size control.
+ *   2. **Image-to-image** (with reference images):
+ *      Uses Gemini 2.5 Flash Image via `generateContent` API. The user's
+ *      reference image(s) and text prompt are sent as multimodal input,
+ *      and the model returns a transformed image. Supports style transfer,
+ *      editing, and compositional changes.
  *
- * Error handling:
- *   If the model refuses generation (safety filter), the response's
- *   `raiFilteredReason` field contains the reason. We throw a typed
- *   `GenerationError` so the caller can decide whether to refund.
+ * The `editImage` API (StyleReferenceImage) is NOT used because it
+ * requires Vertex AI — unavailable with a standard Gemini API key.
  */
 
-import {
-    GoogleGenAI,
-    PersonGeneration,
-    StyleReferenceImage,
-} from "@google/genai";
+import { GoogleGenAI, PersonGeneration } from "@google/genai";
 import { getPhotoModel } from "./constants";
 
-// ─── Client singleton ───────────────────────────────────────────────────────
+// ─── Constants ──────────────────────────────────────────────────────────────
 
 const GENERATION_TIMEOUT_MS = 180_000;
 const MAX_RETRIES = 3;
+
+/**
+ * Model used for image-to-image via generateContent. Must support
+ * responseModalities: ['IMAGE', 'TEXT']. Verified working with the
+ * standard Gemini API key.
+ */
+const IMAGE_TO_IMAGE_MODEL = "gemini-2.5-flash-image";
+
+// ─── Client singleton ───────────────────────────────────────────────────────
 
 let cached: GoogleGenAI | null = null;
 
@@ -73,7 +71,7 @@ export class GenerationError extends Error {
     }
 }
 
-// ─── Image generation ───────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface ReferenceImageInput {
     /** Base64-encoded image bytes. */
@@ -87,7 +85,7 @@ export interface GenerateImageParams {
     modelId: string;
     resolution: string;
     aspectRatio?: string;
-    /** When provided, uses editImage() with style reference instead of generateImages(). */
+    /** When provided, uses generateContent with multimodal input. */
     referenceImages?: ReferenceImageInput[];
 }
 
@@ -96,22 +94,30 @@ export interface GenerateImageResult {
     mimeType: string;
 }
 
+// ─── Main entry point ───────────────────────────────────────────────────────
+
 /**
- * Generates an image from a text prompt, optionally guided by a
- * reference image.
- *
- * When `referenceImages` is empty or absent: uses the Imagen
- * `generateImages` API (text-to-image).
- *
- * When `referenceImages` is provided: uses the Imagen `editImage`
- * API with `StyleReferenceImage` (style transfer — the generated
- * image adopts the visual style of the reference while following
- * the text prompt for content).
+ * Generates an image from a text prompt, optionally guided by
+ * reference image(s).
  *
  * Returns raw image bytes + MIME type. Throws `GenerationError` on
  * safety filter, empty response, quota issues, or API errors.
  */
 export async function generateImage(
+    params: GenerateImageParams,
+): Promise<GenerateImageResult> {
+    const hasReference =
+        params.referenceImages && params.referenceImages.length > 0;
+
+    if (hasReference) {
+        return generateWithReference(params);
+    }
+    return generateTextToImage(params);
+}
+
+// ─── Text-to-image (Imagen 4.0) ────────────────────────────────────────────
+
+async function generateTextToImage(
     params: GenerateImageParams,
 ): Promise<GenerateImageResult> {
     const model = getPhotoModel(params.modelId);
@@ -123,53 +129,134 @@ export async function generateImage(
     }
 
     const ai = getClient();
-    const hasReference =
-        params.referenceImages && params.referenceImages.length > 0;
 
     let response;
     try {
-        if (hasReference) {
-            response = await ai.models.editImage({
-                model: model.geminiModelId,
-                prompt: params.prompt,
-                referenceImages: params.referenceImages!.map((ref) => {
-                    const styleRef = new StyleReferenceImage();
-                    styleRef.referenceImage = {
-                        imageBytes: ref.data,
-                        mimeType: ref.mimeType,
-                    };
-                    return styleRef;
-                }),
-                config: {
-                    numberOfImages: 1,
-                    negativePrompt: params.negativePrompt || undefined,
-                    outputMimeType: "image/jpeg",
-                    includeRaiReason: true,
-                    personGeneration: PersonGeneration.ALLOW_ADULT,
-                },
-            });
-        } else {
-            response = await ai.models.generateImages({
-                model: model.geminiModelId,
-                prompt: params.prompt,
-                config: {
-                    numberOfImages: 1,
-                    negativePrompt: params.negativePrompt || undefined,
-                    aspectRatio: params.aspectRatio ?? "1:1",
-                    outputMimeType: "image/jpeg",
-                    includeRaiReason: true,
-                    personGeneration: PersonGeneration.ALLOW_ADULT,
-                },
-            });
-        }
+        response = await ai.models.generateImages({
+            model: model.geminiModelId,
+            prompt: params.prompt,
+            config: {
+                numberOfImages: 1,
+                negativePrompt: params.negativePrompt || undefined,
+                aspectRatio: params.aspectRatio ?? "1:1",
+                outputMimeType: "image/jpeg",
+                includeRaiReason: true,
+                personGeneration: PersonGeneration.ALLOW_ADULT,
+            },
+        });
     } catch (err) {
         throw classifyError(err);
     }
 
-    return extractImageFromResponse(response);
+    return extractFromImagen(response);
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// ─── Image-to-image (Gemini 2.5 Flash Image) ───────────────────────────────
+
+async function generateWithReference(
+    params: GenerateImageParams,
+): Promise<GenerateImageResult> {
+    const ai = getClient();
+
+    // Build multimodal parts: reference images first, then text prompt.
+    const parts: Array<
+        | { inlineData: { mimeType: string; data: string } }
+        | { text: string }
+    > = [];
+
+    for (const ref of params.referenceImages!) {
+        parts.push({
+            inlineData: { mimeType: ref.mimeType, data: ref.data },
+        });
+    }
+
+    parts.push({ text: params.prompt });
+
+    let response;
+    try {
+        response = await ai.models.generateContent({
+            model: IMAGE_TO_IMAGE_MODEL,
+            contents: [{ role: "user", parts }],
+            config: {
+                responseModalities: ["IMAGE", "TEXT"],
+            },
+        });
+    } catch (err) {
+        throw classifyError(err);
+    }
+
+    return extractFromGenerateContent(response);
+}
+
+// ─── Response extractors ────────────────────────────────────────────────────
+
+function extractFromImagen(
+    response: {
+        generatedImages?: Array<{
+            image?: { imageBytes?: string; mimeType?: string };
+            raiFilteredReason?: string;
+        }>;
+    } | undefined,
+): GenerateImageResult {
+    const generated = response?.generatedImages?.[0];
+
+    if (!generated?.image?.imageBytes) {
+        const reason = generated?.raiFilteredReason;
+        throw new GenerationError(
+            reason ?? "The model could not generate an image for this prompt.",
+            reason ? "safety_filtered" : "no_output",
+        );
+    }
+
+    return decodeBase64Image(
+        generated.image.imageBytes,
+        generated.image.mimeType ?? "image/jpeg",
+    );
+}
+
+function extractFromGenerateContent(
+    response: {
+        candidates?: Array<{
+            content?: {
+                parts?: Array<{
+                    inlineData?: { mimeType?: string; data?: string };
+                    text?: string;
+                }>;
+            };
+        }>;
+    } | undefined,
+): GenerateImageResult {
+    const parts = response?.candidates?.[0]?.content?.parts ?? [];
+
+    // Find the first image part in the response.
+    for (const part of parts) {
+        if (part.inlineData?.data) {
+            return decodeBase64Image(
+                part.inlineData.data,
+                part.inlineData.mimeType ?? "image/png",
+            );
+        }
+    }
+
+    throw new GenerationError(
+        "The model could not generate an image for this prompt.",
+        "no_output",
+    );
+}
+
+// ─── Shared helpers ─────────────────────────────────────────────────────────
+
+function decodeBase64Image(
+    base64: string,
+    mimeType: string,
+): GenerateImageResult {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return { imageData: bytes.buffer, mimeType };
+}
 
 function classifyError(err: unknown): GenerationError {
     const message = err instanceof Error ? err.message : String(err);
@@ -196,31 +283,4 @@ function classifyError(err: unknown): GenerationError {
         `Image generation failed: ${message}`,
         "api_error",
     );
-}
-
-function extractImageFromResponse(
-    response: { generatedImages?: Array<{ image?: { imageBytes?: string; mimeType?: string }; raiFilteredReason?: string }> } | undefined,
-): GenerateImageResult {
-    const generatedImage = response?.generatedImages?.[0];
-
-    if (!generatedImage?.image?.imageBytes) {
-        const raiReason = generatedImage?.raiFilteredReason;
-        throw new GenerationError(
-            raiReason ??
-            "The model could not generate an image for this prompt.",
-            raiReason ? "safety_filtered" : "no_output",
-        );
-    }
-
-    const base64 = generatedImage.image.imageBytes;
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    return {
-        imageData: bytes.buffer,
-        mimeType: generatedImage.image.mimeType ?? "image/jpeg",
-    };
 }

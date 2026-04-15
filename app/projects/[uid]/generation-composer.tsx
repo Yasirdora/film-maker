@@ -379,8 +379,9 @@ export function GenerationComposer({
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={img.previewUrl}
-                                            alt="Attached reference"
-                                            className="h-[52px] w-[52px] rounded-[11px] object-cover ring-1 ring-white/[0.08]"
+                                            alt=""
+                                            className="h-[52px] w-[52px] rounded-[11px] bg-white/[0.04] object-cover ring-1 ring-white/[0.08]"
+                                            draggable={false}
                                         />
                                         <button
                                             type="button"

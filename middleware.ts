@@ -112,8 +112,8 @@ function buildCsp(nonce: string): string {
         // Inline style injection is low-risk (cannot execute code).
         "style-src 'self' 'unsafe-inline'",
 
-        // Images: self-hosted + R2 bucket CDN for user-generated images.
-        "img-src 'self' https://storage.film-maker.net",
+        // Images: self-hosted + R2 bucket CDN + blob: for composer previews.
+        "img-src 'self' https://storage.film-maker.net blob:",
 
         // Fonts: self-hosted via next/font/google (no external requests).
         "font-src 'self'",
