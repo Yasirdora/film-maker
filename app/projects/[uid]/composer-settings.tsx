@@ -129,6 +129,12 @@ function RootView({
     onUpdate: (partial: Partial<ComposerSettingsState>) => void;
     onDrillToModel: () => void;
 }) {
+    const [aspectExpanded, setAspectExpanded] = useState(false);
+
+    const currentAspect = ASPECT_RATIOS.find(
+        (ar) => ar.value === settings.aspectRatio,
+    );
+
     return (
         <div className="flex flex-col">
             {/* Handle + title */}
@@ -166,14 +172,45 @@ function RootView({
                 </button>
             </div>
 
-            {/* Aspect ratio */}
+            {/* Aspect ratio — compact pill, expands to full picker on tap */}
             <div className="flex items-center justify-between px-4 pt-3.5 sm:px-5">
                 <span className="text-[13px] text-[#9ca3af]">Aspect ratio</span>
-                <AspectRatioPicker
-                    value={settings.aspectRatio}
-                    onChange={(v) => onUpdate({ aspectRatio: v })}
-                />
+                <button
+                    type="button"
+                    onClick={() => setAspectExpanded((o) => !o)}
+                    className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-white/5 bg-[#202022] px-3 transition-colors hover:bg-[#282829]"
+                >
+                    <svg
+                        className="shrink-0 text-gray-300"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        {currentAspect?.icon}
+                    </svg>
+                    <span className="text-[13px] font-medium">
+                        {settings.aspectRatio}
+                    </span>
+                </button>
             </div>
+
+            {/* Expanded aspect ratio picker */}
+            {aspectExpanded && (
+                <div className="px-4 pt-2 pb-1 sm:px-5">
+                    <AspectRatioPicker
+                        value={settings.aspectRatio}
+                        onChange={(v) => {
+                            onUpdate({ aspectRatio: v });
+                            setAspectExpanded(false);
+                        }}
+                    />
+                </div>
+            )}
 
             {/* Batch count */}
             <div className="flex items-center justify-between px-4 pb-4 pt-3.5 sm:px-5">
