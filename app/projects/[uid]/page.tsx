@@ -17,6 +17,7 @@ import { getBalance } from "@/lib/credits";
 import { getProject } from "@/lib/projects";
 import { listGenerationsByProject } from "@/lib/generations";
 import { getPlan, PHOTO_MODELS, RESOLUTIONS } from "@/lib/constants";
+import { AppNav } from "@/components/app-nav";
 import { ProjectWorkspace } from "./project-workspace";
 
 interface PageProps {
@@ -67,8 +68,10 @@ export default async function ProjectPage({ params }: PageProps) {
     }));
 
     return (
-        <ProjectWorkspace
-            project={{
+        <div className="flex h-dvh flex-col bg-[#0f0f11]">
+            <AppNav />
+            <ProjectWorkspace
+                project={{
                 uid: project.uid,
                 name: project.name,
                 description: project.description,
@@ -84,5 +87,6 @@ export default async function ProjectPage({ params }: PageProps) {
             planName={plan?.name ?? "Solo"}
             totalCredits={totalCredits}
         />
+        </div>
     );
 }

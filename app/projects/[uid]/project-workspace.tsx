@@ -16,7 +16,6 @@
  */
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import { GenerationGallery } from "./generation-gallery";
 import { GenerationComposer } from "./generation-composer";
 import { ProjectSettings } from "./project-settings";
@@ -162,51 +161,15 @@ export function ProjectWorkspace({
     );
 
     return (
-        <div className="flex h-dvh flex-col bg-[#0f0f11] text-white">
-            {/* Header */}
-            <header className="flex shrink-0 items-center px-5 h-[48px] sm:px-8 sm:h-[56px]">
-                <Link
-                    href="/studio"
-                    className="mr-3 text-[#9ca3af] transition-colors hover:text-white"
-                    aria-label="Back to studio"
-                >
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                    >
-                        <polyline points="15 18 9 12 15 6" />
-                    </svg>
-                </Link>
+        <div className="flex min-h-0 flex-1 flex-col text-white">
+            {/* Project sub-header */}
+            <div className="flex shrink-0 items-center px-4 py-2 sm:px-6">
                 <ProjectSettings
                     uid={project.uid}
                     name={project.name}
                     description={project.description}
                 />
-                <div className="flex-1" />
-                <div className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 h-[34px] text-sm tabular-nums text-[#9ca3af]">
-                    <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden
-                    >
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                    </svg>
-                    {Intl.NumberFormat("en-US").format(credits)}
-                </div>
-            </header>
+            </div>
 
             {/* Gallery — fills available space, scrollable */}
             <div className="flex-1 overflow-y-auto">
