@@ -10,7 +10,7 @@
  * Controlled by the parent (open/close state lives in the composer).
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -59,10 +59,35 @@ export function ComposerSettings({
     const [view, setView] = useState<"root" | "model">("root");
     const [modelSearch, setModelSearch] = useState("");
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const modalRef = useRef<HTMLDivElement>(null);
+
+    // Close on outside click or Escape.
+    useEffect(() => {
+        if (!open) return;
+        function handleClick(e: MouseEvent) {
+            if (
+                modalRef.current &&
+                !modalRef.current.contains(e.target as Node)
+            ) {
+                onClose();
+            }
+        }
+        function handleEsc(e: KeyboardEvent) {
+            if (e.key === "Escape") onClose();
+        }
+        // Use setTimeout so the opening click doesn't immediately close.
+        const timer = setTimeout(() => {
+            document.addEventListener("mousedown", handleClick);
+            document.addEventListener("keydown", handleEsc);
+        }, 0);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener("mousedown", handleClick);
+            document.removeEventListener("keydown", handleEsc);
+        };
+    }, [open, onClose]);
 
     if (!open) {
-        // Reset internal state when closed. Safe during render because
-        // the component returns null immediately — no cascading renders.
         if (view !== "root") setView("root");
         if (modelSearch !== "") setModelSearch("");
         return null;
@@ -78,41 +103,34 @@ export function ComposerSettings({
     }
 
     return (
-        <>
-            {/* Backdrop — closes the modal */}
-            <div
-                className="fixed inset-0 z-[60]"
-                onClick={onClose}
-                aria-hidden
-            />
-
-            {/* Modal — full-width, above the controls row */}
-            <div className="absolute bottom-full left-0 z-[70] mb-2 w-full">
-                <div className="overflow-hidden rounded-2xl bg-[#1a1a1c]/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
-                    {view === "root" ? (
-                        <RootView
-                            selectedModel={selectedModel}
-                            settings={settings}
-                            onUpdate={update}
-                            onDrillToModel={() => setView("model")}
-                        />
-                    ) : (
-                        <ModelListView
-                            models={filteredModels}
-                            activeModelId={settings.model}
-                            search={modelSearch}
-                            onSearchChange={setModelSearch}
-                            searchInputRef={searchInputRef}
-                            onSelect={(id) => {
-                                update({ model: id });
-                                setView("root");
-                            }}
-                            onBack={() => setView("root")}
-                        />
-                    )}
-                </div>
+        <div
+            ref={modalRef}
+            className="absolute bottom-full left-0 z-[70] mb-2 w-full"
+        >
+            <div className="overflow-hidden rounded-2xl bg-[#1a1a1c]/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
+                {view === "root" ? (
+                    <RootView
+                        selectedModel={selectedModel}
+                        settings={settings}
+                        onUpdate={update}
+                        onDrillToModel={() => setView("model")}
+                    />
+                ) : (
+                    <ModelListView
+                        models={filteredModels}
+                        activeModelId={settings.model}
+                        search={modelSearch}
+                        onSearchChange={setModelSearch}
+                        searchInputRef={searchInputRef}
+                        onSelect={(id) => {
+                            update({ model: id });
+                            setView("root");
+                        }}
+                        onBack={() => setView("root")}
+                    />
+                )}
             </div>
-        </>
+        </div>
     );
 }
 
