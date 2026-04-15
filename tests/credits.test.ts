@@ -278,7 +278,7 @@ describe("deductCredits", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("refundCredits", () => {
-    it("refunds to both pools proportionally", async () => {
+    it("refunds to both pools proportionally and decrements daily counter", async () => {
         await refundCredits({
             userId: "u1",
             cost: 5,
@@ -289,11 +289,12 @@ describe("refundCredits", () => {
         expect(batchCalled).toBe(true);
 
         // Verify the batch was called with correct bind values.
-        // First statement: UPDATE user_profile SET subscription_credits + ?, purchased_credits + ?
-        // The bind args for the UPDATE should include 3 and 2.
+        // UPDATE: subscription_credits + ?, purchased_credits + ?,
+        //         MAX(0, daily_credits_used - ?), updated_at, user_id
         const updateBinds = bindArgs[0];
         expect(updateBinds?.[0]).toBe(3); // fromSubscription
         expect(updateBinds?.[1]).toBe(2); // fromPurchased
+        expect(updateBinds?.[2]).toBe(5); // cost (daily counter decrement)
     });
 
     it("refunds to subscription only when no purchased used", async () => {

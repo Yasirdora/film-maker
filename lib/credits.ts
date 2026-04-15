@@ -484,7 +484,11 @@ export async function deductCredits(params: {
 
 /**
  * Refunds credits after a failed generation. Adds the credits back to
- * the same pools they were deducted from, and logs a refund transaction.
+ * the same pools they were deducted from, reverses the daily counter
+ * increment (clamped to zero), and logs a refund transaction.
+ *
+ * Without the daily counter reversal, a Solo user who hits a Gemini
+ * safety filter would permanently lose one of their 3 daily slots.
  */
 export async function refundCredits(params: {
     userId: string;
@@ -502,10 +506,11 @@ export async function refundCredits(params: {
                 `UPDATE user_profile
                     SET subscription_credits = subscription_credits + ?,
                         purchased_credits = purchased_credits + ?,
+                        daily_credits_used = MAX(0, daily_credits_used - ?),
                         updated_at = ?
                   WHERE user_id = ?`,
             )
-            .bind(deduction.fromSubscription, deduction.fromPurchased, now, userId),
+            .bind(deduction.fromSubscription, deduction.fromPurchased, cost, now, userId),
         db
             .prepare(
                 `INSERT INTO credit_transaction
