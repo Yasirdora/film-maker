@@ -118,7 +118,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
                         onBlur={handleSave}
                         maxLength={100}
                         disabled={isSaving}
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-neutral-300 bg-white px-3 text-lg font-semibold text-neutral-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-50 dark:focus-visible:ring-neutral-50"
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 text-lg font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50"
                     />
                 </div>
             ) : (
@@ -128,7 +128,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
                     className="group flex items-center gap-1.5 truncate text-left"
                     title="Click to rename"
                 >
-                    <h1 className="truncate text-2xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
+                    <h1 className="truncate text-[14px] font-semibold text-white sm:text-lg">
                         {name}
                     </h1>
                     <svg
@@ -140,7 +140,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="shrink-0 text-neutral-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-neutral-600"
+                        className="shrink-0 text-[#52525b] opacity-0 transition-opacity group-hover:opacity-100"
                         aria-hidden
                     >
                         <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -150,7 +150,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
             )}
 
             {description && (
-                <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                <p className="mt-1 text-sm text-[#9ca3af]">
                     {description}
                 </p>
             )}
@@ -164,7 +164,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
             {/* Archive confirmation */}
             {showArchive ? (
                 <div className="mt-3 flex items-center gap-2">
-                    <span className="text-sm text-neutral-500 dark:text-neutral-400">
+                    <span className="text-sm text-[#9ca3af]">
                         Archive this project?
                     </span>
                     <Button
