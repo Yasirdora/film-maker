@@ -44,8 +44,10 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
         href: "/auteur",
         iconColor: "orange",
         icon: (
-            <svg width="20" height="20" viewBox="0 0 19.5 19.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M13.75 0.75H5.75C2.99 0.75 0.75 2.99 0.75 5.75V13.75C0.75 16.51 2.99 18.75 5.75 18.75H13.75C16.51 18.75 18.75 16.51 18.75 13.75V5.75C18.75 2.99 16.51 0.75 13.75 0.75Z" />
+            <svg width="20" height="20" viewBox="0 0 19.5 19.5" fill="none">
+                <path d="M13.75 0.75H5.75C2.99 0.75 0.75 2.99 0.75 5.75V13.75C0.75 16.51 2.99 18.75 5.75 18.75H13.75C16.51 18.75 18.75 16.51 18.75 13.75V5.75C18.75 2.99 16.51 0.75 13.75 0.75Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <rect x="5.75" y="6.75" width="2" height="6" rx="1" fill="currentColor" />
+                <rect x="11.75" y="6.75" width="2" height="6" rx="1" fill="currentColor" />
             </svg>
         ),
     },
