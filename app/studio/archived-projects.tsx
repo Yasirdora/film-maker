@@ -33,7 +33,7 @@ export function ArchivedProjects({ projects }: ArchivedProjectsProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 text-sm text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
+                className="flex items-center gap-2 text-sm text-[#52525b] transition-colors hover:text-[#9ca3af]"
             >
                 <svg
                     width="14"
@@ -107,9 +107,9 @@ function ArchivedProjectCard({
     }
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white opacity-70 transition-opacity hover:opacity-100 dark:border-neutral-800 dark:bg-neutral-950">
+        <div className="overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.06] opacity-60 transition-opacity hover:opacity-100">
             {/* Cover image */}
-            <div className="relative aspect-[16/10] bg-neutral-100 dark:bg-neutral-900">
+            <div className="relative aspect-[16/10] bg-white/[0.02]">
                 {coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -129,7 +129,7 @@ function ArchivedProjectCard({
                             strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-neutral-300 dark:text-neutral-700"
+                            className="text-[#2a2a2d]"
                             aria-hidden
                         >
                             <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
@@ -140,10 +140,10 @@ function ArchivedProjectCard({
 
             {/* Info + restore */}
             <div className="p-4">
-                <h3 className="truncate text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                <h3 className="truncate text-sm font-semibold">
                     {name}
                 </h3>
-                <div className="mt-1.5 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500">
+                <div className="mt-1.5 flex items-center justify-between text-xs text-[#52525b]">
                     <span>
                         {generationCount} image{generationCount !== 1 ? "s" : ""}
                     </span>
@@ -151,7 +151,7 @@ function ArchivedProjectCard({
                         type="button"
                         onClick={handleRestore}
                         disabled={isRestoring}
-                        className="font-medium text-neutral-500 underline underline-offset-2 transition-colors hover:text-neutral-900 disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-50"
+                        className="font-medium text-[#9ca3af] underline underline-offset-2 transition-colors hover:text-white disabled:opacity-50"
                     >
                         {isRestoring ? "Restoring…" : "Restore"}
                     </button>

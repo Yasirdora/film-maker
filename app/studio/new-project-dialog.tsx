@@ -65,11 +65,11 @@ export function NewProjectButton() {
             type="button"
             onClick={handleCreate}
             disabled={isCreating}
-            className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-neutral-200 bg-white/50 transition-colors hover:border-neutral-400 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-800 dark:bg-neutral-950/50 dark:hover:border-neutral-600 dark:hover:bg-neutral-900/50"
+            className="flex min-h-[200px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-white/[0.08] transition-colors hover:border-white/[0.15] hover:bg-white/[0.02] disabled:opacity-50"
         >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.06]">
                 {isCreating ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-600 dark:border-neutral-600 dark:border-t-neutral-300" />
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-white/60" />
                 ) : (
                     <svg
                         width="24"
@@ -80,7 +80,7 @@ export function NewProjectButton() {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-neutral-400 dark:text-neutral-500"
+                        className="text-[#52525b]"
                         aria-hidden
                     >
                         <line x1="12" y1="5" x2="12" y2="19" />
@@ -88,7 +88,7 @@ export function NewProjectButton() {
                     </svg>
                 )}
             </div>
-            <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
+            <span className="text-sm font-medium text-[#9ca3af]">
                 {isCreating ? "Creating…" : "New project"}
             </span>
             {error && (

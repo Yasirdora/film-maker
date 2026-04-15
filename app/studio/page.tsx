@@ -1,12 +1,12 @@
 /**
  * Studio — the home for signed-in users.
  *
- * Shows: credit balance summary, project grid with cover images,
- * and a "New project" CTA. Projects are the primary organizational
- * unit — all generations live within a project.
+ * Shows: credit balance, project grid with cover images, and a
+ * "New project" CTA. Projects are the primary organizational unit —
+ * all generations live within a project.
  *
+ * Always dark-themed to match the project workspace aesthetic.
  * Server component — fetches balance + projects server-side.
- * Client interactivity delegated to child components.
  */
 
 import type { Metadata } from "next";
@@ -15,7 +15,7 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { listProjects, listArchivedProjects } from "@/lib/projects";
-import { AppNav } from "@/components/app-nav";
+import { NavUserMenu } from "@/components/nav-user-menu";
 import { NewProjectButton } from "./new-project-dialog";
 import { ArchivedProjects } from "./archived-projects";
 
@@ -34,35 +34,71 @@ export default async function StudioPage() {
 
     const totalCredits =
         balance.subscriptionCredits + balance.purchasedCredits;
+    const planLabel =
+        balance.plan.charAt(0).toUpperCase() + balance.plan.slice(1);
 
     return (
-        <div className="min-h-dvh bg-neutral-50 dark:bg-neutral-950">
-            <AppNav />
+        <div className="min-h-dvh bg-[#0f0f11] text-white">
+            {/* Header */}
+            <header className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
+                <Link
+                    href="/studio"
+                    className="text-[14px] font-semibold tracking-tight"
+                >
+                    Film-maker
+                </Link>
 
-            <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-                {/* Header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                            Welcome back, {user.name?.split(" ")[0]}
-                        </h1>
-                        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
-                            {Intl.NumberFormat("en-US").format(totalCredits)} credits
-                            remaining · {balance.plan.charAt(0).toUpperCase() + balance.plan.slice(1)} plan
-                        </p>
-                    </div>
+                <div className="flex-1" />
+
+                {/* Credits badge */}
+                <Link
+                    href="/credits"
+                    className="flex h-[34px] items-center gap-1.5 rounded-lg border border-white/[0.08] px-3 text-sm tabular-nums text-[#9ca3af] transition-colors hover:border-white/[0.15] hover:text-white"
+                >
+                    <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                    >
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                    {Intl.NumberFormat("en-US").format(totalCredits)}
+                </Link>
+
+                {/* User menu */}
+                <NavUserMenu
+                    name={user.name ?? ""}
+                    email={user.email}
+                />
+            </header>
+
+            <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+                {/* Welcome */}
+                <div className="mt-4 sm:mt-6">
+                    <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                        Welcome back, {user.name?.split(" ")[0]}
+                    </h1>
+                    <p className="mt-1 text-sm text-[#9ca3af]">
+                        {Intl.NumberFormat("en-US").format(totalCredits)} credits remaining · {planLabel} plan
+                    </p>
                 </div>
 
-                {/* Projects section */}
-                <section className="mt-8">
-                    <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
-                        Projects
-                    </h2>
-                    <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
+                {/* Projects */}
+                <section className="mt-10">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">Projects</h2>
+                    </div>
+                    <p className="mt-1 text-sm text-[#52525b]">
                         Organize your generations into projects.
                     </p>
 
-                    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
                         <NewProjectButton />
 
                         {projects.map((project) => (
@@ -78,7 +114,7 @@ export default async function StudioPage() {
                     </div>
                 </section>
 
-                {/* Archived projects — collapsible */}
+                {/* Archived projects */}
                 <ArchivedProjects projects={archivedProjects} />
             </main>
         </div>
@@ -105,10 +141,10 @@ function ProjectCard({
     return (
         <Link
             href={`/projects/${uid}`}
-            className="group overflow-hidden rounded-2xl border border-neutral-200 bg-white transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-950 dark:hover:shadow-neutral-900/30"
+            className="group overflow-hidden rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.06] transition-all hover:ring-white/[0.12]"
         >
             {/* Cover image */}
-            <div className="relative aspect-[16/10] bg-neutral-100 dark:bg-neutral-900">
+            <div className="relative aspect-[16/10] bg-white/[0.02]">
                 {coverImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -128,7 +164,7 @@ function ProjectCard({
                             strokeWidth="1"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-neutral-300 dark:text-neutral-700"
+                            className="text-[#2a2a2d]"
                             aria-hidden
                         >
                             <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
@@ -139,10 +175,10 @@ function ProjectCard({
 
             {/* Info */}
             <div className="p-4">
-                <h3 className="truncate text-sm font-semibold text-neutral-950 dark:text-neutral-50">
+                <h3 className="truncate text-sm font-semibold">
                     {name}
                 </h3>
-                <div className="mt-1.5 flex items-center justify-between text-xs text-neutral-400 dark:text-neutral-500">
+                <div className="mt-1.5 flex items-center justify-between text-xs text-[#52525b]">
                     <span>
                         {generationCount} image{generationCount !== 1 ? "s" : ""}
                     </span>
