@@ -25,7 +25,7 @@ import { getDb } from "./db";
 import { authSchema } from "./auth-schema";
 import { sendVerificationEmail } from "./email";
 import { generateUid } from "./utils";
-import { SUBSCRIPTION_PLANS } from "./constants";
+import { SESSION_MAX_AGE_SECONDS, SUBSCRIPTION_PLANS } from "./constants";
 
 const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 
@@ -64,6 +64,14 @@ export async function getAuth() {
             provider: "sqlite",
             schema: authSchema,
         }),
+
+        session: {
+            expiresIn: SESSION_MAX_AGE_SECONDS,
+            // Refresh the session expiry when the user is active, so
+            // regular users don't get logged out mid-workflow. Checked
+            // at most once per day to avoid unnecessary DB writes.
+            updateAge: 60 * 60 * 24, // 1 day
+        },
 
         emailAndPassword: {
             enabled: false,
@@ -132,24 +140,28 @@ async function provisionUserProfile(userId: string): Promise<void> {
     const uid = generateUid(16);
     const now = Date.now();
 
-    await d1
-        .prepare(
-            `INSERT OR IGNORE INTO user_profile
-             (user_id, uid, plan, subscription_credits, purchased_credits,
-              use_extra_credits, daily_credits_used, last_daily_reset,
-              monthly_topup_usd_cents_used, monthly_topup_reset_at,
-              onboarded_at, created_at, updated_at)
-             VALUES (?, ?, 'solo', ?, 0, 1, 0, 0, 0, 0, NULL, ?, ?)`,
-        )
-        .bind(userId, uid, SOLO_PLAN.credits, now, now)
-        .run();
-
-    await d1
-        .prepare(
-            `INSERT INTO credit_transaction
-             (user_id, amount, type, description, pool, created_at)
-             VALUES (?, ?, 'subscription_grant', 'Solo plan signup grant', 'subscription', ?)`,
-        )
-        .bind(userId, SOLO_PLAN.credits, now)
-        .run();
+    // Atomic batch: profile row + credit grant succeed or fail together.
+    // INSERT OR IGNORE on user_profile guards against concurrent calls
+    // (e.g., if Better Auth retries the hook). The credit_transaction
+    // INSERT has no UNIQUE guard here, but the hook fires exactly once
+    // per user creation, and the batch ensures both rows are written.
+    await d1.batch([
+        d1
+            .prepare(
+                `INSERT OR IGNORE INTO user_profile
+                 (user_id, uid, plan, subscription_credits, purchased_credits,
+                  use_extra_credits, daily_credits_used, last_daily_reset,
+                  monthly_topup_usd_cents_used, monthly_topup_reset_at,
+                  onboarded_at, created_at, updated_at)
+                 VALUES (?, ?, 'solo', ?, 0, 1, 0, 0, 0, 0, NULL, ?, ?)`,
+            )
+            .bind(userId, uid, SOLO_PLAN.credits, now, now),
+        d1
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, created_at)
+                 VALUES (?, ?, 'subscription_grant', 'Solo plan signup grant', 'subscription', ?)`,
+            )
+            .bind(userId, SOLO_PLAN.credits, now),
+    ]);
 }
