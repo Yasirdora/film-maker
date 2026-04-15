@@ -21,28 +21,18 @@ interface LaunchpadItem {
     subtitle: string;
     href: string;
     iconColor: "purple" | "orange" | "green";
+    actionLabel: string;
     icon: React.ReactNode;
 }
 
 const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
-    {
-        id: "studio",
-        title: "Studio",
-        subtitle: "Your projects and generations",
-        href: "/studio",
-        iconColor: "purple",
-        icon: (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
-            </svg>
-        ),
-    },
     {
         id: "auteur",
         title: "Auteur",
         subtitle: "AI creative assistant",
         href: "/auteur",
         iconColor: "orange",
+        actionLabel: "Ask",
         icon: (
             <svg width="20" height="20" viewBox="0 0 19.5 19.5" fill="none">
                 <path d="M13.75 0.75H5.75C2.99 0.75 0.75 2.99 0.75 5.75V13.75C0.75 16.51 2.99 18.75 5.75 18.75H13.75C16.51 18.75 18.75 16.51 18.75 13.75V5.75C18.75 2.99 16.51 0.75 13.75 0.75Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -52,11 +42,25 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
         ),
     },
     {
+        id: "studio",
+        title: "Studio",
+        subtitle: "Your projects and generations",
+        href: "/studio",
+        iconColor: "purple",
+        actionLabel: "Open",
+        icon: (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+            </svg>
+        ),
+    },
+    {
         id: "credits",
         title: "Credits",
         subtitle: "Balance and transaction history",
         href: "/credits",
         iconColor: "green",
+        actionLabel: "Open",
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -69,6 +73,7 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
         subtitle: "Plans and upgrades",
         href: "/pricing",
         iconColor: "purple",
+        actionLabel: "Open",
         icon: (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -193,7 +198,7 @@ export function Launchpad({ open, onClose }: LaunchpadProps) {
                                         </span>
                                     </div>
                                     <span className="text-[12px] font-semibold text-[#52525b] opacity-0 transition-opacity group-hover:opacity-100">
-                                        Open
+                                        {item.actionLabel}
                                     </span>
                                 </button>
                             </li>
