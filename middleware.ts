@@ -20,7 +20,6 @@
  *   • img-src    → storage.film-maker.net (R2 bucket CDN for generated images)
  *   • script-src   → challenges.cloudflare.com (Turnstile bot protection)
  *   • frame-src    → challenges.cloudflare.com (Turnstile widget iframe)
- *   • connect-src  → *.ingest.sentry.io (Sentry error reporting)
  *
  * Everything else is restricted to 'self' or blocked entirely.
  *
@@ -77,9 +76,9 @@ function buildCsp(nonce: string): string {
         // Fonts: self-hosted via next/font/google (no external requests).
         "font-src 'self'",
 
-        // Fetch/XHR: same-origin API calls + Sentry error reporting.
+        // Fetch/XHR: all API calls target same-origin /api/* routes.
         // Gemini, Gmail, and OAuth token exchange run server-side only.
-        "connect-src 'self' https://*.ingest.sentry.io",
+        "connect-src 'self'",
 
         // Iframes: Turnstile renders its widget in an iframe. Stripe
         // Checkout and Customer Portal are full-page redirects, not embeds.
