@@ -1,25 +1,24 @@
 /**
- * Next.js middleware — nonce-based Content Security Policy.
+ * Next.js middleware — auth guard + Content Security Policy.
  *
- * Generates a cryptographic nonce per request and builds a strict CSP
- * header that whitelists only the resources Film-maker actually loads.
+ * Two responsibilities:
  *
- * How it works:
- *   1. Middleware generates a random nonce for each request.
- *   2. The nonce is embedded in the `Content-Security-Policy` response
- *      header inside the `script-src` directive.
- *   3. Next.js reads the CSP header during rendering and automatically
- *      applies `nonce="…"` to every inline `<script>` tag it injects.
- *   4. The browser refuses to execute any script without the nonce.
+ * 1. **Auth guard** — redirects unauthenticated users away from
+ *    protected routes before the page renders. This is a fast
+ *    cookie-presence check (no DB call) that acts as a safety net.
+ *    Page-level `requireOnboardedUser()` remains the authoritative
+ *    check (validates session, onboarding, allowlist). The middleware
+ *    catches the obvious case (no cookie at all) early, so new pages
+ *    added under a protected prefix are protected by default.
  *
- * The nonce is also forwarded as the `x-nonce` request header so server
- * components can read it via `headers()` if they ever need to inject a
- * custom inline script (none do today).
+ * 2. **CSP** — generates a cryptographic nonce per request and builds
+ *    a strict Content-Security-Policy header. Next.js reads the nonce
+ *    from the header and applies it to inline `<script>` tags.
  *
  * External resources whitelisted:
  *   • img-src    → storage.film-maker.net (R2 bucket CDN for generated images)
- *   • script-src   → challenges.cloudflare.com (Turnstile bot protection)
- *   • frame-src    → challenges.cloudflare.com (Turnstile widget iframe)
+ *   • script-src → challenges.cloudflare.com (Turnstile bot protection)
+ *   • frame-src  → challenges.cloudflare.com (Turnstile widget iframe)
  *
  * Everything else is restricted to 'self' or blocked entirely.
  *
@@ -29,9 +28,52 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
-    const nonce = generateNonce();
+// ─── Auth guard ─────────────────────────────────────────────────────────────
 
+/**
+ * Route prefixes that require authentication. Any path starting with
+ * one of these will redirect to /login if the session cookie is absent.
+ *
+ * To protect a new section of the app, add its prefix here — no
+ * per-page `requireOnboardedUser()` call needed for the redirect.
+ * (The page-level check is still required for full validation.)
+ */
+const PROTECTED_PREFIXES = [
+    "/dashboard",
+    "/auteur",
+    "/credits",
+    "/projects",
+    "/payments",
+    "/welcome",
+];
+
+/** Better Auth's default session cookie name. */
+const SESSION_COOKIE = "better-auth.session_token";
+
+function isProtectedRoute(pathname: string): boolean {
+    return PROTECTED_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
+    );
+}
+
+// ─── Middleware ──────────────────────────────────────────────────────────────
+
+export function middleware(request: NextRequest) {
+    const { pathname } = request.nextUrl;
+
+    // Auth guard — redirect unauthenticated users before the page renders.
+    if (isProtectedRoute(pathname)) {
+        const sessionCookie = request.cookies.get(SESSION_COOKIE);
+        if (!sessionCookie?.value) {
+            const loginUrl = request.nextUrl.clone();
+            loginUrl.pathname = "/login";
+            loginUrl.searchParams.set("from", pathname);
+            return NextResponse.redirect(loginUrl);
+        }
+    }
+
+    // CSP — applies to all routes (protected and public).
+    const nonce = generateNonce();
     const csp = buildCsp(nonce);
 
     // Forward the nonce to the renderer so Next.js can apply it to
