@@ -10,8 +10,10 @@ import {
     isResolutionAllowedForPlan,
     getPlan,
     getPhotoModel,
+    getCreditPack,
     isFreePlan,
     SUBSCRIPTION_PLANS,
+    CREDIT_PACKS,
     PHOTO_MODELS,
     RESOLUTIONS,
     RESOLUTION_MULTIPLIERS,
@@ -155,5 +157,40 @@ describe("data integrity", () => {
                 expect(plan.credits).toBeGreaterThan(freeCredits);
             }
         }
+    });
+
+    it("all credit packs have unique ids", () => {
+        const ids = CREDIT_PACKS.map((p) => p.id);
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it("all credit packs have positive credits and prices", () => {
+        for (const pack of CREDIT_PACKS) {
+            expect(pack.credits).toBeGreaterThan(0);
+            expect(pack.priceUsdCents).toBeGreaterThan(0);
+        }
+    });
+
+    it("larger packs have a better per-credit rate", () => {
+        // Verify volume discount: per-credit cost decreases with pack size.
+        const rates = CREDIT_PACKS.map((p) => p.priceUsdCents / p.credits);
+        for (let i = 1; i < rates.length; i++) {
+            expect(rates[i]).toBeLessThan(rates[i - 1]);
+        }
+    });
+});
+
+// ─── Credit pack lookup ───────────────────────────────────────────────────
+
+describe("getCreditPack", () => {
+    it("returns pack by id", () => {
+        const pack = getCreditPack("medium");
+        expect(pack).toBeDefined();
+        expect(pack!.credits).toBe(200);
+        expect(pack!.priceUsdCents).toBe(2500);
+    });
+
+    it("returns undefined for unknown pack", () => {
+        expect(getCreditPack("nonexistent")).toBeUndefined();
     });
 });
