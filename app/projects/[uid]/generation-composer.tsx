@@ -209,15 +209,6 @@ export function GenerationComposer({
     return (
         <div className="relative shrink-0 px-3 pb-3 sm:pb-8 sm:px-0">
             <div className="mx-auto w-full sm:max-w-[600px]">
-                {/* Settings modal — renders above the bar */}
-                <ComposerSettings
-                    models={models}
-                    settings={settings}
-                    onSettingsChange={setSettings}
-                    open={settingsOpen}
-                    onClose={() => setSettingsOpen(false)}
-                />
-
                 {/* Composer bar */}
                 <div className="flex flex-col gap-2.5 rounded-2xl bg-[#1a1a1c]/90 p-2.5 ring-1 ring-white/[0.05] backdrop-blur-2xl sm:p-3">
                     {/* Input row */}
@@ -285,32 +276,43 @@ export function GenerationComposer({
                             </svg>
                         </button>
 
-                        {/* Settings gear */}
-                        <button
-                            type="button"
-                            onClick={() => setSettingsOpen((o) => !o)}
-                            className={`flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[10px] transition-colors ${
-                                settingsOpen
-                                    ? "border border-white/20 bg-[#323235]"
-                                    : "bg-[#2a2a2d] hover:bg-[#353538]"
-                            }`}
-                            aria-label="Generation settings"
-                        >
-                            <svg
-                                className="text-[#9ca3af]"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                        {/* Settings gear + popover anchor */}
+                        <div className="relative">
+                            <button
+                                type="button"
+                                onClick={() => setSettingsOpen((o) => !o)}
+                                className={`flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[10px] transition-colors ${
+                                    settingsOpen
+                                        ? "border border-white/20 bg-[#323235]"
+                                        : "bg-[#2a2a2d] hover:bg-[#353538]"
+                                }`}
+                                aria-label="Generation settings"
                             >
-                                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                                <circle cx="12" cy="12" r="3" />
-                            </svg>
-                        </button>
+                                <svg
+                                    className="text-[#9ca3af]"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+
+                            {/* Settings popover — anchored above the gear */}
+                            <ComposerSettings
+                                models={models}
+                                settings={settings}
+                                onSettingsChange={setSettings}
+                                open={settingsOpen}
+                                onClose={() => setSettingsOpen(false)}
+                            />
+                        </div>
 
                         <div className="flex-1" />
 

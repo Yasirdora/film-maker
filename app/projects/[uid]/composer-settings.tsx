@@ -86,8 +86,8 @@ export function ComposerSettings({
                 aria-hidden
             />
 
-            {/* Modal — anchored above the composer */}
-            <div className="absolute bottom-full left-0 right-0 z-[70] mb-2">
+            {/* Modal — anchored above the settings gear, right-aligned */}
+            <div className="absolute bottom-full right-0 z-[70] mb-2 w-[280px] sm:w-[300px]">
                 <div className="overflow-hidden rounded-2xl bg-[#1a1a1c]/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
                     {view === "root" ? (
                         <RootView
