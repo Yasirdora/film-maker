@@ -210,7 +210,7 @@ export function GenerationComposer({
         <div className="relative shrink-0 px-3 pb-3 sm:pb-8 sm:px-0">
             <div className="mx-auto w-full sm:max-w-[600px]">
                 {/* Composer bar */}
-                <div className="flex flex-col gap-2.5 rounded-2xl bg-[#1a1a1c]/90 p-2.5 ring-1 ring-white/[0.05] backdrop-blur-2xl sm:p-3">
+                <div className="flex flex-col gap-2.5 rounded-2xl bg-[#1a1a1c]/90 p-2.5 ring-1 ring-white/[0.08] shadow-[0_-4px_24px_rgba(0,0,0,0.3)] backdrop-blur-2xl sm:p-3">
                     {/* Input row */}
                     <div className="flex items-center px-1 py-0.5">
                         <input
