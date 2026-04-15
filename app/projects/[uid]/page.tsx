@@ -68,7 +68,7 @@ export default async function ProjectPage({ params }: PageProps) {
     }));
 
     return (
-        <div className="flex h-dvh flex-col bg-[#0f0f11]">
+        <div className="flex h-dvh flex-col bg-[#0f0f11] pb-[66px] sm:pb-0">
             <AppNav />
             <ProjectWorkspace
                 project={{

@@ -38,10 +38,10 @@ export default async function StudioPage() {
         balance.plan.charAt(0).toUpperCase() + balance.plan.slice(1);
 
     return (
-        <div className="min-h-dvh bg-[#0f0f11] text-white">
+        <div className="min-h-dvh bg-[#0f0f11] text-white pb-[66px] sm:pb-0">
             <AppNav />
 
-            <main className="mx-auto max-w-6xl px-4 py-8 pb-16 sm:px-6">
+            <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
                 {/* Welcome */}
                 <div className="mt-4 sm:mt-6">
                     <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
