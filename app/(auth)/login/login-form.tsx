@@ -29,7 +29,7 @@ type Status =
     | { kind: "verifying"; email: string }
     | { kind: "error"; message: string };
 
-const DEFAULT_CALLBACK = "/dashboard";
+const DEFAULT_CALLBACK = "/studio";
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 function sanitizeCallback(raw: string | null): string {

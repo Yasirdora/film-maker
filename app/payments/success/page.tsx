@@ -10,7 +10,7 @@
  *
  * Race note: the webhook may lag the redirect by a second or two. Rather
  * than polling for state here (complex), we show a friendly "processing"
- * message. By the time the user clicks through to /dashboard the grant
+ * message. By the time the user clicks through to /studio the grant
  * will almost always be applied.
  */
 
@@ -51,10 +51,10 @@ export default async function PaymentsSuccessPage() {
                     within a few seconds.
                 </p>
                 <Link
-                    href="/dashboard"
+                    href="/studio"
                     className="mt-8 inline-flex h-11 items-center justify-center rounded-xl bg-neutral-950 px-6 text-sm font-medium text-white hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
                 >
-                    Go to dashboard
+                    Go to studio
                 </Link>
             </div>
         </main>

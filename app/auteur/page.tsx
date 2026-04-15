@@ -41,15 +41,15 @@ export default async function AuteurPage({ searchParams }: PageProps) {
     const projectUid = typeof params.project === "string" ? params.project : null;
 
     if (!projectUid) {
-        redirect("/dashboard");
+        redirect("/studio");
     }
 
     const project = await getProject(projectUid, user.id);
     if (!project) {
-        redirect("/dashboard");
+        redirect("/studio");
     }
     if (project.archivedAt) {
-        redirect("/dashboard");
+        redirect("/studio");
     }
 
     const balance = await getBalance(user.id);

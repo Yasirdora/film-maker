@@ -55,7 +55,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
                     <div className="min-w-0">
                         <div className="flex items-center gap-2">
                             <Link
-                                href="/dashboard"
+                                href="/studio"
                                 className="mt-1 text-sm text-neutral-400 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
                                 aria-label="Back to dashboard"
                             >

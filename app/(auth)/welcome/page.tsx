@@ -25,7 +25,7 @@ export default async function WelcomePage() {
     const { user } = await requireSession();
 
     if (user.name) {
-        redirect("/dashboard");
+        redirect("/studio");
     }
 
     const balance = await getBalance(user.id);

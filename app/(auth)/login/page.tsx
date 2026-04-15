@@ -27,7 +27,7 @@ export default async function LoginPage() {
     // Already signed in — send them where they belong.
     const session = await getSession();
     if (session?.user) {
-        redirect(session.user.name ? "/dashboard" : "/welcome");
+        redirect(session.user.name ? "/studio" : "/welcome");
     }
 
     const emailEnabled = isEmailSignInAvailable();

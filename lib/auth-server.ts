@@ -6,7 +6,7 @@
  *   • `requireSession()` — user is authenticated (may not be onboarded).
  *     Used by /welcome.
  *   • `requireOnboardedUser()` — user is authenticated, onboarded, AND
- *     on the allowlist (if ALLOWED_EMAILS is set). Used by /dashboard,
+ *     on the allowlist (if ALLOWED_EMAILS is set). Used by /studio,
  *     /auteur, /credits, and every other protected page.
  *
  * Access control:

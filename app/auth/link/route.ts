@@ -8,7 +8,7 @@
  *
  * When the user clicks the link, this route calls Better Auth's
  * sign-in/email-otp endpoint server-side, gets the session cookie set
- * in the response, and redirects to /dashboard (or whatever
+ * in the response, and redirects to /studio (or whatever
  * callbackURL was passed).
  *
  * Security:
@@ -27,8 +27,8 @@ import { getAuth } from "@/lib/auth";
  * a single forward slash. Same logic as the login form's sanitizer.
  */
 function sanitizeCallback(raw: string | null): string {
-    if (!raw) return "/dashboard";
-    if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
+    if (!raw) return "/studio";
+    if (!raw.startsWith("/") || raw.startsWith("//")) return "/studio";
     return raw;
 }
 

@@ -1,5 +1,5 @@
 /**
- * Dashboard — the home for signed-in users.
+ * Studio — the home for signed-in users.
  *
  * Shows: credit balance summary, project grid with cover images,
  * and a "New project" CTA. Projects are the primary organizational
@@ -20,10 +20,10 @@ import { NewProjectButton } from "./new-project-dialog";
 import { ArchivedProjects } from "./archived-projects";
 
 export const metadata: Metadata = {
-    title: "Dashboard",
+    title: "Studio",
 };
 
-export default async function DashboardPage() {
+export default async function StudioPage() {
     const { user } = await requireOnboardedUser();
 
     const [balance, projects, archivedProjects] = await Promise.all([

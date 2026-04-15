@@ -116,7 +116,7 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                     <button
                         type="button"
                         onClick={() => {
-                            router.push("/dashboard");
+                            router.push("/studio");
                             router.refresh();
                         }}
                         className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"

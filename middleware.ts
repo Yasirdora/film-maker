@@ -39,7 +39,7 @@ import type { NextRequest } from "next/server";
  * (The page-level check is still required for full validation.)
  */
 const PROTECTED_PREFIXES = [
-    "/dashboard",
+    "/studio",
     "/auteur",
     "/credits",
     "/projects",

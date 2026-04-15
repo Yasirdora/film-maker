@@ -45,10 +45,10 @@ export default async function CreditsPage() {
         <main className="min-h-dvh bg-neutral-50 dark:bg-neutral-950">
             <header className="mx-auto max-w-3xl px-6 pt-8 pb-6 sm:pt-16">
                 <Link
-                    href="/dashboard"
+                    href="/studio"
                     className="text-sm font-semibold tracking-tight text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
                 >
-                    ← Dashboard
+                    ← Studio
                 </Link>
                 <h1 className="mt-6 text-2xl font-semibold tracking-tight text-neutral-950 sm:text-3xl dark:text-neutral-50">
                     Credits

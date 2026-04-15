@@ -25,7 +25,7 @@ export async function AppNav() {
             <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4 sm:px-6">
                 {/* Brand */}
                 <Link
-                    href="/dashboard"
+                    href="/studio"
                     className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-50"
                 >
                     Film-maker
@@ -35,7 +35,7 @@ export async function AppNav() {
 
                 {/* Dashboard / Projects */}
                 <Link
-                    href="/dashboard"
+                    href="/studio"
                     className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-900 dark:hover:text-neutral-50"
                 >
                     <svg

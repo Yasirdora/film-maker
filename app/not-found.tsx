@@ -39,9 +39,9 @@ export default function NotFound() {
                     moved.
                 </p>
                 <div className="mt-6">
-                    <Link href="/dashboard">
+                    <Link href="/studio">
                         <Button variant="primary" size="md">
-                            Go to dashboard
+                            Go to studio
                         </Button>
                     </Link>
                 </div>

@@ -96,7 +96,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
                 return;
             }
 
-            router.push("/dashboard");
+            router.push("/studio");
         } catch {
             setError("Something went wrong.");
             setIsArchiving(false);
