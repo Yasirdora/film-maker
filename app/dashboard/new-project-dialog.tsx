@@ -92,7 +92,7 @@ export function NewProjectButton() {
                 {isCreating ? "Creating…" : "New project"}
             </span>
             {error && (
-                <span className="text-xs text-red-500 dark:text-red-400">
+                <span className="text-xs text-[var(--destructive)]">
                     {error}
                 </span>
             )}

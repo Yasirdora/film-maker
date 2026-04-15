@@ -414,7 +414,7 @@ export function GenerateForm({
                             strokeWidth="2"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            className="text-red-400"
+                            className="text-[var(--destructive)]"
                             aria-hidden
                         >
                             <circle cx="12" cy="12" r="10" />

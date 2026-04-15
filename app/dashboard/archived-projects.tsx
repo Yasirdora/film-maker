@@ -157,7 +157,7 @@ function ArchivedProjectCard({
                     </button>
                 </div>
                 {error && (
-                    <p className="mt-1 text-xs text-red-500">{error}</p>
+                    <p className="mt-1 text-xs text-[var(--destructive)]">{error}</p>
                 )}
             </div>
         </div>

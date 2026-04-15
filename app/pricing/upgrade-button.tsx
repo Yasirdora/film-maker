@@ -100,7 +100,7 @@ export function UpgradeButton({
             {error && (
                 <p
                     role="alert"
-                    className="text-center text-xs text-red-600 dark:text-red-400"
+                    className="text-center text-xs text-[var(--destructive)]"
                 >
                     {error}
                 </p>

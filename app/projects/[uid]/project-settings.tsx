@@ -156,7 +156,7 @@ export function ProjectSettings({ uid, name, description }: ProjectSettingsProps
             )}
 
             {error && (
-                <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                <p className="mt-1 text-sm text-[var(--destructive)]">
                     {error}
                 </p>
             )}

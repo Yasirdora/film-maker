@@ -48,7 +48,7 @@ export function ManageBillingButton() {
             {error && (
                 <p
                     role="alert"
-                    className="text-[11px] text-red-600 dark:text-red-400"
+                    className="text-[11px] text-[var(--destructive)]"
                 >
                     {error}
                 </p>

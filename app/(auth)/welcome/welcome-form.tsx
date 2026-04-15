@@ -172,7 +172,7 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                 {error && (
                     <p
                         role="alert"
-                        className="mt-3 text-sm text-red-500 dark:text-red-400"
+                        className="mt-3 text-sm text-[var(--destructive)]"
                     >
                         {error}
                     </p>
