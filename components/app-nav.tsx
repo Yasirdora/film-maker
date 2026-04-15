@@ -1,21 +1,21 @@
 /**
  * AppNav — app-wide navigation.
  *
- * Mobile: fixed bottom tab bar (Auteur, Apps, Assists, Profile).
- * Desktop: fixed top-right cluster (Apps pill, Assists icon, Profile avatar).
+ * Mobile: fixed bottom tab bar (Auteur, Apps, Projects, Profile).
+ * Desktop: fixed top-right cluster (Apps pill, Projects icon, Profile avatar).
  *
- * The nav is the same across all authenticated pages — studio,
- * project workspace, credits, etc. Page-specific headers (project
- * name, back button) are rendered by each page independently.
+ * The "Apps" button opens the Launchpad (Spotlight-style command
+ * palette) for quick navigation to any destination.
  *
  * Server component — reads session and balance for the profile menu.
- * Client interactivity delegated to NavProfileMenu.
+ * Client interactivity delegated to NavAppsButton and NavProfileMenu.
  */
 
 import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
+import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
 
 export async function AppNav() {
@@ -60,35 +60,14 @@ export async function AppNav() {
                 </span>
             </Link>
 
-            {/* Apps — both mobile and desktop */}
-            <Link
-                href="/studio"
-                className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:flex-row sm:w-auto sm:h-[34px] sm:gap-2 sm:px-3.5 sm:bg-white/[0.12] sm:hover:bg-white/[0.2] sm:rounded-lg group transition-colors"
-                aria-label="Apps"
-            >
-                <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#9ca3af"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="sm:w-4 sm:h-4 sm:stroke-white/70 group-hover:stroke-white transition-colors"
-                >
-                    <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
-                </svg>
-                <span className="text-[10px] font-medium text-[#9ca3af] group-hover:text-white transition-colors sm:text-[13px] sm:font-semibold sm:text-white/90">
-                    Apps
-                </span>
-            </Link>
+            {/* Apps — opens Launchpad (client component) */}
+            <NavAppsButton />
 
-            {/* Assists — both mobile and desktop */}
+            {/* Projects — both mobile and desktop */}
             <Link
                 href="/studio"
                 className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:w-[34px] sm:h-[34px] sm:gap-0 sm:rounded-[10px] sm:hover:bg-white/5 group"
-                aria-label="Assists"
+                aria-label="Projects"
             >
                 <svg
                     width="22"
@@ -106,11 +85,11 @@ export async function AppNav() {
                     <rect x="14" y="15" width="7" height="6" rx="1.5" />
                 </svg>
                 <span className="text-[10px] font-medium text-[#9ca3af] group-hover:text-white transition-colors sm:hidden">
-                    Assists
+                    Projects
                 </span>
             </Link>
 
-            {/* Profile — mobile shows in tab bar, desktop shows avatar */}
+            {/* Profile — mobile bottom sheet, desktop dropdown */}
             <NavProfileMenu
                 name={user.name ?? ""}
                 email={user.email}
