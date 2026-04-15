@@ -24,7 +24,11 @@
  *   `GenerationError` so the caller can decide whether to refund.
  */
 
-import { GoogleGenAI, PersonGeneration } from "@google/genai";
+import {
+    GoogleGenAI,
+    PersonGeneration,
+    StyleReferenceImage,
+} from "@google/genai";
 import { getPhotoModel } from "./constants";
 
 // ─── Client singleton ───────────────────────────────────────────────────────
@@ -71,12 +75,20 @@ export class GenerationError extends Error {
 
 // ─── Image generation ───────────────────────────────────────────────────────
 
+export interface ReferenceImageInput {
+    /** Base64-encoded image bytes. */
+    data: string;
+    mimeType: string;
+}
+
 export interface GenerateImageParams {
     prompt: string;
     negativePrompt?: string;
     modelId: string;
     resolution: string;
     aspectRatio?: string;
+    /** When provided, uses editImage() with style reference instead of generateImages(). */
+    referenceImages?: ReferenceImageInput[];
 }
 
 export interface GenerateImageResult {
@@ -85,10 +97,19 @@ export interface GenerateImageResult {
 }
 
 /**
- * Generates an image from a text prompt using the Imagen generateImages API.
+ * Generates an image from a text prompt, optionally guided by a
+ * reference image.
  *
- * Returns raw image bytes + MIME type. Throws `GenerationError` on safety
- * filter, empty response, quota issues, or API errors.
+ * When `referenceImages` is empty or absent: uses the Imagen
+ * `generateImages` API (text-to-image).
+ *
+ * When `referenceImages` is provided: uses the Imagen `editImage`
+ * API with `StyleReferenceImage` (style transfer — the generated
+ * image adopts the visual style of the reference while following
+ * the text prompt for content).
+ *
+ * Returns raw image bytes + MIME type. Throws `GenerationError` on
+ * safety filter, empty response, quota issues, or API errors.
  */
 export async function generateImage(
     params: GenerateImageParams,
@@ -102,56 +123,87 @@ export async function generateImage(
     }
 
     const ai = getClient();
+    const hasReference =
+        params.referenceImages && params.referenceImages.length > 0;
 
     let response;
     try {
-        response = await ai.models.generateImages({
-            model: model.geminiModelId,
-            prompt: params.prompt,
-            config: {
-                numberOfImages: 1,
-                negativePrompt: params.negativePrompt || undefined,
-                aspectRatio: params.aspectRatio ?? "1:1",
-                // JPEG output: ~64% smaller than PNG with negligible
-                // quality loss for photographic content. WebP is not
-                // supported by the Imagen generateImages API.
-                outputMimeType: "image/jpeg",
-                includeRaiReason: true,
-                personGeneration: PersonGeneration.ALLOW_ADULT,
-            },
-        });
+        if (hasReference) {
+            response = await ai.models.editImage({
+                model: model.geminiModelId,
+                prompt: params.prompt,
+                referenceImages: params.referenceImages!.map((ref) => {
+                    const styleRef = new StyleReferenceImage();
+                    styleRef.referenceImage = {
+                        imageBytes: ref.data,
+                        mimeType: ref.mimeType,
+                    };
+                    return styleRef;
+                }),
+                config: {
+                    numberOfImages: 1,
+                    negativePrompt: params.negativePrompt || undefined,
+                    outputMimeType: "image/jpeg",
+                    includeRaiReason: true,
+                    personGeneration: PersonGeneration.ALLOW_ADULT,
+                },
+            });
+        } else {
+            response = await ai.models.generateImages({
+                model: model.geminiModelId,
+                prompt: params.prompt,
+                config: {
+                    numberOfImages: 1,
+                    negativePrompt: params.negativePrompt || undefined,
+                    aspectRatio: params.aspectRatio ?? "1:1",
+                    outputMimeType: "image/jpeg",
+                    includeRaiReason: true,
+                    personGeneration: PersonGeneration.ALLOW_ADULT,
+                },
+            });
+        }
     } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        throw classifyError(err);
+    }
 
-        if (
-            message.includes("abort") ||
-            message.includes("timeout") ||
-            (err instanceof DOMException && err.name === "AbortError")
-        ) {
-            throw new GenerationError(
-                "Image generation timed out. Please try again.",
-                "api_error",
-            );
-        }
+    return extractImageFromResponse(response);
+}
 
-        if (message.includes("429") || message.includes("quota")) {
-            throw new GenerationError(
-                "Generation quota exceeded. Please try again later.",
-                "quota_exceeded",
-            );
-        }
+// ─── Helpers ──────────────────────────────────────────────────────────────
 
-        throw new GenerationError(
-            `Image generation failed: ${message}`,
+function classifyError(err: unknown): GenerationError {
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (
+        message.includes("abort") ||
+        message.includes("timeout") ||
+        (err instanceof DOMException && err.name === "AbortError")
+    ) {
+        return new GenerationError(
+            "Image generation timed out. Please try again.",
             "api_error",
         );
     }
 
-    // Extract the generated image.
+    if (message.includes("429") || message.includes("quota")) {
+        return new GenerationError(
+            "Generation quota exceeded. Please try again later.",
+            "quota_exceeded",
+        );
+    }
+
+    return new GenerationError(
+        `Image generation failed: ${message}`,
+        "api_error",
+    );
+}
+
+function extractImageFromResponse(
+    response: { generatedImages?: Array<{ image?: { imageBytes?: string; mimeType?: string }; raiFilteredReason?: string }> } | undefined,
+): GenerateImageResult {
     const generatedImage = response?.generatedImages?.[0];
 
     if (!generatedImage?.image?.imageBytes) {
-        // Check for safety filter reason.
         const raiReason = generatedImage?.raiFilteredReason;
         throw new GenerationError(
             raiReason ??
@@ -160,7 +212,6 @@ export async function generateImage(
         );
     }
 
-    // Decode base64 to ArrayBuffer for R2 upload.
     const base64 = generatedImage.image.imageBytes;
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -170,6 +221,6 @@ export async function generateImage(
 
     return {
         imageData: bytes.buffer,
-        mimeType: generatedImage.image.mimeType ?? "image/png",
+        mimeType: generatedImage.image.mimeType ?? "image/jpeg",
     };
 }

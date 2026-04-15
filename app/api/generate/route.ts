@@ -74,6 +74,20 @@ const ASPECT_RATIOS = [
     "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9",
 ] as const;
 
+const ALLOWED_IMAGE_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+] as const;
+
+/** Maximum base64 size per reference image (~10 MB raw → ~13.3 MB base64). */
+const MAX_IMAGE_BASE64_LENGTH = 14_000_000;
+
+const ReferenceImageSchema = z.object({
+    data: z.string().max(MAX_IMAGE_BASE64_LENGTH, "Image too large (max 10 MB)"),
+    mimeType: z.enum(ALLOWED_IMAGE_TYPES),
+});
+
 const BodySchema = z.object({
     prompt: z.string().min(1, "Prompt is required").max(10000),
     model: z.string().min(1),
@@ -82,6 +96,7 @@ const BodySchema = z.object({
     negativePrompt: z.string().max(2000).optional(),
     projectUid: z.string().min(1, "Project is required"),
     idempotencyKey: z.string().uuid().optional(),
+    referenceImages: z.array(ReferenceImageSchema).max(4).optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -256,6 +271,7 @@ export async function POST(request: Request): Promise<Response> {
             modelId: input.model,
             resolution: input.resolution as Resolution,
             aspectRatio: input.aspectRatio,
+            referenceImages: input.referenceImages,
         });
     } catch (err) {
         await refundCredits({
