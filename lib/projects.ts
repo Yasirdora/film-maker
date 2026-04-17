@@ -36,6 +36,7 @@ export interface ProjectRow {
     name: string;
     description: string | null;
     coverGenerationId: number | null;
+    pinnedAt: number | null;
     archivedAt: number | null;
     createdAt: number;
     updatedAt: number;
@@ -46,7 +47,9 @@ export interface ProjectSummary {
     uid: string;
     name: string;
     coverImageUrl: string | null;
-    generationCount: number;
+    imageCount: number;
+    videoCount: number;
+    pinnedAt: number | null;
     createdAt: number;
     updatedAt: number;
 }
@@ -58,6 +61,7 @@ interface RawProjectRow {
     name: string;
     description: string | null;
     cover_generation_id: number | null;
+    pinned_at: number | null;
     archived_at: number | null;
     created_at: number;
     updated_at: number;
@@ -67,7 +71,9 @@ interface RawProjectSummary {
     uid: string;
     name: string;
     cover_r2_key: string | null;
-    generation_count: number;
+    image_count: number;
+    video_count: number;
+    pinned_at: number | null;
     created_at: number;
     updated_at: number;
 }
@@ -80,6 +86,7 @@ function mapRow(r: RawProjectRow): ProjectRow {
         name: r.name,
         description: r.description,
         coverGenerationId: r.cover_generation_id,
+        pinnedAt: r.pinned_at,
         archivedAt: r.archived_at,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
@@ -93,7 +100,9 @@ function mapSummary(r: RawProjectSummary): ProjectSummary {
         coverImageUrl: r.cover_r2_key
             ? getImageUrl(r.cover_r2_key)
             : null,
-        generationCount: r.generation_count,
+        imageCount: r.image_count,
+        videoCount: r.video_count,
+        pinnedAt: r.pinned_at,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
     };
@@ -166,7 +175,7 @@ export async function getProject(
     const row = await db
         .prepare(
             `SELECT id, uid, user_id, name, description, cover_generation_id,
-                    archived_at, created_at, updated_at
+                    pinned_at, archived_at, created_at, updated_at
                FROM project
               WHERE uid = ? AND user_id = ?
               LIMIT 1`,
@@ -189,7 +198,7 @@ export async function getProjectById(
     const row = await db
         .prepare(
             `SELECT id, uid, user_id, name, description, cover_generation_id,
-                    archived_at, created_at, updated_at
+                    pinned_at, archived_at, created_at, updated_at
                FROM project
               WHERE id = ? AND user_id = ?
               LIMIT 1`,
@@ -216,13 +225,20 @@ export async function listProjects(
             `SELECT
                 p.uid,
                 p.name,
+                p.pinned_at,
                 p.created_at,
                 p.updated_at,
-                COUNT(g.id) as generation_count,
+                COUNT(CASE WHEN g.kind = 'image' THEN 1 END) as image_count,
+                COUNT(CASE WHEN g.kind = 'video' THEN 1 END) as video_count,
                 COALESCE(
                     -- Explicit cover: use the cover generation's first R2 key
-                    (SELECT output_r2_keys FROM generation WHERE id = p.cover_generation_id AND status = 'done'),
-                    -- Fallback: most recent completed generation's first R2 key
+                    (SELECT output_r2_keys FROM generation
+                      WHERE id = p.cover_generation_id AND status = 'done'),
+                    -- Prefer the most recent completed image generation
+                    (SELECT output_r2_keys FROM generation
+                      WHERE project_id = p.id AND status = 'done' AND kind = 'image'
+                      ORDER BY created_at DESC LIMIT 1),
+                    -- Fallback to the most recent completed generation of any kind
                     (SELECT output_r2_keys FROM generation
                       WHERE project_id = p.id AND status = 'done'
                       ORDER BY created_at DESC LIMIT 1)
@@ -231,7 +247,9 @@ export async function listProjects(
              LEFT JOIN generation g ON g.project_id = p.id
              WHERE p.user_id = ? AND p.archived_at IS NULL
              GROUP BY p.id
-             ORDER BY p.updated_at DESC`,
+             -- Pinned first (most-recently-pinned on top), then fall
+             -- back to regular recency for the unpinned tail.
+             ORDER BY p.pinned_at IS NULL, p.pinned_at DESC, p.updated_at DESC`,
         )
         .bind(userId)
         .all<RawProjectSummary>();
@@ -264,12 +282,18 @@ export async function listArchivedProjects(
             `SELECT
                 p.uid,
                 p.name,
+                p.pinned_at,
                 p.created_at,
                 p.updated_at,
-                COUNT(g.id) as generation_count,
-                (SELECT output_r2_keys FROM generation
-                  WHERE project_id = p.id AND status = 'done'
-                  ORDER BY created_at DESC LIMIT 1
+                COUNT(CASE WHEN g.kind = 'image' THEN 1 END) as image_count,
+                COUNT(CASE WHEN g.kind = 'video' THEN 1 END) as video_count,
+                COALESCE(
+                    (SELECT output_r2_keys FROM generation
+                      WHERE project_id = p.id AND status = 'done' AND kind = 'image'
+                      ORDER BY created_at DESC LIMIT 1),
+                    (SELECT output_r2_keys FROM generation
+                      WHERE project_id = p.id AND status = 'done'
+                      ORDER BY created_at DESC LIMIT 1)
                 ) as cover_r2_key
              FROM project p
              LEFT JOIN generation g ON g.project_id = p.id
@@ -339,6 +363,42 @@ export async function updateProject(
             `UPDATE project SET ${sets.join(", ")} WHERE uid = ? AND user_id = ?`,
         )
         .bind(...values)
+        .run();
+
+    return (result.meta?.changes ?? 0) > 0;
+}
+
+// ─── Pin / unpin ───────────────────────────────────────────────────────────
+
+/**
+ * Pins or unpins a project. Pinned projects float to the top of the
+ * user's list.
+ *
+ * When pinning, `pinned_at` is set to the current timestamp so multiple
+ * pinned projects sort by most-recently-pinned first (re-pinning an
+ * already-pinned project bubbles it back to the top). When unpinning,
+ * `pinned_at` is cleared.
+ *
+ * `updated_at` is deliberately NOT bumped here — pinning is an admin
+ * action that shouldn't reorder the unpinned tail of the list.
+ *
+ * Returns true if the project was found (and therefore pinned/unpinned),
+ * false if the uid doesn't belong to the user or the project is
+ * archived.
+ */
+export async function pinProject(
+    uid: string,
+    userId: string,
+    pinned: boolean,
+): Promise<boolean> {
+    const db = await getDb();
+    const pinnedAt = pinned ? Date.now() : null;
+    const result = await db
+        .prepare(
+            `UPDATE project SET pinned_at = ?
+              WHERE uid = ? AND user_id = ? AND archived_at IS NULL`,
+        )
+        .bind(pinnedAt, uid, userId)
         .run();
 
     return (result.meta?.changes ?? 0) > 0;
