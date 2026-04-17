@@ -17,14 +17,16 @@
 
 import { useState, useCallback } from "react";
 import { GenerationGallery } from "./generation-gallery";
-import { GenerationComposer } from "./generation-composer";
-import { ProjectSettings } from "./project-settings";
+import { GenerationComposer, type ComposerMode } from "./generation-composer";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
+
+export type GenerationKind = "image" | "video";
 
 export interface GenerationItem {
     uid: string;
     prompt: string;
+    kind: GenerationKind;
     status: "pending" | "done" | "failed";
     resolution: string;
     aspectRatio: string | null;
@@ -41,14 +43,18 @@ interface Model {
     creditBase: number;
 }
 
+interface VideoModel {
+    id: string;
+    name: string;
+    description: string;
+    creditBase: number;
+}
+
 interface ProjectWorkspaceProps {
-    project: {
-        uid: string;
-        name: string;
-        description: string | null;
-    };
+    projectUid: string;
     initialGenerations: GenerationItem[];
     models: Model[];
+    videoModels: VideoModel[];
     availableResolutions: string[];
     planName: string;
     totalCredits: number;
@@ -57,9 +63,10 @@ interface ProjectWorkspaceProps {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function ProjectWorkspace({
-    project,
+    projectUid,
     initialGenerations,
     models,
+    videoModels,
     availableResolutions,
     planName,
     totalCredits,
@@ -72,45 +79,52 @@ export function ProjectWorkspace({
     const handleGenerationComplete = useCallback(
         (result: {
             uid: string;
-            imageUrl: string;
+            imageUrls: string[];
             creditCost: number;
             prompt: string;
             resolution: string;
             aspectRatio: string;
+            kind: ComposerMode;
         }) => {
             setGenerations((prev) => {
-                // Replace the pending placeholder with the completed result.
-                const pending = prev.find(
-                    (g) => g.status === "pending" && g.prompt === result.prompt,
-                );
-                if (pending) {
-                    return prev.map((g) =>
-                        g === pending
-                            ? {
-                                  ...g,
-                                  uid: result.uid,
-                                  status: "done" as const,
-                                  imageUrl: result.imageUrl,
-                                  creditCost: result.creditCost,
-                              }
-                            : g,
-                    );
-                }
-                // No pending match — prepend as new item.
-                return [
-                    {
-                        uid: result.uid,
+                // Build gallery items from the result — one per image/video.
+                const newItems: GenerationItem[] = result.imageUrls.map(
+                    (url, i) => ({
+                        uid: result.imageUrls.length > 1
+                            ? `${result.uid}-${i}`
+                            : result.uid,
                         prompt: result.prompt,
-                        status: "done",
+                        kind: result.kind as GenerationKind,
+                        status: "done" as const,
                         resolution: result.resolution,
                         aspectRatio: result.aspectRatio,
-                        imageUrl: result.imageUrl,
-                        creditCost: result.creditCost,
+                        imageUrl: url,
+                        creditCost: i === 0 ? result.creditCost : 0,
                         createdAt: Date.now(),
                         errorMessage: null,
-                    },
-                    ...prev,
-                ];
+                    }),
+                );
+
+                // Replace all pending placeholders for this prompt with results.
+                const firstPendingIdx = prev.findIndex(
+                    (g) => g.status === "pending" && g.prompt === result.prompt,
+                );
+                if (firstPendingIdx !== -1) {
+                    // Count consecutive pending items with the same prompt.
+                    let pendingCount = 0;
+                    for (let i = firstPendingIdx; i < prev.length; i++) {
+                        if (prev[i].status === "pending" && prev[i].prompt === result.prompt) {
+                            pendingCount++;
+                        } else {
+                            break;
+                        }
+                    }
+                    const next = [...prev];
+                    next.splice(firstPendingIdx, pendingCount, ...newItems);
+                    return next;
+                }
+                // No pending match — prepend all items.
+                return [...newItems, ...prev];
             });
             setCredits((c) => c - result.creditCost);
         },
@@ -122,71 +136,70 @@ export function ProjectWorkspace({
             prompt: string;
             resolution: string;
             aspectRatio: string;
+            sampleCount: number;
+            kind: ComposerMode;
         }) => {
-            setGenerations((prev) => [
-                {
-                    uid: `pending-${Date.now()}`,
+            const now = Date.now();
+            const pending: GenerationItem[] = Array.from(
+                { length: placeholder.sampleCount },
+                (_, i) => ({
+                    uid: `pending-${now}-${i}`,
                     prompt: placeholder.prompt,
-                    status: "pending",
+                    kind: placeholder.kind as GenerationKind,
+                    status: "pending" as const,
                     resolution: placeholder.resolution,
                     aspectRatio: placeholder.aspectRatio,
                     imageUrl: null,
                     creditCost: 0,
-                    createdAt: Date.now(),
+                    createdAt: now,
                     errorMessage: null,
-                },
-                ...prev,
-            ]);
+                }),
+            );
+            setGenerations((prev) => [...pending, ...prev]);
         },
         [],
     );
 
     const handleGenerationError = useCallback(
         (prompt: string, errorMessage: string) => {
-            setGenerations((prev) => {
-                const pending = prev.find(
-                    (g) => g.status === "pending" && g.prompt === prompt,
-                );
-                if (pending) {
-                    return prev.map((g) =>
-                        g === pending
-                            ? { ...g, status: "failed" as const, errorMessage }
-                            : g,
-                    );
-                }
-                return prev;
-            });
+            setGenerations((prev) =>
+                prev.map((g) =>
+                    g.status === "pending" && g.prompt === prompt
+                        ? { ...g, status: "failed" as const, errorMessage }
+                        : g,
+                ),
+            );
         },
         [],
     );
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col text-white">
-            {/* Project sub-header */}
-            <div className="flex shrink-0 items-center px-4 py-2 sm:px-6">
-                <ProjectSettings
-                    uid={project.uid}
-                    name={project.name}
-                    description={project.description}
-                />
-            </div>
-
-            {/* Gallery — fills available space, scrollable */}
-            <div className="flex-1 overflow-y-auto">
+        <div className="relative flex min-h-0 flex-1 flex-col text-white">
+            {/* Gallery — fills remaining space. Bottom padding reserves
+                room for the floating composer so the last row isn't
+                permanently hidden behind it. */}
+            <div className="flex-1 overflow-y-auto pb-40 sm:pb-44">
                 <GenerationGallery generations={generations} />
             </div>
 
-            {/* Composer — pinned to bottom */}
-            <GenerationComposer
-                projectUid={project.uid}
-                models={models}
-                availableResolutions={availableResolutions}
-                planName={planName}
-                credits={credits}
-                onGenerationStart={handleGenerationStart}
-                onGenerationComplete={handleGenerationComplete}
-                onGenerationError={handleGenerationError}
-            />
+            {/* Composer — floats over the gallery so its backdrop-blur
+                has content to blur (previously it sat as a sibling
+                below the gallery and rendered on bare page bg). */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0">
+                <div className="pointer-events-auto">
+                    <GenerationComposer
+                        projectUid={projectUid}
+                        models={models}
+                        videoModels={videoModels}
+                        availableResolutions={availableResolutions}
+                        planName={planName}
+                        credits={credits}
+                        onGenerationStart={handleGenerationStart}
+                        onGenerationComplete={handleGenerationComplete}
+                        onGenerationError={handleGenerationError}
+                    />
+                </div>
+            </div>
         </div>
     );
 }

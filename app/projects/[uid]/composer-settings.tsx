@@ -10,7 +10,8 @@
  * Controlled by the parent (open/close state lives in the composer).
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,10 +30,16 @@ export interface ComposerSettingsState {
 
 interface ComposerSettingsProps {
     models: Model[];
+    videoModels: Model[];
+    mode: "image" | "video";
+    videoModelId: string;
+    onVideoModelChange: (id: string) => void;
     settings: ComposerSettingsState;
     onSettingsChange: (settings: ComposerSettingsState) => void;
     open: boolean;
     onClose: () => void;
+    /** Ref to the controls row so outside-click detection can exclude it. */
+    triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
 // ─── Aspect ratio data ──────────────────────────────────────────────────────
@@ -51,26 +58,62 @@ const ASPECT_RATIOS = [
 
 export function ComposerSettings({
     models,
+    videoModels,
+    mode,
+    videoModelId,
+    onVideoModelChange,
     settings,
     onSettingsChange,
     open,
     onClose,
+    triggerRef,
 }: ComposerSettingsProps) {
     const [view, setView] = useState<"root" | "model">("root");
     const [modelSearch, setModelSearch] = useState("");
+    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+
+    // Measure the trigger's viewport position so the portal-rendered
+    // panel can anchor itself above it. Re-measure on resize + scroll so
+    // the panel stays pinned while the page moves.
+    useLayoutEffect(() => {
+        if (!open) {
+            // Drop the cached rect so the next open measures fresh
+            // before painting — avoids a one-frame flash at a stale
+            // position when the trigger has moved.
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
+            setAnchorRect(null);
+            return;
+        }
+        function measure() {
+            if (triggerRef?.current) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
+                setAnchorRect(triggerRef.current.getBoundingClientRect());
+            }
+        }
+        measure();
+        window.addEventListener("resize", measure);
+        window.addEventListener("scroll", measure, true);
+        return () => {
+            window.removeEventListener("resize", measure);
+            window.removeEventListener("scroll", measure, true);
+        };
+    }, [open, triggerRef]);
 
     // Close on outside click or Escape.
     useEffect(() => {
         if (!open) return;
         function handleClick(e: MouseEvent) {
-            if (
-                modalRef.current &&
-                !modalRef.current.contains(e.target as Node)
-            ) {
-                onClose();
-            }
+            const target = e.target as Node;
+            // Ignore clicks inside the panel itself.
+            if (modalRef.current?.contains(target)) return;
+            // Ignore clicks on the trigger button — the button's own
+            // onClick handler manages the toggle. Without this, the
+            // outside-click fires first (closing), then onClick toggles
+            // it back open, making the button appear broken.
+            if (triggerRef?.current?.contains(target)) return;
+            onClose();
         }
         function handleEsc(e: KeyboardEvent) {
             if (e.key === "Escape") onClose();
@@ -85,16 +128,19 @@ export function ComposerSettings({
             document.removeEventListener("mousedown", handleClick);
             document.removeEventListener("keydown", handleEsc);
         };
-    }, [open, onClose]);
+    }, [open, onClose, triggerRef]);
 
-    if (!open) {
+    if (!open || !anchorRect) {
         if (view !== "root") setView("root");
         if (modelSearch !== "") setModelSearch("");
         return null;
     }
 
-    const selectedModel = models.find((m) => m.id === settings.model);
-    const filteredModels = models.filter((m) =>
+    const isVideo = mode === "video";
+    const activeModels = isVideo ? videoModels : models;
+    const activeModelId = isVideo ? videoModelId : settings.model;
+    const selectedModel = activeModels.find((m) => m.id === activeModelId);
+    const filteredModels = activeModels.filter((m) =>
         m.name.toLowerCase().includes(modelSearch.toLowerCase()),
     );
 
@@ -102,36 +148,56 @@ export function ComposerSettings({
         onSettingsChange({ ...settings, ...partial });
     }
 
-    return (
+    function handleModelSelect(id: string) {
+        if (isVideo) {
+            onVideoModelChange(id);
+        } else {
+            update({ model: id });
+        }
+        setView("root");
+    }
+
+    // Render via portal to <body> so the panel escapes the composer's
+    // `backdrop-blur` ancestor — nested backdrop filters get clipped by
+    // their ancestor's stacking context, which is what made the panel
+    // look transparent-without-blur. `fixed` + measured trigger rect
+    // keeps the old visual placement (anchored above the gear button).
+    const panel = (
         <div
             ref={modalRef}
-            className="absolute bottom-full left-0 z-[70] mb-2 w-full"
+            style={{
+                position: "fixed",
+                bottom: window.innerHeight - anchorRect.top + 8,
+                left: anchorRect.left,
+                width: anchorRect.width,
+                zIndex: 70,
+            }}
         >
             <div className="overflow-hidden rounded-2xl bg-[#1a1a1c]/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
                 {view === "root" ? (
                     <RootView
                         selectedModel={selectedModel}
                         settings={settings}
+                        isVideo={isVideo}
                         onUpdate={update}
                         onDrillToModel={() => setView("model")}
                     />
                 ) : (
                     <ModelListView
                         models={filteredModels}
-                        activeModelId={settings.model}
+                        activeModelId={activeModelId}
                         search={modelSearch}
                         onSearchChange={setModelSearch}
                         searchInputRef={searchInputRef}
-                        onSelect={(id) => {
-                            update({ model: id });
-                            setView("root");
-                        }}
+                        onSelect={handleModelSelect}
                         onBack={() => setView("root")}
                     />
                 )}
             </div>
         </div>
     );
+
+    return createPortal(panel, document.body);
 }
 
 // ─── Root view ──────────────────────────────────────────────────────────────
@@ -139,11 +205,13 @@ export function ComposerSettings({
 function RootView({
     selectedModel,
     settings,
+    isVideo,
     onUpdate,
     onDrillToModel,
 }: {
     selectedModel: Model | undefined;
     settings: ComposerSettingsState;
+    isVideo: boolean;
     onUpdate: (partial: Partial<ComposerSettingsState>) => void;
     onDrillToModel: () => void;
 }) {
@@ -159,7 +227,7 @@ function RootView({
             <div className="flex flex-col items-center px-4 pt-2 pb-0.5 sm:px-5">
                 <div className="mb-2.5 h-[3px] w-8 rounded-full bg-white/15" />
                 <span className="self-start text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9ca3af]">
-                    Image Settings
+                    {isVideo ? "Video Settings" : "Image Settings"}
                 </span>
             </div>
 
@@ -196,7 +264,7 @@ function RootView({
                 <button
                     type="button"
                     onClick={() => setAspectExpanded((o) => !o)}
-                    className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-white/5 bg-[#202022] px-3 transition-colors hover:bg-[#282829]"
+                    className="flex h-[34px] w-[72px] items-center justify-center gap-1.5 rounded-[10px] border border-white/5 bg-[#202022] transition-colors hover:bg-[#282829]"
                 >
                     <svg
                         className="shrink-0 text-gray-300"
@@ -304,13 +372,11 @@ function BatchStepper({
     onChange: (v: number) => void;
 }) {
     return (
-        <div className="flex h-[34px] items-center overflow-hidden rounded-[10px] border border-white/5 bg-[#202022]">
-            <button
-                type="button"
-                onClick={() => onChange(Math.max(1, value - 1))}
+        <div className="flex h-[34px] w-[72px] items-center rounded-[10px] border border-white/5 bg-[#202022] px-0.5">
+            <StepperButton
+                label="Decrease"
                 disabled={value <= 1}
-                className="flex h-full w-[36px] items-center justify-center text-[#9ca3af] transition-colors hover:bg-white/[0.04] hover:text-white disabled:opacity-30"
-                aria-label="Decrease"
+                onClick={() => onChange(Math.max(1, value - 1))}
             >
                 <svg
                     width="14"
@@ -318,21 +384,19 @@ function BatchStepper({
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2.5"
+                    strokeWidth="2"
                     strokeLinecap="round"
                 >
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-            </button>
-            <span className="w-[32px] select-none text-center text-[14px] font-medium">
+            </StepperButton>
+            <span className="w-5 select-none text-center text-[13px] font-semibold tabular-nums tracking-tight text-white">
                 {value}
             </span>
-            <button
-                type="button"
-                onClick={() => onChange(Math.min(4, value + 1))}
+            <StepperButton
+                label="Increase"
                 disabled={value >= 4}
-                className="flex h-full w-[36px] items-center justify-center text-[#9ca3af] transition-colors hover:bg-white/[0.04] hover:text-white disabled:opacity-30"
-                aria-label="Increase"
+                onClick={() => onChange(Math.min(4, value + 1))}
             >
                 <svg
                     width="14"
@@ -340,14 +404,44 @@ function BatchStepper({
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="2.5"
+                    strokeWidth="2"
                     strokeLinecap="round"
                 >
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-            </button>
+            </StepperButton>
         </div>
+    );
+}
+
+function StepperButton({
+    label,
+    disabled,
+    onClick,
+    children,
+}: {
+    label: string;
+    disabled: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    // Button fills the full control height so the hit-target stays
+    // generous, but the hover background is painted on an inner
+    // square so the highlight reads as a rounded square rather than a
+    // vertical rectangle.
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className="group/step flex h-full w-6 items-center justify-center text-[#9ca3af] transition-colors duration-150 hover:text-white disabled:cursor-not-allowed disabled:text-[#3f3f46]"
+        >
+            <span className="flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-150 group-hover/step:bg-white/10 group-active/step:bg-white/[0.14]">
+                {children}
+            </span>
+        </button>
     );
 }
 
@@ -373,7 +467,7 @@ function ModelListView({
     return (
         <div className="flex flex-col">
             {/* Search bar */}
-            <div className="flex items-center gap-2 px-3 pb-1.5 pt-2.5">
+            <div className="flex items-center gap-2 pl-3 pr-12 pb-1.5 pt-2.5">
                 <button
                     type="button"
                     onClick={onBack}
@@ -394,27 +488,13 @@ function ModelListView({
                         <polyline points="15 18 9 12 15 6" />
                     </svg>
                 </button>
-                <svg
-                    className="text-[#52525b]"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
                 <input
                     ref={searchInputRef}
                     type="text"
                     placeholder="Search models..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="flex-1 bg-transparent text-[13px] text-white placeholder-[#52525b] outline-none"
+                    className="flex-1 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-[13px] text-white placeholder-[#52525b] outline-none focus:border-white/[0.12]"
                     autoComplete="off"
                     autoFocus
                 />

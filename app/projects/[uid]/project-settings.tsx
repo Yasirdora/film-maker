@@ -1,197 +1,213 @@
 "use client";
 
 /**
- * ProjectSettings — inline project management controls.
+ * ProjectSettings — project header with inline rename + action menu.
  *
- * Provides rename (editable title) and archive (with confirmation)
- * for the project detail page. No modal — interactions happen inline
- * for minimal friction.
+ * Three interactions, all available from this single component:
+ *   • Click the title — swaps in the shared `InlineRenameForm`
+ *     (`[input] [✓] [✗]`), matching the studio card exactly.
+ *   • ⋯ menu — Pin / Rename / Archive. "Rename" just triggers the
+ *     same inline edit, so users who discover the menu still get the
+ *     direct-edit UX.
+ *   • Archive — opens a themed `ConfirmDialog` and, on success,
+ *     sends the user back to /studio.
+ *
+ * Rename + archive network work lives here; the rename form itself
+ * is generic and shared across the app.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { DotsIcon } from "@/components/icons/action-icons";
+import { InlineRenameForm } from "@/components/inline-rename-form";
+import { ProjectActionMenu } from "@/components/project-action-menu";
+import { MAX_PROJECT_NAME_LENGTH } from "@/lib/projects";
 
 interface ProjectSettingsProps {
     uid: string;
     name: string;
     description: string | null;
+    pinnedAt: number | null;
 }
 
-export function ProjectSettings({ uid, name, description }: ProjectSettingsProps) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editName, setEditName] = useState(name);
-    const [isSaving, setIsSaving] = useState(false);
-    const [showArchive, setShowArchive] = useState(false);
+export function ProjectSettings({
+    uid,
+    name,
+    description,
+    pinnedAt,
+}: ProjectSettingsProps) {
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const [isArchiving, setIsArchiving] = useState(false);
     const [error, setError] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
+    const menuButtonRef = useRef<HTMLButtonElement>(null);
     const router = useRouter();
 
-    useEffect(() => {
-        if (isEditing) {
-            inputRef.current?.focus();
-            inputRef.current?.select();
+    const isPinned = pinnedAt !== null;
+
+    /**
+     * Persists a new name. Returned error string bubbles back into
+     * the `InlineRenameForm` so it can display inline validation
+     * failures without the parent needing to manage that state.
+     */
+    async function handleRename(newName: string): Promise<string | null> {
+        const trimmed = newName.trim();
+        if (!trimmed) return "Name is required";
+        if (trimmed === name) {
+            setIsRenaming(false);
+            return null;
         }
-    }, [isEditing]);
-
-    async function handleSave() {
-        const trimmed = editName.trim();
-        if (!trimmed || trimmed === name) {
-            setIsEditing(false);
-            setEditName(name);
-            return;
-        }
-
-        setError("");
-        setIsSaving(true);
-
         try {
             const res = await fetch(`/api/projects/${uid}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: trimmed }),
             });
-
             if (!res.ok) {
-                const data = (await res.json()) as { error?: string };
-                setError(data.error ?? "Failed to rename");
-                setIsSaving(false);
+                const data = (await res.json().catch(() => ({}))) as {
+                    error?: string;
+                };
+                return data.error ?? "Failed to rename";
+            }
+            setIsRenaming(false);
+            router.refresh();
+            return null;
+        } catch {
+            return "Something went wrong. Please try again.";
+        }
+    }
+
+    async function handleTogglePin() {
+        setMenuOpen(false);
+        setError("");
+        const endpoint = isPinned ? "unpin" : "pin";
+        try {
+            const res = await fetch(`/api/projects/${uid}/${endpoint}`, {
+                method: "POST",
+            });
+            if (!res.ok) {
+                setError(isPinned ? "Failed to unpin." : "Failed to pin.");
                 return;
             }
-
-            setIsEditing(false);
             router.refresh();
         } catch {
             setError("Something went wrong.");
-        } finally {
-            setIsSaving(false);
         }
     }
 
-    function handleKeyDown(e: React.KeyboardEvent) {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            handleSave();
-        }
-        if (e.key === "Escape") {
-            setIsEditing(false);
-            setEditName(name);
-        }
+    function requestArchive() {
+        setMenuOpen(false);
+        setError("");
+        setArchiveDialogOpen(true);
     }
 
-    async function handleArchive() {
+    async function confirmArchive() {
+        if (isArchiving) return;
         setIsArchiving(true);
-
         try {
             const res = await fetch(`/api/projects/${uid}`, {
                 method: "DELETE",
             });
-
             if (!res.ok) {
-                const data = (await res.json()) as { error?: string };
-                setError(data.error ?? "Failed to archive");
-                setIsArchiving(false);
-                setShowArchive(false);
+                setError("Failed to archive.");
+                setArchiveDialogOpen(false);
                 return;
             }
-
+            // Leave the archived project's page — the project no
+            // longer belongs in /projects/[uid] once archived.
             router.push("/studio");
         } catch {
             setError("Something went wrong.");
+            setArchiveDialogOpen(false);
+        } finally {
             setIsArchiving(false);
-            setShowArchive(false);
         }
     }
 
     return (
-        <div className="min-w-0">
-            {/* Editable title */}
-            {isEditing ? (
-                <div className="flex items-center gap-2">
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onBlur={handleSave}
-                        maxLength={100}
-                        disabled={isSaving}
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-white/[0.06] px-3 text-lg font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-50"
-                    />
-                </div>
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => setIsEditing(true)}
-                    className="group flex items-center gap-1.5 truncate text-left"
-                    title="Click to rename"
-                >
-                    <h1 className="truncate text-[14px] font-semibold text-white sm:text-lg">
-                        {name}
-                    </h1>
-                    <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="shrink-0 text-[#52525b] opacity-0 transition-opacity group-hover:opacity-100"
-                        aria-hidden
-                    >
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                </button>
-            )}
+        <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+                {isRenaming ? (
+                    // Cap the form width so it stays close to the
+                    // length of a typical project name instead of
+                    // stretching across the whole header row.
+                    <div className="min-w-0 flex-1 sm:max-w-sm">
+                        <InlineRenameForm
+                            initialName={name}
+                            onSave={handleRename}
+                            onCancel={() => setIsRenaming(false)}
+                            maxLength={MAX_PROJECT_NAME_LENGTH}
+                            size="sm"
+                        />
+                    </div>
+                ) : (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setIsRenaming(true)}
+                            title="Click to rename"
+                            className="group flex min-w-0 items-center gap-1.5 truncate text-left"
+                        >
+                            <h1 className="truncate text-[12px] font-semibold text-white sm:text-[13px]">
+                                {name}
+                            </h1>
+                        </button>
+                        <button
+                            ref={menuButtonRef}
+                            type="button"
+                            onClick={() => setMenuOpen((prev) => !prev)}
+                            aria-label="Project actions"
+                            aria-haspopup="menu"
+                            aria-expanded={menuOpen}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white"
+                        >
+                            <DotsIcon size={18} />
+                        </button>
+                    </>
+                )}
+            </div>
 
-            {description && (
-                <p className="mt-1 text-sm text-[#9ca3af]">
-                    {description}
-                </p>
+            {description && !isRenaming && (
+                <p className="mt-1 text-sm text-[#9ca3af]">{description}</p>
             )}
 
             {error && (
-                <p className="mt-1 text-sm text-[var(--destructive)]">
-                    {error}
-                </p>
+                <p className="mt-1 text-sm text-[var(--destructive)]">{error}</p>
             )}
 
-            {/* Archive confirmation */}
-            {showArchive ? (
-                <div className="mt-3 flex items-center gap-2">
-                    <span className="text-sm text-[#9ca3af]">
-                        Archive this project?
-                    </span>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleArchive}
-                        disabled={isArchiving}
-                    >
-                        {isArchiving ? "Archiving…" : "Yes, archive"}
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowArchive(false)}
-                        disabled={isArchiving}
-                    >
-                        Cancel
-                    </Button>
-                </div>
-            ) : (
-                <button
-                    type="button"
-                    onClick={() => setShowArchive(true)}
-                    className="mt-2 text-xs text-neutral-400 underline underline-offset-2 transition-colors hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300"
-                >
-                    Archive project
-                </button>
+            {menuOpen && (
+                <ProjectActionMenu
+                    anchorRef={menuButtonRef}
+                    onClose={() => setMenuOpen(false)}
+                    isPinned={isPinned}
+                    onTogglePin={handleTogglePin}
+                    onRename={() => {
+                        setMenuOpen(false);
+                        setIsRenaming(true);
+                    }}
+                    onArchive={requestArchive}
+                />
+            )}
+
+            {archiveDialogOpen && (
+                <ConfirmDialog
+                    title="Archive this project?"
+                    description={
+                        <>
+                            <span className="font-medium text-white">{name}</span>{" "}
+                            will move to the archived list. You can restore it
+                            at any time.
+                        </>
+                    }
+                    confirmLabel="Archive"
+                    destructive
+                    busy={isArchiving}
+                    onConfirm={confirmArchive}
+                    onClose={() => setArchiveDialogOpen(false)}
+                />
             )}
         </div>
     );

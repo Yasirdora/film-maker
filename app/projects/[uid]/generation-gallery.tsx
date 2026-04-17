@@ -60,13 +60,24 @@ export function GenerationGallery({ generations }: GenerationGalleryProps) {
 // ─── Gallery card ───────────────────────────────────────────────────────────
 
 function GalleryCard({ generation }: { generation: GenerationItem }) {
-    const { status, imageUrl, prompt, resolution, aspectRatio, errorMessage } =
+    const { status, kind, imageUrl, prompt, resolution, aspectRatio, errorMessage } =
         generation;
+    const isVideo = kind === "video";
 
     return (
         <div className="group relative overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/[0.06] transition-all hover:ring-white/[0.12]">
             <div className="relative aspect-square">
-                {status === "done" && imageUrl ? (
+                {status === "done" && imageUrl && isVideo ? (
+                    <video
+                        src={imageUrl}
+                        className="h-full w-full object-cover"
+                        controls
+                        playsInline
+                        muted
+                        loop
+                        preload="metadata"
+                    />
+                ) : status === "done" && imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                         src={imageUrl}
@@ -75,8 +86,11 @@ function GalleryCard({ generation }: { generation: GenerationItem }) {
                         loading="lazy"
                     />
                 ) : status === "pending" ? (
-                    <div className="flex h-full items-center justify-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2">
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-white/60" />
+                        {isVideo && (
+                            <span className="text-[11px] text-[#52525b]">Generating video...</span>
+                        )}
                     </div>
                 ) : (
                     <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
@@ -102,13 +116,23 @@ function GalleryCard({ generation }: { generation: GenerationItem }) {
                     </div>
                 )}
 
-                {/* Resolution badge */}
+                {/* Type + resolution badge */}
                 {status === "done" && (
-                    <div className="absolute bottom-1.5 right-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
-                        {resolution}
-                        {aspectRatio && aspectRatio !== "1:1"
-                            ? ` · ${aspectRatio}`
-                            : ""}
+                    <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                        {isVideo && (
+                            <div className="flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
+                                <svg className="text-white/80" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                                <span className="text-[10px] font-medium text-white/80">Video</span>
+                            </div>
+                        )}
+                        <div className="rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
+                            {resolution}
+                            {aspectRatio && aspectRatio !== "1:1"
+                                ? ` · ${aspectRatio}`
+                                : ""}
+                        </div>
                     </div>
                 )}
             </div>
