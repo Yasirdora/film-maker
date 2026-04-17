@@ -52,6 +52,7 @@
     --muted: #737373;
     --border: #e5e5e5;
     --destructive: #ef4444;
+    --focus-ring: rgba(0, 0, 0, 0.25);
 
     /* Auth card — glassmorphic surface */
     --card-bg: rgba(255, 255, 255, 0.8);
@@ -71,6 +72,7 @@
         --muted: #a3a3a3;
         --border: #262626;
         --destructive: #f87171;
+        --focus-ring: rgba(255, 255, 255, 0.25);
 
         --card-bg: rgba(18, 18, 20, 0.65);
         --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset,
@@ -99,4 +101,28 @@ button,
 [role="button"],
 a {
     touch-action: manipulation;
+}
+
+/* ─── Focus ──────────────────────────────────────────────────────────────────
+ * Replace the browser's bright blue default with a subtle themed ring
+ * driven by `--focus-ring` (declared alongside the other tokens above).
+ * Only shows for keyboard navigation (`:focus-visible`) so clicks don't
+ * leave a lingering outline. Components that need a tighter or different
+ * style can opt out with `focus-visible:outline-none` + their own class.
+ */
+:focus {
+    outline: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+/* Text-entry controls use the caret as their focus indicator; the ring
+   is meant for buttons/links/tabs, not inputs. */
+input:focus-visible,
+textarea:focus-visible,
+[contenteditable]:focus-visible {
+    outline: none;
 }
