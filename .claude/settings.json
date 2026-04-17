@@ -66,7 +66,25 @@
       "WebSearch",
       "WebFetch(domain:stripe.com)",
       "Bash(curl -sI https://film-maker.net/dashboard)",
-      "Bash(curl -sI https://film-maker.net/auteur)"
+      "Bash(curl -sI https://film-maker.net/auteur)",
+      "Bash(npx vitest:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git rm:*)",
+      "Bash(curl -s -X POST http://localhost:3000/api/health)",
+      "Bash(curl -s http://localhost:3000/api/health)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read",
+      "Write",
+      "Edit"
     ]
   }
 }
