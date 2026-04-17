@@ -25,6 +25,8 @@ export type AuditAction =
     | "project.archive"
     | "project.restore"
     | "project.rename"
+    | "project.pin"
+    | "project.unpin"
     | "generation.create"
     | "generation.complete"
     | "generation.fail"

@@ -21,11 +21,14 @@ import { generateUid } from "./utils";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export type GenerationKind = "image" | "video";
+
 export interface GenerationRow {
     id: number;
     uid: string;
     userId: string;
     projectId: number | null;
+    kind: GenerationKind;
     model: string;
     prompt: string;
     negativePrompt: string | null;
@@ -51,6 +54,7 @@ interface RawGenerationRow {
     uid: string;
     user_id: string;
     project_id: number | null;
+    kind: string;
     model: string;
     prompt: string;
     negative_prompt: string | null;
@@ -66,7 +70,7 @@ interface RawGenerationRow {
 }
 
 /** Column list used by all SELECT queries — single source of truth. */
-const GENERATION_COLUMNS = `id, uid, user_id, project_id, model, prompt, negative_prompt,
+const GENERATION_COLUMNS = `id, uid, user_id, project_id, kind, model, prompt, negative_prompt,
     resolution, aspect_ratio, sample_count, status,
     output_r2_keys, error_message, credit_cost,
     created_at, completed_at`;
@@ -80,6 +84,7 @@ function mapRow(r: RawGenerationRow): GenerationRow {
         uid: r.uid,
         userId: r.user_id,
         projectId: r.project_id,
+        kind: (r.kind ?? "image") as GenerationKind,
         model: r.model,
         prompt: r.prompt,
         negativePrompt: r.negative_prompt,
@@ -103,6 +108,7 @@ function mapRow(r: RawGenerationRow): GenerationRow {
 export interface CreateGenerationParams {
     userId: string;
     projectId: number;
+    kind?: GenerationKind;
     model: string;
     prompt: string;
     negativePrompt?: string;
@@ -129,16 +135,17 @@ export async function createGeneration(
     const result = await db
         .prepare(
             `INSERT INTO generation
-             (uid, user_id, project_id, model, prompt, negative_prompt, resolution,
+             (uid, user_id, project_id, kind, model, prompt, negative_prompt, resolution,
               aspect_ratio, sample_count, status, credit_cost,
               request_ip, user_agent, idempotency_key, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?)
              RETURNING id`,
         )
         .bind(
             uid,
             params.userId,
             params.projectId,
+            params.kind ?? "image",
             params.model,
             params.prompt,
             params.negativePrompt ?? null,

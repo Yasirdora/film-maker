@@ -193,13 +193,24 @@ export function getCreditPack(id: string): CreditPack | undefined {
 
 export const PHOTO_MODELS = [
     {
+        id: "nano-banana",
+        name: "Nano Banana",
+        description: "Fast image generation with style transfer support.",
+        geminiModelId: "gemini-2.5-flash-image",
+        creditBase: 1,
+    },
+    {
         id: "nano-banana-pro",
         name: "Nano Banana Pro",
         description: "Google's flagship image model. Best for cinematic stills.",
-        // Resolved model: imagen-4.0-generate-001 via the generateImages API.
-        // The user-facing name "Nano Banana Pro" is stable; swapping the
-        // underlying model requires only changing this field.
         geminiModelId: "imagen-4.0-generate-001",
+        creditBase: 2,
+    },
+    {
+        id: "imagen",
+        name: "Imagen",
+        description: "Google's proven image model. Great balance of speed and quality.",
+        geminiModelId: "imagen-3.0-generate-002",
         creditBase: 1,
     },
 ] as const;
@@ -209,6 +220,70 @@ export type PhotoModel = (typeof PHOTO_MODELS)[number];
 
 export function getPhotoModel(id: string): PhotoModel | undefined {
     return PHOTO_MODELS.find((m) => m.id === id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Video generation models
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const VIDEO_DURATIONS = [5, 8] as const;
+export type VideoDuration = (typeof VIDEO_DURATIONS)[number];
+
+export const VIDEO_MODELS = [
+    {
+        id: "veo-3.1",
+        name: "Veo 3.1",
+        description: "Latest video model. Highest quality and motion coherence.",
+        geminiModelId: "veo-3.1-generate-preview",
+        creditBase: 10,
+        minDuration: 5,
+        maxDuration: 8,
+    },
+    {
+        id: "veo-3",
+        name: "Veo 3",
+        description: "High-quality video with natural motion and lighting.",
+        geminiModelId: "veo-3.0-generate-001",
+        creditBase: 8,
+        minDuration: 5,
+        maxDuration: 8,
+    },
+    {
+        id: "veo-3-fast",
+        name: "Veo 3 Fast",
+        description: "Faster video generation. Good for quick previews.",
+        geminiModelId: "veo-3.0-fast-generate-001",
+        creditBase: 5,
+        minDuration: 4,
+        maxDuration: 8,
+    },
+] as const;
+
+export type VideoModelId = (typeof VIDEO_MODELS)[number]["id"];
+export type VideoModel = (typeof VIDEO_MODELS)[number];
+
+export function getVideoModel(id: string): VideoModel | undefined {
+    return VIDEO_MODELS.find((m) => m.id === id);
+}
+
+/**
+ * Computes the credit cost for a video generation.
+ *
+ * cost = model.creditBase × sampleCount
+ *
+ * Video resolution is fixed by the model, so no resolution multiplier.
+ */
+export function computeVideoCreditCost(
+    modelId: string,
+    sampleCount: number,
+): number {
+    const model = getVideoModel(modelId);
+    if (!model) {
+        throw new Error(
+            `Unknown video model "${modelId}". Cannot compute credit cost.`,
+        );
+    }
+    return model.creditBase * Math.max(1, sampleCount);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

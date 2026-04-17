@@ -1,37 +1,25 @@
 /**
- * POST /api/generate
+ * POST /api/generate-video
  *
- * Generates an image from a text prompt within a project context.
- * The full lifecycle runs in one synchronous request (no queue —
- * Nano Banana Pro returns in <15s):
+ * Generates a video from a text prompt within a project context.
+ * Similar to /api/generate but uses the Veo model family.
  *
+ * Video generation is async (long-running operation): the Gemini client
+ * submits the job, polls until completion (~30–60s), downloads the
+ * video, uploads to R2, then returns the URL.
+ *
+ * Flow:
  *   1. CSRF + auth + input validation
  *   2. Project ownership verification
- *   3. Idempotency check (return cached result if key matches)
+ *   3. Idempotency check
  *   4. Concurrency check (max 2 pending per user)
- *   5. Stale generation recovery (lazy sweep for orphaned pending rows)
- *   6. Plan-based resolution check
- *   7. Create generation row (status=pending, linked to project)
- *   8. Deduct credits (atomic two-pool, daily-limit enforcement)
- *   9. Call Gemini API (with SDK-level retry + 180s timeout)
- *   10. Upload image to R2 (project-scoped key)
- *   11. Update generation (status=done, output keys)
- *   12. Return generation UID + image URL
- *
- * R2 key structure:
- *   film-maker/v1/{userUid}/{projectUid}/image/{generationUid}.{ext}
- *
- * Resilience:
- *   • SDK retry — 3 retries on transient Gemini errors (429/500/503),
- *     exponential backoff with jitter, Retry-After header support.
- *   • 180s timeout — AbortController kills the request if Gemini hangs,
- *     with X-Server-Timeout header hinting Google to stop server-side.
- *   • Idempotency key — client-supplied UUID prevents double-submit
- *     from creating duplicate generations. 24h TTL.
- *   • Concurrency limit — max 2 pending generations per user.
- *   • Stale recovery — pending generations older than 5 minutes are
- *     swept and refunded on each request (lazy, per-user).
- *   • Automatic refund — credits refunded on ANY failure after deduction.
+ *   5. Stale generation recovery
+ *   6. Create generation row (status=pending, kind=video)
+ *   7. Deduct credits
+ *   8. Call Veo API (submit + poll + download)
+ *   9. Upload video to R2
+ *   10. Update generation (status=done)
+ *   11. Return generation UID + video URL
  */
 
 import { NextResponse } from "next/server";
@@ -41,21 +29,15 @@ import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
 import { getR2 } from "@/lib/db";
 import {
-    getBalance,
     deductCredits,
     refundCredits,
     InsufficientCreditsError,
     DailyLimitError,
     type DeductionResult,
 } from "@/lib/credits";
-import {
-    computePhotoCreditCost,
-    isResolutionAllowedForPlan,
-    RESOLUTIONS,
-    type Resolution,
-} from "@/lib/constants";
+import { computeVideoCreditCost, VIDEO_MODELS } from "@/lib/constants";
 import { getImageUrl } from "@/lib/image-url";
-import { generateImage, GenerationError } from "@/lib/gemini";
+import { generateVideo, GenerationError } from "@/lib/gemini";
 import {
     createGeneration,
     completeGeneration,
@@ -70,9 +52,7 @@ import { getProject } from "@/lib/projects";
 import { isUserGenerationRateLimited } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
 
-const ASPECT_RATIOS = [
-    "1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9",
-] as const;
+const VIDEO_ASPECT_RATIOS = ["16:9", "9:16"] as const;
 
 const ALLOWED_IMAGE_TYPES = [
     "image/jpeg",
@@ -83,6 +63,8 @@ const ALLOWED_IMAGE_TYPES = [
 /** Maximum base64 size per reference image (~10 MB raw → ~13.3 MB base64). */
 const MAX_IMAGE_BASE64_LENGTH = 14_000_000;
 
+const VIDEO_MODEL_IDS = VIDEO_MODELS.map((m) => m.id) as [string, ...string[]];
+
 const ReferenceImageSchema = z.object({
     data: z.string().max(MAX_IMAGE_BASE64_LENGTH, "Image too large (max 10 MB)"),
     mimeType: z.enum(ALLOWED_IMAGE_TYPES),
@@ -90,14 +72,14 @@ const ReferenceImageSchema = z.object({
 
 const BodySchema = z.object({
     prompt: z.string().min(1, "Prompt is required").max(10000),
-    model: z.string().min(1),
-    resolution: z.enum(RESOLUTIONS),
-    aspectRatio: z.enum(ASPECT_RATIOS).optional().default("1:1"),
-    negativePrompt: z.string().max(2000).optional(),
+    model: z.enum(VIDEO_MODEL_IDS),
+    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional().default("16:9"),
+    durationSeconds: z.number().int().min(4).max(8).optional().default(8),
     projectUid: z.string().min(1, "Project is required"),
     idempotencyKey: z.string().uuid().optional(),
     sampleCount: z.number().int().min(1).max(4).optional().default(1),
-    referenceImages: z.array(ReferenceImageSchema).max(4).optional(),
+    /** Starting frame for image-to-video generation. */
+    referenceImage: ReferenceImageSchema.optional(),
 });
 
 export async function POST(request: Request): Promise<Response> {
@@ -158,7 +140,7 @@ export async function POST(request: Request): Promise<Response> {
                     {
                         uid: existing.uid,
                         status: "pending",
-                        message: "Generation is already in progress.",
+                        message: "Video generation is already in progress.",
                     },
                     { status: 409 },
                 );
@@ -166,7 +148,7 @@ export async function POST(request: Request): Promise<Response> {
             return NextResponse.json({
                 uid: existing.uid,
                 status: existing.status,
-                imageUrls: existing.outputUrls ?? [],
+                videoUrl: existing.outputUrls?.[0] ?? null,
                 creditCost: existing.creditCost,
                 error: existing.errorMessage,
                 cached: true,
@@ -196,25 +178,8 @@ export async function POST(request: Request): Promise<Response> {
         );
     }
 
-    // ─── Plan-based resolution check ────────────────────────────────
-    const balance = await getBalance(userId);
-    if (!isResolutionAllowedForPlan(balance.plan, input.resolution)) {
-        return NextResponse.json(
-            {
-                error: `${input.resolution} resolution is not available on your plan. Upgrade for higher resolution.`,
-            },
-            { status: 403 },
-        );
-    }
-
     // ─── Credit cost ────────────────────────────────────────────────
-    const effectiveSampleCount = input.sampleCount;
-
-    const creditCost = computePhotoCreditCost(
-        input.model,
-        input.resolution as Resolution,
-        effectiveSampleCount,
-    );
+    const creditCost = computeVideoCreditCost(input.model, input.sampleCount);
 
     // ─── Create generation row (pending) ────────────────────────────
     const requestIp =
@@ -226,12 +191,12 @@ export async function POST(request: Request): Promise<Response> {
     const generation = await createGeneration({
         userId,
         projectId: project.id,
+        kind: "video",
         model: input.model,
         prompt: input.prompt,
-        negativePrompt: input.negativePrompt,
-        resolution: input.resolution,
+        resolution: "1K",
         aspectRatio: input.aspectRatio,
-        sampleCount: effectiveSampleCount,
+        sampleCount: input.sampleCount,
         creditCost,
         requestIp,
         userAgent,
@@ -245,7 +210,7 @@ export async function POST(request: Request): Promise<Response> {
             userId,
             cost: creditCost,
             generationId: generation.id,
-            description: `Image: ${input.model}, ${input.resolution}, ${input.aspectRatio}`,
+            description: `Video: ${input.model}, ${input.aspectRatio}, ${input.durationSeconds}s`,
         });
     } catch (err) {
         await failGeneration(generation.id, "Credit deduction failed");
@@ -265,17 +230,16 @@ export async function POST(request: Request): Promise<Response> {
         throw err;
     }
 
-    // ─── Generate image(s) via Gemini ──────────────────────────────────
-    let imageResults: Awaited<ReturnType<typeof generateImage>>;
+    // ─── Generate video(s) via Veo ────────────────────────────────────
+    let videoResults: Awaited<ReturnType<typeof generateVideo>>;
     try {
-        imageResults = await generateImage({
+        videoResults = await generateVideo({
             prompt: input.prompt,
-            negativePrompt: input.negativePrompt,
             modelId: input.model,
-            resolution: input.resolution as Resolution,
             aspectRatio: input.aspectRatio,
-            sampleCount: effectiveSampleCount,
-            referenceImages: input.referenceImages,
+            durationSeconds: input.durationSeconds,
+            sampleCount: input.sampleCount,
+            referenceImage: input.referenceImage,
         });
     } catch (err) {
         await refundCredits({
@@ -288,11 +252,11 @@ export async function POST(request: Request): Promise<Response> {
         const message =
             err instanceof GenerationError
                 ? err.message
-                : "Image generation failed. Please try again.";
+                : "Video generation failed. Please try again.";
 
         await failGeneration(generation.id, message);
 
-        console.error("[api/generate] Gemini error:", err);
+        console.error("[api/generate-video] Veo error:", err);
 
         return NextResponse.json(
             { error: message },
@@ -320,19 +284,18 @@ export async function POST(request: Request): Promise<Response> {
 
     try {
         const r2 = await getR2();
-        for (let i = 0; i < imageResults.length; i++) {
-            const img = imageResults[i];
-            // For batch, append index suffix to avoid key collision.
-            const suffix = imageResults.length > 1 ? `-${i}` : "";
+        for (let i = 0; i < videoResults.length; i++) {
+            const vid = videoResults[i];
+            const suffix = videoResults.length > 1 ? `-${i}` : "";
             const r2Key = buildR2Key(
                 userUid,
                 project.uid,
-                "image",
+                "video",
                 `${generation.uid}${suffix}`,
-                img.mimeType,
+                vid.mimeType,
             );
-            await r2.put(r2Key, img.imageData, {
-                httpMetadata: { contentType: img.mimeType },
+            await r2.put(r2Key, vid.videoData, {
+                httpMetadata: { contentType: vid.mimeType },
             });
             r2Keys.push(r2Key);
         }
@@ -343,10 +306,10 @@ export async function POST(request: Request): Promise<Response> {
             generationId: generation.id,
             deduction,
         });
-        await failGeneration(generation.id, "Image storage failed");
-        console.error("[api/generate] R2 upload error:", err);
+        await failGeneration(generation.id, "Video storage failed");
+        console.error("[api/generate-video] R2 upload error:", err);
         return NextResponse.json(
-            { error: "Failed to store the generated image. Please try again." },
+            { error: "Failed to store the generated video. Please try again." },
             { status: 500 },
         );
     }
@@ -361,12 +324,13 @@ export async function POST(request: Request): Promise<Response> {
         targetType: "generation",
         targetId: generation.uid,
         metadata: {
+            kind: "video",
             model: input.model,
-            resolution: input.resolution,
             aspectRatio: input.aspectRatio,
+            durationSeconds: input.durationSeconds,
             creditCost,
-            sampleCount: effectiveSampleCount,
-            imagesGenerated: imageResults.length,
+            sampleCount: input.sampleCount,
+            videosGenerated: videoResults.length,
             projectUid: project.uid,
         },
         ip: requestIp,
@@ -375,7 +339,7 @@ export async function POST(request: Request): Promise<Response> {
     return NextResponse.json({
         uid: generation.uid,
         status: "done",
-        imageUrls: r2Keys.map(getImageUrl),
+        videoUrls: r2Keys.map(getImageUrl),
         creditCost,
     });
 }
