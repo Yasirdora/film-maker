@@ -461,7 +461,7 @@ export function GenerationComposer({
     // ─── Render ─────────────────────────────────────────────────────
 
     return (
-        <div className="relative shrink-0 px-3 pb-1 sm:px-0 sm:pb-8">
+        <div className="relative shrink-0 px-3 pb-2 sm:px-0 sm:pb-8">
             <div className="mx-auto w-full sm:max-w-[600px]">
                 <div
                     className={`relative flex flex-col rounded-2xl bg-[#1a1a1c]/90 px-2.5 py-2.5 ring-1 backdrop-blur-2xl sm:px-3 sm:py-2.5 ${
@@ -601,7 +601,7 @@ export function GenerationComposer({
                                         !isVideo ? "bg-[#1c1c1c] px-3" : "px-2.5"
                                     }`}
                                 >
-                                    <svg className="shrink-0 text-[#9ca3af]" width="16" height="16" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg className="shrink-0 text-[#9ca3af]" width="18" height="18" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M4.583 5.75a1.167 1.167 0 1 0 0-2.333 1.167 1.167 0 0 0 0 2.333Z" />
                                         <path d="M.583 2.917A2.333 2.333 0 0 1 2.917.583h7a2.333 2.333 0 0 1 2.333 2.334v7a2.333 2.333 0 0 1-2.333 2.333h-7A2.333 2.333 0 0 1 .583 9.917V2.917Z" />
                                         <path d="m2.917 12.25 4.958-4.958a1.167 1.167 0 0 1 1.633 0l2.742 2.625" />
@@ -617,7 +617,7 @@ export function GenerationComposer({
                                         isVideo ? "bg-[#1c1c1c] px-3" : "px-2.5"
                                     }`}
                                 >
-                                    <svg className="shrink-0 text-[#9ca3af]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg className="shrink-0 text-[#9ca3af]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <polygon points="6 3 20 12 6 21 6 3" />
                                     </svg>
                                     {isVideo && (
@@ -635,7 +635,7 @@ export function GenerationComposer({
                             >
                                 <svg
                                     className={`text-[#9ca3af] transition-transform duration-300 ${!isLandscape ? "rotate-90" : ""}`}
-                                    width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                    width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                 >
                                     <rect x="3" y="7" width="18" height="10" rx="2" />
                                 </svg>
@@ -644,20 +644,27 @@ export function GenerationComposer({
                                 </span>
                             </button>
 
-                            {/* Settings gear */}
+                            {/* Settings */}
                             <button
                                 type="button"
                                 onClick={() => setSettingsOpen((o) => !o)}
-                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-colors ${
+                                className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-colors ${
                                     settingsOpen
                                         ? "border border-white/20 bg-[#323235]"
                                         : "bg-[#2a2a2d] hover:bg-[#353538]"
                                 }`}
                                 aria-label="Generation settings"
                             >
-                                <svg className="text-[#9ca3af]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                                    <circle cx="12" cy="12" r="3" />
+                                <svg className="text-gray-200 transition-colors group-hover:text-white" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="4" y1="21" x2="4" y2="14" />
+                                    <line x1="4" y1="10" x2="4" y2="3" />
+                                    <line x1="12" y1="21" x2="12" y2="12" />
+                                    <line x1="12" y1="8" x2="12" y2="3" />
+                                    <line x1="20" y1="21" x2="20" y2="16" />
+                                    <line x1="20" y1="12" x2="20" y2="3" />
+                                    <line x1="1" y1="14" x2="7" y2="14" />
+                                    <line x1="9" y1="8" x2="15" y2="8" />
+                                    <line x1="17" y1="16" x2="23" y2="16" />
                                 </svg>
                             </button>
 
@@ -680,9 +687,9 @@ export function GenerationComposer({
                                 aria-label="Generate"
                             >
                                 {isGenerating ? (
-                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />
+                                    <div className="h-[18px] w-[18px] animate-spin rounded-full border-2 border-black/20 border-t-black" />
                                 ) : (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                         <line x1="12" y1="19" x2="12" y2="5" />
                                         <polyline points="5 12 12 5 19 12" />
                                     </svg>
