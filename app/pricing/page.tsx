@@ -1,34 +1,46 @@
 /**
  * Public pricing page.
  *
- * Shows only paid plans (Indie / Creator / Studio). Solo is the
- * internal free default activated at signup via the /welcome page —
- * it's not a marketing tier and doesn't appear here. Users who cancel
- * a paid subscription are silently downgraded to Solo without any UI.
+ * Opens with a cinematic hero ("Start a production with Artistic
+ * Intelligence") followed by the free Solo card, then the paid plans
+ * (Indie / Creator / Studio). Solo is shown here for discoverability
+ * even though it's the default tier activated at signup — the card
+ * doubles as the primary call-to-action for logged-out visitors.
  *
- * Server-rendered from SUBSCRIPTION_PLANS (single source of truth in
- * lib/constants.ts), filtered to exclude the free tier.
- *
- * Mobile-first: cards stack in a single column on phones, 3-col on
- * desktop. Featured plan (Creator) gets a highlight.
+ * Always dark to match the landing-page brand aesthetic.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Newsreader } from "next/font/google";
 
-import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from "@/lib/constants";
+import {
+    SUBSCRIPTION_PLANS,
+    type SubscriptionPlan,
+} from "@/lib/constants";
 import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { cn } from "@/lib/utils";
+import { AppNav } from "@/components/app-nav";
+import { AppBrandMark } from "@/components/app-brand-mark";
 
 import { UpgradeButton } from "./upgrade-button";
+import { PlanFeatures } from "./plan-features";
+
+const newsreader = Newsreader({
+    subsets: ["latin"],
+    style: ["italic"],
+    weight: ["400", "500", "600", "700"],
+    variable: "--font-newsreader",
+});
 
 export const metadata: Metadata = {
     title: "Pricing",
     description:
-        "Upgrade your Film-maker plan for more credits, higher resolution, and no daily limits.",
+        "Start free with Solo, or upgrade for more credits, higher resolution, and no daily limits.",
 };
 
+const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 const PAID_PLANS = SUBSCRIPTION_PLANS.filter((p) => !p.isFree);
 
 export default async function PricingPage() {
@@ -36,39 +48,72 @@ export default async function PricingPage() {
     const currentPlan = session?.user
         ? (await getBalance(session.user.id))?.plan ?? "solo"
         : null;
+    const isAuthenticated = !!session?.user;
 
     return (
-        <main className="min-h-dvh bg-neutral-50 dark:bg-neutral-950">
-            <header className="mx-auto max-w-5xl px-6 pt-12 pb-8 sm:pt-20 sm:pb-12">
-                <Link
-                    href="/"
-                    className="text-sm font-semibold tracking-tight text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
-                >
-                    &larr; Film-maker
-                </Link>
-                <h1 className="mt-8 text-3xl font-semibold tracking-tight text-neutral-950 sm:text-5xl dark:text-neutral-50">
-                    Upgrade your plan
-                </h1>
-                <p className="mt-4 max-w-2xl text-base text-neutral-500 dark:text-neutral-400">
-                    More credits, higher resolution, no daily limits.
-                    All plans include Film-maker&rsquo;s full creative
-                    toolset. Cancel anytime.
-                </p>
-            </header>
+        <main
+            className={cn(
+                newsreader.variable,
+                "min-h-dvh bg-neutral-950 text-neutral-50",
+                // AppNav is fixed-bottom on mobile for signed-in users,
+                // so reserve space so content isn't obscured.
+                isAuthenticated && "pb-[66px] sm:pb-0",
+            )}
+            style={{ background: "var(--brand-gradient)" }}
+        >
+            {isAuthenticated && <AppNav />}
 
-            <section className="mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="px-4 pt-4 sm:px-6">
+                <AppBrandMark href={isAuthenticated ? "/studio" : "/"} />
+            </div>
+
+            <section className="mx-auto max-w-5xl px-6 pt-6 pb-12 text-center sm:pt-12">
+                <h1 className="text-balance text-[clamp(2.5rem,6.5vw,5.25rem)] font-semibold leading-[1.1] tracking-tight">
+                    Start a production with
+                </h1>
+                <h1
+                    className="mt-2 text-balance text-[clamp(2.75rem,6.5vw,5.25rem)] italic leading-[1.1] tracking-tight"
+                    style={{
+                        fontFamily: "var(--font-newsreader), serif",
+                        fontWeight: 500,
+                        backgroundImage:
+                            "linear-gradient(90deg, #5B7BFF 0%, #B06FE8 33%, #E85A70 66%, #EC9440 100%)",
+                        WebkitBackgroundClip: "text",
+                        backgroundClip: "text",
+                        color: "transparent",
+                    }}
+                >
+                    Artistic Intelligence
+                </h1>
+                <p className="mt-6 text-base text-neutral-400 sm:text-lg">
+                    Generate, experience, and learn the craft.
+                </p>
+            </section>
+
+            <section className="mx-auto max-w-3xl px-6">
+                <SoloCard
+                    plan={SOLO_PLAN}
+                    isCurrent={currentPlan === "solo"}
+                    isAuthenticated={isAuthenticated}
+                />
+            </section>
+
+            <section className="mx-auto max-w-7xl px-6 pt-12 pb-16 sm:pt-16 sm:pb-24">
+                <h2 className="mb-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                    Upgrade when you&rsquo;re ready
+                </h2>
+                <div className="grid items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {PAID_PLANS.map((plan) => (
                         <PlanCard
                             key={plan.id}
                             plan={plan}
                             currentPlan={currentPlan}
-                            isAuthenticated={!!session?.user}
+                            isAuthenticated={isAuthenticated}
                         />
                     ))}
                 </div>
 
-                <p className="mt-10 text-center text-xs text-neutral-500 dark:text-neutral-400">
+                <p className="mt-10 text-center text-xs text-neutral-500">
                     Prices in USD. Taxes calculated at checkout where
                     applicable. Cancel anytime.
                 </p>
@@ -77,7 +122,71 @@ export default async function PricingPage() {
     );
 }
 
-// ─── Plan card ──────────────────────────────────────────────────────────────
+// ─── Solo card (featured free tier) ────────────────────────────────────────
+
+interface SoloCardProps {
+    plan: SubscriptionPlan;
+    isCurrent: boolean;
+    isAuthenticated: boolean;
+}
+
+function SoloCard({ plan, isCurrent, isAuthenticated }: SoloCardProps) {
+    const href = isAuthenticated ? "/studio" : "/login?from=/studio";
+
+    return (
+        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 backdrop-blur-sm sm:p-10">
+            <div className="flex items-start justify-between gap-4">
+                <h3 className="text-xl font-semibold">{plan.name}</h3>
+                <span className="rounded-full bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-300">
+                    Free forever
+                </span>
+            </div>
+
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-neutral-400">
+                Perfect for students and solo creators finding their visual
+                language. Start experiencing Artistic Intelligence.
+            </p>
+
+            <div className="mt-10">
+                <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-semibold tracking-tight sm:text-7xl">
+                        {plan.credits}
+                    </span>
+                    <span className="text-2xl font-semibold text-neutral-300 sm:text-3xl">
+                        credits
+                    </span>
+                    <span className="text-xl font-semibold text-neutral-500 sm:text-2xl">
+                        *
+                    </span>
+                </div>
+                <p className="mt-2 text-sm text-neutral-400">
+                    Generate images &amp; video
+                </p>
+            </div>
+
+            <div className="mt-8">
+                {isCurrent ? (
+                    <div className="flex h-12 items-center justify-center rounded-xl bg-neutral-800 text-sm font-medium text-neutral-400">
+                        Current plan
+                    </div>
+                ) : (
+                    <Link
+                        href={href}
+                        className="flex h-12 items-center justify-center rounded-xl bg-white px-6 text-base font-semibold text-black transition-colors hover:bg-neutral-200 active:scale-95"
+                    >
+                        Start Creating &mdash; Free
+                    </Link>
+                )}
+            </div>
+
+            <p className="mt-6 text-center text-xs text-neutral-500">
+                *Daily limits apply &mdash; helping us keep Solo accessible to everyone.
+            </p>
+        </div>
+    );
+}
+
+// ─── Paid plan card ────────────────────────────────────────────────────────
 
 interface PlanCardProps {
     plan: SubscriptionPlan;
@@ -89,54 +198,56 @@ function PlanCard({ plan, currentPlan, isAuthenticated }: PlanCardProps) {
     const isFeatured = "featured" in plan && plan.featured === true;
     const isCurrent = currentPlan === plan.id;
 
+    // The monthly credit count is already shown as the big number,
+    // so drop it from the inline feature list to avoid duplication.
+    const inlineFeatures = plan.features.filter(
+        (f) => !/^\d+[,\d]*\s*credits/i.test(f),
+    );
+
     return (
         <div
             className={cn(
-                "relative flex flex-col rounded-2xl border p-6 transition-colors",
-                "bg-white dark:bg-neutral-950",
-                isFeatured
-                    ? "border-neutral-900 ring-1 ring-neutral-900/10 dark:border-neutral-50 dark:ring-neutral-50/10"
-                    : "border-neutral-200 dark:border-neutral-800",
+                "relative flex flex-col rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 backdrop-blur-sm transition-colors",
+                // At the 2-col breakpoint the 3rd card (Studio) would
+                // sit alone on a new row — span both columns so it fills
+                // the row cleanly.
+                "sm:last:col-span-2 lg:last:col-span-1",
             )}
         >
-            {isFeatured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-neutral-950 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white dark:bg-white dark:text-neutral-950">
-                    Most popular
-                </div>
-            )}
-
+            {/* Main content — flex-1 so the button below stays anchored
+                right after this block, regardless of the expanded state. */}
             <div className="flex-1">
-                <h2 className="text-lg font-semibold text-neutral-950 dark:text-neutral-50">
+                <h3 className="text-xl font-semibold text-neutral-50">
                     {plan.name}
-                </h2>
-                <div className="mt-2 flex items-baseline gap-1">
-                    <span className="text-3xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50">
-                        {plan.priceLabel}
-                    </span>
-                    {plan.interval && (
-                        <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                            /{plan.interval}
-                        </span>
-                    )}
-                </div>
-                <p className="mt-3 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-neutral-400">
                     {plan.description}
                 </p>
 
-                <ul className="mt-6 space-y-2.5 text-sm">
-                    {plan.features.map((feature) => (
-                        <li
-                            key={feature}
-                            className="flex items-start gap-2 text-neutral-700 dark:text-neutral-300"
-                        >
-                            <CheckIcon />
-                            <span>{feature}</span>
-                        </li>
-                    ))}
-                </ul>
+                <div className="mt-8">
+                    <div className="flex items-baseline gap-2 text-neutral-50">
+                        <span className="text-4xl font-semibold tracking-tight sm:text-6xl">
+                            {plan.credits.toLocaleString()}
+                        </span>
+                        <span className="text-xl font-semibold text-neutral-300 sm:text-2xl">
+                            credits
+                        </span>
+                    </div>
+                    {plan.interval && (
+                        <p className="mt-2 text-sm text-neutral-400">
+                            {plan.priceLabel}/mo
+                        </p>
+                    )}
+                </div>
+
+                {inlineFeatures.length > 0 && (
+                    <p className="mt-6 text-sm leading-relaxed text-neutral-400">
+                        {inlineFeatures.join(", ")}
+                    </p>
+                )}
             </div>
 
-            <div className="mt-8">
+            <div className="pt-8">
                 <UpgradeButton
                     planId={plan.id}
                     planName={plan.name}
@@ -145,25 +256,8 @@ function PlanCard({ plan, currentPlan, isAuthenticated }: PlanCardProps) {
                     isFeatured={isFeatured}
                 />
             </div>
-        </div>
-    );
-}
 
-function CheckIcon() {
-    return (
-        <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-            className="mt-0.5 shrink-0 text-neutral-400"
-        >
-            <polyline points="20 6 9 17 4 12" />
-        </svg>
+            <PlanFeatures features={plan.features} />
+        </div>
     );
 }
