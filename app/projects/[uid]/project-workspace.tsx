@@ -15,9 +15,13 @@
  * The workspace is always dark-themed to keep visual focus on images.
  */
 
-import { useState, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { GenerationGallery } from "./generation-gallery";
-import { GenerationComposer, type ComposerMode } from "./generation-composer";
+import {
+    GenerationComposer,
+    type ComposerMode,
+    type GenerationComposerHandle,
+} from "./generation-composer";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -75,6 +79,7 @@ export function ProjectWorkspace({
         initialGenerations,
     );
     const [credits, setCredits] = useState(totalCredits);
+    const composerRef = useRef<GenerationComposerHandle>(null);
 
     const handleGenerationComplete = useCallback(
         (result: {
@@ -173,13 +178,73 @@ export function ProjectWorkspace({
         [],
     );
 
+    // ─── Gallery card actions ──────────────────────────────────────
+
+    const handleReusePrompt = useCallback((prompt: string) => {
+        composerRef.current?.setPrompt(prompt);
+    }, []);
+
+    const handleUseAsReference = useCallback(async (imageUrl: string) => {
+        try {
+            await composerRef.current?.attachReferenceFromUrl(imageUrl);
+        } catch (err) {
+            console.error("[workspace] Failed to attach reference image:", err);
+        }
+    }, []);
+
+    const handleRegenerate = useCallback((generation: GenerationItem) => {
+        composerRef.current?.applySnapshot({
+            prompt: generation.prompt,
+            aspectRatio: generation.aspectRatio,
+            kind: generation.kind,
+        });
+        // applySnapshot uses flushSync, so state is already committed —
+        // the submit closure sees the restored prompt / aspect / mode.
+        composerRef.current?.submit();
+    }, []);
+
+    const handleDeleteGeneration = useCallback(async (uid: string) => {
+        // Snapshot the current list so we can roll back if the server
+        // rejects the delete (auth lapse, network flake, etc.).
+        let removed: GenerationItem | null = null;
+        setGenerations((prev) => {
+            const found = prev.find((g) => g.uid === uid);
+            if (!found) return prev;
+            removed = found;
+            return prev.filter((g) => g.uid !== uid);
+        });
+        if (!removed) return;
+
+        try {
+            const res = await fetch(`/api/generations/${uid}`, {
+                method: "DELETE",
+            });
+            if (!res.ok && res.status !== 404) {
+                throw new Error(`Delete failed (${res.status})`);
+            }
+        } catch (err) {
+            console.error("[workspace] Failed to delete generation:", err);
+            // Restore so the user sees it again and can retry.
+            if (removed) {
+                const restored = removed;
+                setGenerations((prev) => [restored, ...prev]);
+            }
+        }
+    }, []);
+
     return (
         <div className="relative flex min-h-0 flex-1 flex-col text-white">
             {/* Gallery — fills remaining space. Bottom padding reserves
                 room for the floating composer so the last row isn't
                 permanently hidden behind it. */}
             <div className="flex-1 overflow-y-auto pb-40 sm:pb-44">
-                <GenerationGallery generations={generations} />
+                <GenerationGallery
+                    generations={generations}
+                    onReusePrompt={handleReusePrompt}
+                    onUseAsReference={handleUseAsReference}
+                    onRegenerate={handleRegenerate}
+                    onDelete={handleDeleteGeneration}
+                />
             </div>
 
             {/* Composer — floats over the gallery so its backdrop-blur
@@ -188,6 +253,7 @@ export function ProjectWorkspace({
             <div className="pointer-events-none absolute inset-x-0 bottom-0">
                 <div className="pointer-events-auto">
                     <GenerationComposer
+                        ref={composerRef}
                         projectUid={projectUid}
                         models={models}
                         videoModels={videoModels}

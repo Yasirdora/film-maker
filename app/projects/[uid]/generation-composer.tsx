@@ -16,7 +16,16 @@
  * with StyleReferenceImage instead of text-only generateImages.
  */
 
-import { useState, useRef, useCallback } from "react";
+import {
+    forwardRef,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from "react";
+import { createPortal, flushSync } from "react-dom";
 import {
     ComposerSettings,
     type ComposerSettingsState,
@@ -115,19 +124,83 @@ function extractImageFiles(dataTransfer: DataTransfer): File[] {
     return files;
 }
 
+/**
+ * Fetches a remote image URL and wraps it in a `File` object so it can
+ * flow through the same attachment pipeline as a file-picker upload.
+ * Falls back to sensible defaults when the MIME type or extension is
+ * missing so the Gemini API never receives a bare blob with no type.
+ */
+async function fetchUrlAsFile(
+    imageUrl: string,
+    fallbackName = "reference",
+): Promise<File> {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch reference image (${response.status})`);
+    }
+    const blob = await response.blob();
+    const mimeType = ACCEPTED_IMAGE_TYPES.includes(blob.type)
+        ? blob.type
+        : "image/webp";
+    const extension = mimeType.split("/")[1] ?? "webp";
+    return new File([blob], `${fallbackName}.${extension}`, { type: mimeType });
+}
+
+// ─── Imperative handle ──────────────────────────────────────────────────────
+
+/**
+ * Subset of a past generation's parameters that the composer can restore
+ * when the user asks to regenerate. Kept narrow so adding new fields
+ * (model, sampleCount, etc.) later is a single-site change.
+ */
+export interface ComposerSnapshot {
+    prompt: string;
+    aspectRatio: string | null;
+    kind: ComposerMode;
+}
+
+/**
+ * Surface the composer exposes to its parent so gallery actions (reuse
+ * prompt, use as reference, regenerate) can drive it without lifting all
+ * of the composer's local state up. Every method is idempotent and safe
+ * to call while a generation is in flight — the composer's internal
+ * `canGenerate` guard remains the single source of truth.
+ */
+export interface GenerationComposerHandle {
+    /** Replace the current prompt text (also focuses the input). */
+    setPrompt: (prompt: string) => void;
+    /** Fetch an image URL and attach it to the composer as a reference. */
+    attachReferenceFromUrl: (imageUrl: string) => Promise<void>;
+    /**
+     * Atomically restore prompt + aspect ratio + mode from a past
+     * generation. Uses `flushSync` so the composer's internal
+     * `handleGenerate` closure sees the new values on the next `submit`
+     * call without needing an rAF/timeout dance.
+     */
+    applySnapshot: (snapshot: ComposerSnapshot) => void;
+    /** Submit the current composer state, same as clicking Generate. */
+    submit: () => void;
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function GenerationComposer({
-    projectUid,
-    models,
-    videoModels,
-    availableResolutions,
-    planName,
-    credits,
-    onGenerationStart,
-    onGenerationComplete,
-    onGenerationError,
-}: GenerationComposerProps) {
+export const GenerationComposer = forwardRef<
+    GenerationComposerHandle,
+    GenerationComposerProps
+>(function GenerationComposer(
+    {
+        projectUid,
+        models,
+        videoModels,
+        availableResolutions,
+        planName,
+        credits,
+        onGenerationStart,
+        onGenerationComplete,
+        onGenerationError,
+    },
+    ref,
+) {
     const [prompt, setPrompt] = useState("");
     const [mode, setMode] = useState<ComposerMode>("image");
     const [settingsOpen, setSettingsOpen] = useState(false);
@@ -437,6 +510,44 @@ export function GenerationComposer({
         onGenerationError,
     ]);
 
+    // ─── Imperative API for parent-driven actions ──────────────────
+
+    useImperativeHandle(
+        ref,
+        () => ({
+            setPrompt: (nextPrompt) => {
+                setPrompt(nextPrompt);
+                // Focus next paint so the caret sits at the end and the
+                // user can edit immediately.
+                requestAnimationFrame(() => inputRef.current?.focus());
+            },
+            attachReferenceFromUrl: async (imageUrl) => {
+                const file = await fetchUrlAsFile(imageUrl);
+                addImages([file]);
+            },
+            applySnapshot: (snapshot) => {
+                // flushSync forces React to commit the state updates
+                // synchronously — by the time this returns, the next
+                // `submit()` call will see the new prompt, aspect ratio,
+                // and mode in `handleGenerate`'s closure.
+                flushSync(() => {
+                    setPrompt(snapshot.prompt);
+                    setMode(snapshot.kind);
+                    if (snapshot.aspectRatio) {
+                        setSettings((s) => ({
+                            ...s,
+                            aspectRatio: snapshot.aspectRatio!,
+                        }));
+                    }
+                });
+            },
+            submit: () => {
+                handleGenerate();
+            },
+        }),
+        [addImages, handleGenerate],
+    );
+
     // ─── Keyboard ───────────────────────────────────────────────────
 
     function handleKeyDown(e: React.KeyboardEvent) {
@@ -648,9 +759,9 @@ export function GenerationComposer({
                             <button
                                 type="button"
                                 onClick={() => setSettingsOpen((o) => !o)}
-                                className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] transition-colors ${
+                                className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] outline-none transition-colors focus:outline-none focus-visible:outline-none ${
                                     settingsOpen
-                                        ? "border border-white/20 bg-[#323235]"
+                                        ? "bg-[#3a3a3d]"
                                         : "bg-[#2a2a2d] hover:bg-[#353538]"
                                 }`}
                                 aria-label="Generation settings"
@@ -701,7 +812,7 @@ export function GenerationComposer({
             </div>
         </div>
     );
-}
+});
 
 // ─── Image thumbnail ──────────────────────────────────────────────────────
 
@@ -716,38 +827,170 @@ function ImageThumbnail({
     showSwap: boolean;
     onSwap: () => void;
 }) {
-    return (
-        <>
-            <div className="group/thumb relative shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src={image.previewUrl}
-                    alt=""
-                    className="h-[52px] w-[52px] rounded-xl bg-white/[0.04] object-cover ring-1 ring-white/[0.08]"
-                    draggable={false}
-                />
-                <button
-                    type="button"
-                    onClick={onRemove}
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#0f0f11] text-[#9ca3af] transition-all hover:text-white sm:opacity-0 sm:group-hover/thumb:opacity-100"
-                    aria-label="Remove image"
-                >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                </button>
-            </div>
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [entered, setEntered] = useState(false);
+    const [canHover, setCanHover] = useState(false);
+    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+    const thumbRef = useRef<HTMLDivElement>(null);
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-            {/* Swap button — appears between the two video frame thumbnails */}
+    // Device capability — desktop uses hover, mobile uses tap.
+    useEffect(() => {
+        setCanHover(window.matchMedia("(hover: hover)").matches);
+    }, []);
+
+    // Trigger the fade+scale transition on the frame after the portal
+    // mounts, so the CSS transition has a starting state to animate from.
+    useLayoutEffect(() => {
+        if (previewOpen && anchorRect) {
+            const r = requestAnimationFrame(() => setEntered(true));
+            return () => cancelAnimationFrame(r);
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on close
+        setEntered(false);
+    }, [previewOpen, anchorRect]);
+
+    // Clear any pending hover-open timer on unmount.
+    useEffect(() => {
+        return () => {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        };
+    }, []);
+
+    // Measure the thumb's viewport position whenever the preview opens,
+    // and re-measure on scroll/resize so the bubble stays pinned.
+    useLayoutEffect(() => {
+        if (!previewOpen || !thumbRef.current) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
+            setAnchorRect(null);
+            return;
+        }
+        function measure() {
+            if (thumbRef.current) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
+                setAnchorRect(thumbRef.current.getBoundingClientRect());
+            }
+        }
+        measure();
+        window.addEventListener("resize", measure);
+        window.addEventListener("scroll", measure, true);
+        return () => {
+            window.removeEventListener("resize", measure);
+            window.removeEventListener("scroll", measure, true);
+        };
+    }, [previewOpen]);
+
+    // Mobile: dismiss on outside tap. setTimeout keeps the opening tap
+    // from immediately closing it.
+    useEffect(() => {
+        if (!previewOpen || canHover) return;
+        function handleClick(e: MouseEvent) {
+            if (thumbRef.current?.contains(e.target as Node)) return;
+            setPreviewOpen(false);
+        }
+        const t = setTimeout(() => {
+            document.addEventListener("mousedown", handleClick);
+        }, 0);
+        return () => {
+            clearTimeout(t);
+            document.removeEventListener("mousedown", handleClick);
+        };
+    }, [previewOpen, canHover]);
+
+    const previewHandlers = canHover
+        ? {
+              onMouseEnter: () => {
+                  if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+                  hoverTimerRef.current = setTimeout(() => {
+                      setPreviewOpen(true);
+                  }, 320);
+              },
+              onMouseLeave: () => {
+                  if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+                  hoverTimerRef.current = null;
+                  setPreviewOpen(false);
+              },
+          }
+        : {
+              onClick: () => setPreviewOpen((o) => !o),
+          };
+
+    return (
+        <div ref={thumbRef} className="group/thumb relative shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+                src={image.previewUrl}
+                alt=""
+                className="h-[52px] w-[52px] cursor-pointer rounded-xl bg-white/[0.04] object-cover ring-1 ring-white/[0.08]"
+                draggable={false}
+                {...previewHandlers}
+            />
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove();
+                }}
+                className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-black/65 text-white/90 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover/thumb:opacity-100"
+                aria-label="Remove image"
+            >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+
+            {previewOpen && anchorRect && typeof document !== "undefined" &&
+                createPortal(
+                    (() => {
+                        const BUBBLE_MAX_W = 280;
+                        const MARGIN = 12;
+                        const ideal = anchorRect.left + anchorRect.width / 2;
+                        const half = BUBBLE_MAX_W / 2;
+                        const minCenter = half + MARGIN;
+                        const maxCenter = window.innerWidth - half - MARGIN;
+                        const left =
+                            minCenter > maxCenter
+                                ? window.innerWidth / 2
+                                : Math.max(minCenter, Math.min(maxCenter, ideal));
+                        return (
+                            <div
+                                style={{
+                                    position: "fixed",
+                                    bottom: window.innerHeight - anchorRect.top + 10,
+                                    left,
+                                    zIndex: 80,
+                                    pointerEvents: "none",
+                                    transformOrigin: "bottom center",
+                                }}
+                                className={`transition-[opacity,transform] duration-200 ease-out ${
+                                    entered
+                                        ? "translate-x-[-50%] translate-y-0 scale-100 opacity-100"
+                                        : "translate-x-[-50%] translate-y-1 scale-95 opacity-0"
+                                }`}
+                            >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                    src={image.previewUrl}
+                                    alt=""
+                                    className="max-h-[260px] max-w-[min(280px,calc(100vw-24px))] rounded-xl bg-[#0f0f11] object-contain shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_18px_-4px_rgba(0,0,0,0.5),0_24px_56px_-12px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.08]"
+                                    draggable={false}
+                                />
+                            </div>
+                        );
+                    })(),
+                    document.body,
+                )}
+
+            {/* Swap — floats over the gap between the two video frames */}
             {showSwap && (
                 <button
                     type="button"
                     onClick={onSwap}
-                    className="-mx-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[#52525b] transition-all hover:text-white sm:opacity-0 sm:group-hover/row:opacity-100"
+                    className="absolute top-1/2 left-[calc(100%+6px)] z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[8px] bg-black/55 text-white/80 ring-1 ring-white/[0.08] backdrop-blur-sm transition-all hover:bg-black/70 hover:text-white sm:opacity-0 sm:group-hover/row:opacity-100"
                     aria-label="Swap first and last frame"
                 >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M8 3L4 7l4 4" />
                         <path d="M4 7h16" />
                         <path d="M16 21l4-4-4-4" />
@@ -755,6 +998,6 @@ function ImageThumbnail({
                     </svg>
                 </button>
             )}
-        </>
+        </div>
     );
 }

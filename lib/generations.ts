@@ -288,6 +288,31 @@ export async function getGeneration(
     return row ? mapRow(row) : null;
 }
 
+// ─── Delete ─────────────────────────────────────────────────────────────────
+
+/**
+ * Permanently deletes a generation row, scoped to a user so the delete
+ * is a no-op if the UID doesn't belong to them. Returns `true` if a row
+ * was removed, `false` otherwise (already deleted, wrong owner, etc.).
+ *
+ * R2 blob cleanup is intentionally deferred — it's scheduled for the
+ * post-UI roadmap (see MEMORY.md). Orphaned blobs are cheap to keep and
+ * a background sweeper can reconcile them against the DB periodically.
+ */
+export async function deleteGeneration(
+    uid: string,
+    userId: string,
+): Promise<boolean> {
+    const db = await getDb();
+    const result = await db
+        .prepare("DELETE FROM generation WHERE uid = ? AND user_id = ?")
+        .bind(uid, userId)
+        .run();
+    // D1's `meta.changes` reports rows affected; fall back to truthy check.
+    const changes = result.meta?.changes ?? (result.success ? 1 : 0);
+    return changes > 0;
+}
+
 // ─── Idempotency ────────────────────────────────────────────────────────────
 
 // Idempotency keys are valid for 24 hours (matching Stripe's design).
