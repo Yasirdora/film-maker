@@ -35,7 +35,7 @@ export function AuthCard({ children }: AuthCardProps) {
             style={{ fontFamily: "var(--font-google-sans), system-ui, sans-serif" }}
         >
             <main
-                className="flex flex-col overflow-hidden rounded-3xl border border-[var(--border)] backdrop-blur-[20px] min-[860px]:flex-row"
+                className="isolate flex flex-col overflow-hidden rounded-3xl border border-[var(--border)] backdrop-blur-[20px] [transform:translateZ(0)] min-[860px]:flex-row"
                 style={{
                     backgroundColor: "var(--card-bg)",
                     boxShadow: "var(--card-shadow)",

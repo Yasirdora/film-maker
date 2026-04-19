@@ -294,16 +294,18 @@ export async function POST(request: Request): Promise<Response> {
 
         console.error("[api/generate] Gemini error:", err);
 
-        return NextResponse.json(
-            { error: message },
-            {
-                status:
-                    err instanceof GenerationError &&
-                    err.code === "quota_exceeded"
-                        ? 429
-                        : 500,
-            },
-        );
+        const status = (() => {
+            if (!(err instanceof GenerationError)) return 500;
+            if (err.code === "quota_exceeded") return 429;
+            // no_output and safety_filtered are caused by the user's
+            // prompt (unrenderable or policy-blocked), not our server.
+            if (err.code === "no_output" || err.code === "safety_filtered") {
+                return 400;
+            }
+            return 500;
+        })();
+
+        return NextResponse.json({ error: message }, { status });
     }
 
     // ─── Upload to R2 ─────────────────────────────────────────────────

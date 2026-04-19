@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "preview": "opennextjs-cloudflare build && wrangler dev",
-    "deploy": "opennextjs-cloudflare build && wrangler deploy",
+    "deploy": "opennextjs-cloudflare build && node scripts/minify-worker.mjs && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv",
     "db:create": "wrangler d1 create film-maker-db",
     "db:migrate:local": "wrangler d1 migrations apply film-maker-db --local",

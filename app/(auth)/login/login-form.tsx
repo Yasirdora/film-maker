@@ -354,7 +354,7 @@ export function LoginForm({ emailEnabled, turnstileSiteKey }: LoginFormProps) {
                     aria-label="Continue with Google"
                 >
                     {status.kind === "submitting-google" ? (
-                        <span className="text-neutral-500">Redirecting…</span>
+                        <GoogleDotsLoader />
                     ) : (
                         <>
                             <GoogleIcon />
@@ -426,5 +426,37 @@ function GoogleIcon() {
                 fill="#EA4335"
             />
         </svg>
+    );
+}
+
+/**
+ * Four-dot loader in Google's brand colors. Shown while the browser
+ * is handing off to Google's OAuth consent screen so users see that
+ * something is happening — same visual idiom Google itself uses.
+ */
+function GoogleDotsLoader() {
+    return (
+        <span
+            className="flex items-center justify-center gap-1.5"
+            role="status"
+            aria-label="Redirecting to Google"
+        >
+            <span
+                className="google-dot block h-2 w-2 rounded-full bg-[#4285F4]"
+                style={{ animationDelay: "0ms" }}
+            />
+            <span
+                className="google-dot block h-2 w-2 rounded-full bg-[#EA4335]"
+                style={{ animationDelay: "160ms" }}
+            />
+            <span
+                className="google-dot block h-2 w-2 rounded-full bg-[#FBBC05]"
+                style={{ animationDelay: "320ms" }}
+            />
+            <span
+                className="google-dot block h-2 w-2 rounded-full bg-[#34A853]"
+                style={{ animationDelay: "480ms" }}
+            />
+        </span>
     );
 }

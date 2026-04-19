@@ -23,6 +23,7 @@ import { getBalance } from "@/lib/credits";
 import { getProject } from "@/lib/projects";
 import { getPlan, PHOTO_MODELS, RESOLUTIONS } from "@/lib/constants";
 import { AppNav } from "@/components/app-nav";
+import { AppHeader } from "@/components/app-header";
 import { GenerateForm } from "./generate-form";
 
 export const metadata: Metadata = {
@@ -68,6 +69,8 @@ export default async function AuteurPage({ searchParams }: PageProps) {
     return (
         <div className="min-h-dvh bg-neutral-50 dark:bg-neutral-950">
             <AppNav />
+
+            <AppHeader brandHref="/studio" />
 
             <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
                 <GenerateForm

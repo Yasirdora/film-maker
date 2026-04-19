@@ -16,7 +16,7 @@ import type { Metadata } from "next";
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { listProjects, listArchivedProjects } from "@/lib/projects";
-import { AppBrandMark } from "@/components/app-brand-mark";
+import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
 import { NewProjectButton } from "./new-project-dialog";
 import { ArchivedProjects } from "./archived-projects";
@@ -44,14 +44,7 @@ export default async function StudioPage() {
         <div className="min-h-dvh bg-[#0f0f11] text-white pb-[66px] sm:pb-0">
             <AppNav />
 
-            {/* Brand mark — pinned to the top-left of the viewport so
-                it sits opposite the AppNav cluster (which anchors
-                top-right on desktop). Sibling of <AppNav /> rather
-                than nested in <main> so the left padding matches the
-                nav's right padding on wide screens. */}
-            <div className="px-4 pt-4 sm:px-6">
-                <AppBrandMark size="sm" />
-            </div>
+            <AppHeader />
 
             <main className="mx-auto max-w-[85rem] px-4 pb-8 sm:px-6">
                 {/* Welcome */}

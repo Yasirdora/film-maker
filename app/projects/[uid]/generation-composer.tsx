@@ -26,6 +26,7 @@ import {
     useState,
 } from "react";
 import { createPortal, flushSync } from "react-dom";
+import { toast } from "sonner";
 import {
     ComposerSettings,
     type ComposerSettingsState,
@@ -382,7 +383,9 @@ export const GenerationComposer = forwardRef<
                 };
 
                 if (!res.ok) {
-                    onGenerationError(trimmedPrompt, data.error ?? "Video generation failed.");
+                    const errorMessage = data.error ?? "Video generation failed.";
+                    toast.error(errorMessage);
+                    onGenerationError(trimmedPrompt, errorMessage);
                 } else {
                     const urls = data.videoUrls ?? (data.videoUrl ? [data.videoUrl] : []);
                     onGenerationComplete({
@@ -462,7 +465,9 @@ export const GenerationComposer = forwardRef<
             };
 
             if (!res.ok) {
-                onGenerationError(trimmedPrompt, data.error ?? "Generation failed.");
+                const errorMessage = data.error ?? "Generation failed.";
+                toast.error(errorMessage);
+                onGenerationError(trimmedPrompt, errorMessage);
             } else {
                 const urls = data.imageUrls ?? (data.imageUrl ? [data.imageUrl] : []);
                 onGenerationComplete({

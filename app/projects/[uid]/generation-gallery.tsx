@@ -291,7 +291,7 @@ function JustifiedRowsGrid({
     return (
         <div
             ref={containerRef}
-            className="mx-auto max-w-6xl px-3 pb-4 pt-4 sm:px-6 sm:pt-6"
+            className="mx-auto max-w-[85rem] px-4 pb-4 pt-4 sm:px-6 sm:pt-6"
         >
             {ready && (
                 <div className="flex flex-col" style={{ gap }}>

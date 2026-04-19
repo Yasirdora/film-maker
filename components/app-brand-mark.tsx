@@ -34,8 +34,8 @@ interface AppBrandMarkProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<AppBrandMarkProps["size"]>, string> = {
-    default: "w-10 sm:w-12",
-    sm: "w-8 sm:w-10",
+    default: "w-11 sm:w-[3.25rem]",
+    sm: "w-9 sm:w-11",
 };
 
 export function AppBrandMark({ href, size = "default" }: AppBrandMarkProps) {

@@ -22,7 +22,7 @@ import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { cn } from "@/lib/utils";
 import { AppNav } from "@/components/app-nav";
-import { AppBrandMark } from "@/components/app-brand-mark";
+import { AppHeader } from "@/components/app-header";
 
 import { UpgradeButton } from "./upgrade-button";
 import { PlanFeatures } from "./plan-features";
@@ -55,17 +55,18 @@ export default async function PricingPage() {
             className={cn(
                 newsreader.variable,
                 "min-h-dvh bg-neutral-950 text-neutral-50",
-                // AppNav is fixed-bottom on mobile for signed-in users,
-                // so reserve space so content isn't obscured.
-                isAuthenticated && "pb-[66px] sm:pb-0",
+                // AppNav is fixed-bottom on mobile, so reserve space
+                // so content isn't obscured.
+                "pb-[66px] sm:pb-0",
             )}
             style={{ background: "var(--brand-gradient)" }}
         >
-            {isAuthenticated && <AppNav />}
+            <AppNav />
 
-            <div className="px-4 pt-4 sm:px-6">
-                <AppBrandMark href={isAuthenticated ? "/studio" : "/"} />
-            </div>
+            <AppHeader
+                brandHref={isAuthenticated ? "/studio" : "/"}
+                reserveNavSpace
+            />
 
             <section className="mx-auto max-w-5xl px-6 pt-12 pb-12 text-center sm:pt-20">
                 <h1 className="text-balance text-[clamp(2.5rem,6.5vw,5.25rem)] font-semibold leading-[1.1] tracking-tight">

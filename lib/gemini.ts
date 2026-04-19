@@ -221,7 +221,15 @@ async function generateWithContent(
         }
     }
 
-    parts.push({ text: params.prompt });
+    // gemini-2.5-flash-image is a chat-style model: without a generation
+    // directive, a conversational prompt ("hi how are you") yields a text
+    // reply and no image. Prefixing forces image output even for prompts
+    // that don't read like a description.
+    const directive =
+        params.referenceImages && params.referenceImages.length > 0
+            ? `Generate an image based on the reference(s) and this prompt: ${params.prompt}`
+            : `Generate an image of: ${params.prompt}`;
+    parts.push({ text: directive });
 
     let response;
     try {

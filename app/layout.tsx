@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Google_Sans } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const googleSans = Google_Sans({
@@ -51,7 +52,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
     return (
         <html lang="en" className={googleSans.variable}>
-            <body className="min-h-dvh">{children}</body>
+            <body className="min-h-dvh">
+                {children}
+                <Toaster position="top-center" theme="dark" richColors closeButton />
+            </body>
         </html>
     );
 }

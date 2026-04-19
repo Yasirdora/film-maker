@@ -1,0 +1,71 @@
+/* ============================================================================
+   AppNav — gradient blur scrim
+   ----------------------------------------------------------------------------
+   Ported from ConveX's NavBar. A fixed-position element sitting behind the
+   nav that blurs whatever content scrolls underneath, then fades cleanly
+   into the page via a mask gradient. Removes the need for a solid nav bar
+   bg — content shows through with a subtle frosted edge.
+
+   Two positions:
+     • Mobile (< 640px): bottom edge — mask fades upward, blur sits over
+       the bottom nav.
+     • Desktop (≥ 640px): top edge — mask fades downward, blur sits over
+       the top-right nav cluster.
+   ========================================================================= */
+
+.scrim {
+    position: fixed;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(18px) saturate(140%);
+    z-index: 40;
+}
+
+/* Mobile: scrim sits at the bottom covering the nav bar + a fade above it.
+   Solid-ish dark tint at the bottom so the monochrome icons stay legible
+   over bright or busy content, fading out smoothly above the bar. */
+.scrimMobile {
+    bottom: 0;
+    height: calc(66px + env(safe-area-inset-bottom, 0px) + 8px);
+    background: rgb(10 10 10 / 0.72);
+    border-top: 1px solid rgb(255 255 255 / 0.06);
+}
+
+/* Desktop: scrim moves to the top and flips the mask direction. */
+@media (min-width: 640px) {
+    .scrimMobile {
+        display: none;
+    }
+    .scrimDesktop {
+        top: 0;
+        height: 96px;
+        background: rgb(128 128 128 / 0.03);
+        -webkit-backdrop-filter: blur(3px) saturate(100%);
+        backdrop-filter: blur(3px) saturate(100%);
+        mask-image: linear-gradient(
+            to bottom,
+            black 0%,
+            black 50%,
+            rgb(0 0 0 / 0.55) 72%,
+            rgb(0 0 0 / 0.18) 90%,
+            transparent 100%
+        );
+        -webkit-mask-image: linear-gradient(
+            to bottom,
+            black 0%,
+            black 50%,
+            rgb(0 0 0 / 0.55) 72%,
+            rgb(0 0 0 / 0.18) 90%,
+            transparent 100%
+        );
+    }
+}
+
+/* Hide the desktop scrim on mobile. */
+@media (max-width: 639.98px) {
+    .scrimDesktop {
+        display: none;
+    }
+}

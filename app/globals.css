@@ -57,35 +57,90 @@
 }
 
 @keyframes auteur-eye-close {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    36%,
-    56% {
-        opacity: 0;
-    }
+    0%, 100% { opacity: 1; }
+    25%, 40% { opacity: 0; }
 }
 
 @keyframes auteur-eye-open {
-    0%,
-    100% {
-        opacity: 0;
-    }
-    36%,
-    56% {
-        opacity: 1;
-    }
+    0%, 100% { opacity: 0; }
+    25%, 40% { opacity: 1; }
 }
 
 .group:hover .auteur-eye-open,
 .group:focus-visible .auteur-eye-open {
-    animation: auteur-eye-close 420ms ease-in-out;
+    animation: auteur-eye-close 520ms ease-in-out 1s;
 }
 
 .group:hover .auteur-eye-closed,
 .group:focus-visible .auteur-eye-closed {
-    animation: auteur-eye-open 420ms ease-in-out;
+    animation: auteur-eye-open 520ms ease-in-out 1s;
+}
+
+/* Google-style four-dot pulse loader. Each dot uses one of Google's
+   brand colors and pulses with a staggered delay to create a wave. */
+@keyframes google-dot-pulse {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.55);
+        opacity: 0.35;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.google-dot {
+    animation: google-dot-pulse 1.2s ease-in-out infinite both;
+}
+
+/* Launchpad — enter/exit via Radix data-state. Overlay fades; content
+   fades + subtle scale. Mobile content slides in from the bottom. */
+@keyframes launchpad-overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+@keyframes launchpad-overlay-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+@keyframes launchpad-content-in {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes launchpad-content-out {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    to   { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+}
+@keyframes launchpad-content-mobile-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes launchpad-content-mobile-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(12px); }
+}
+
+.launchpad-overlay[data-state="open"] {
+    animation: launchpad-overlay-in 180ms ease-out;
+}
+.launchpad-overlay[data-state="closed"] {
+    animation: launchpad-overlay-out 140ms ease-in;
+}
+.launchpad-content[data-state="open"] {
+    animation: launchpad-content-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.launchpad-content[data-state="closed"] {
+    animation: launchpad-content-out 160ms ease-in;
+}
+@media (max-width: 640px) {
+    .launchpad-content[data-state="open"] {
+        animation: launchpad-content-mobile-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .launchpad-content[data-state="closed"] {
+        animation: launchpad-content-mobile-out 160ms ease-in;
+    }
 }
 
 :root {

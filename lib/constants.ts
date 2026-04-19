@@ -193,18 +193,18 @@ export function getCreditPack(id: string): CreditPack | undefined {
 
 export const PHOTO_MODELS = [
     {
-        id: "nano-banana",
-        name: "Nano Banana",
-        description: "Fast image generation with style transfer support.",
-        geminiModelId: "gemini-2.5-flash-image",
-        creditBase: 1,
-    },
-    {
         id: "nano-banana-pro",
         name: "Nano Banana Pro",
         description: "Google's flagship image model. Best for cinematic stills.",
         geminiModelId: "imagen-4.0-generate-001",
         creditBase: 2,
+    },
+    {
+        id: "nano-banana",
+        name: "Nano Banana",
+        description: "Fast image generation with style transfer support.",
+        geminiModelId: "gemini-2.5-flash-image",
+        creditBase: 1,
     },
     {
         id: "imagen",

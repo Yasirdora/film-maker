@@ -23,28 +23,28 @@ export function NavAppsButton() {
                 aria-label="Get Started"
             >
                 <svg
-                    width="26"
-                    height="26"
+                    width="24"
+                    height="24"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="#9ca3af"
-                    strokeWidth="1.5"
+                    stroke="#e5e7eb"
+                    strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     className="group-hover:stroke-white transition-colors"
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
                 </svg>
-                <span className="text-[11px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
+                <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
                     Get Started
                 </span>
             </button>
 
-            {/* Desktop pill — quieter weight so it sits evenly next to the icon tiles */}
+            {/* Desktop pill — golden-yellow CTA */}
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-[10px] bg-white/[0.06] text-[#9ca3af] hover:bg-white/[0.12] hover:text-white transition-colors group"
+                className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-[10px] bg-amber-400 text-neutral-950 hover:bg-amber-300 transition-colors"
                 aria-label="Get Started"
                 title="Get Started (⌘K)"
             >
@@ -54,13 +54,13 @@ export function NavAppsButton() {
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
-                    strokeWidth="1.5"
+                    strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
                 </svg>
-                <span className="text-sm font-medium">Get Started</span>
+                <span className="text-sm font-semibold">Get Started</span>
             </button>
 
             {/* Launchpad modal */}

@@ -17,7 +17,7 @@ import { getBalance } from "@/lib/credits";
 import { getProject } from "@/lib/projects";
 import { listGenerationsByProject } from "@/lib/generations";
 import { getPlan, PHOTO_MODELS, VIDEO_MODELS, RESOLUTIONS } from "@/lib/constants";
-import { AppBrandMark } from "@/components/app-brand-mark";
+import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
 import { ProjectWorkspace } from "./project-workspace";
 import { ProjectSettings } from "./project-settings";
@@ -97,19 +97,14 @@ export default async function ProjectPage({ params }: PageProps) {
         <div className="flex h-dvh flex-col bg-[#0f0f11] pb-[66px] sm:pb-0">
             <AppNav />
 
-            {/* Unified page header: brand mark at far left (back to
-                /studio), project title + ⋯ actions next to it. On
-                desktop we reserve room on the right so the absolute
-                AppNav cluster can't overlap the title. */}
-            <header className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2 sm:gap-4 sm:px-6 sm:pb-3 sm:pr-64">
-                <AppBrandMark href="/studio" size="sm" />
+            <AppHeader brandHref="/studio">
                 <ProjectSettings
                     uid={project.uid}
                     name={project.name}
                     description={project.description}
                     pinnedAt={project.pinnedAt}
                 />
-            </header>
+            </AppHeader>
 
             <ProjectWorkspace
                 projectUid={project.uid}

@@ -43,6 +43,19 @@ const nextConfig: NextConfig = {
     },
     // www→apex canonicalization lives in middleware.ts because OpenNext
     // does not interpolate `:path*` in redirect destinations.
+
+    // Strip @vercel/og from the Worker bundle. Next.js pulls it in by
+    // default for `ImageResponse`/OG routes, but this app generates no
+    // OG images, so the ~2 MiB of wasm + JS is dead weight that pushed
+    // the Worker past Cloudflare's 3/10 MiB size limit.
+    turbopack: {
+        resolveAlias: {
+            "next/dist/compiled/@vercel/og/index.edge.js":
+                "./lib/empty-module.js",
+            "next/dist/compiled/@vercel/og/index.node.js":
+                "./lib/empty-module.js",
+        },
+    },
 };
 
 export default nextConfig;
