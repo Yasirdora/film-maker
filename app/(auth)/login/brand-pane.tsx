@@ -36,12 +36,8 @@ export function BrandPane() {
             </video>
             <div
                 aria-hidden
-                className="pointer-events-none absolute inset-0 z-[1] mix-blend-overlay opacity-70"
+                className="pointer-events-none absolute inset-0 z-[1] mix-blend-overlay opacity-50"
                 style={{ background: "var(--brand-gradient)" }}
-            />
-            <div
-                aria-hidden
-                className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-b from-transparent via-black/20 to-black/70"
             />
 
             <Link

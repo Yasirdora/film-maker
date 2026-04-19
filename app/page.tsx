@@ -6,8 +6,8 @@
  * they don't bloat the root layout.
  */
 
+import Link from "next/link";
 import { Newsreader } from "next/font/google";
-import { requireSession } from "@/lib/auth-server";
 import { LandingBrandMark } from "./landing-brand-mark";
 import { FilmmakerLogo } from "@/components/icons/filmmaker-logo";
 import { WaitlistForm } from "./waitlist-form";
@@ -19,7 +19,6 @@ const newsreader = Newsreader({
 });
 
 export default async function HomePage() {
-    await requireSession();
     const year = new Date().getFullYear();
 
     return (
@@ -59,10 +58,13 @@ export default async function HomePage() {
                     className="mt-6 max-w-lg text-[clamp(0.9375rem,1.5vw,1.125rem)] leading-relaxed text-white/70"
                     style={{ textShadow: "var(--brand-text-shadow-sm)" }}
                 >
-                    We&apos;re opening access to a select cohort of creators to
-                    ensure infrastructure stability. Join the waiting list to
-                    generate cinematic image and video with precision and creative
-                    control.
+                    Film-maker is an AI creative studio for generating
+                    cinematic images and video from text prompts. Sign in
+                    with a one-time code sent to your email, organize your
+                    work into projects, and iterate with precise creative
+                    control. We&rsquo;re opening access to a select cohort
+                    of creators while we scale — join the waiting list
+                    below.
                 </p>
 
                 <div className="mt-10 w-full">
@@ -72,8 +74,28 @@ export default async function HomePage() {
                 </div>
             </div>
 
-            <footer className="absolute bottom-6 z-10 text-xs text-white/30">
-                &copy; {year} Film-maker
+            <footer className="absolute bottom-6 z-10 flex flex-col items-center gap-2 text-xs text-white/40 sm:flex-row sm:gap-6">
+                <span>&copy; {year} Film-maker</span>
+                <nav className="flex items-center gap-4">
+                    <Link
+                        href="/privacy"
+                        className="transition-colors hover:text-white/80"
+                    >
+                        Privacy
+                    </Link>
+                    <Link
+                        href="/terms"
+                        className="transition-colors hover:text-white/80"
+                    >
+                        Terms
+                    </Link>
+                    <Link
+                        href="/login"
+                        className="transition-colors hover:text-white/80"
+                    >
+                        Sign in
+                    </Link>
+                </nav>
             </footer>
         </div>
     );
