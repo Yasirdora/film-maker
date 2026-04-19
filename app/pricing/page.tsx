@@ -67,7 +67,7 @@ export default async function PricingPage() {
                 <AppBrandMark href={isAuthenticated ? "/studio" : "/"} />
             </div>
 
-            <section className="mx-auto max-w-5xl px-6 pt-6 pb-12 text-center sm:pt-12">
+            <section className="mx-auto max-w-5xl px-6 pt-12 pb-12 text-center sm:pt-20">
                 <h1 className="text-balance text-[clamp(2.5rem,6.5vw,5.25rem)] font-semibold leading-[1.1] tracking-tight">
                     Start a production with
                 </h1>
@@ -99,7 +99,7 @@ export default async function PricingPage() {
             </section>
 
             <section className="mx-auto max-w-7xl px-6 pt-12 pb-16 sm:pt-16 sm:pb-24">
-                <h2 className="mb-6 text-center text-sm font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                <h2 className="mb-6 text-center text-sm font-semibold text-neutral-500">
                     Upgrade when you&rsquo;re ready
                 </h2>
                 <div className="grid items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -137,7 +137,7 @@ function SoloCard({ plan, isCurrent, isAuthenticated }: SoloCardProps) {
         <div className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 backdrop-blur-sm sm:p-10">
             <div className="flex items-start justify-between gap-4">
                 <h3 className="text-xl font-semibold">{plan.name}</h3>
-                <span className="rounded-full bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-300">
+                <span className="rounded-md bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-300">
                     Free forever
                 </span>
             </div>

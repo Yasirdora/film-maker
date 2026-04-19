@@ -23,8 +23,8 @@ export function NavAppsButton() {
                 aria-label="Get Started"
             >
                 <svg
-                    width="22"
-                    height="22"
+                    width="26"
+                    height="26"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="#9ca3af"
@@ -35,21 +35,22 @@ export function NavAppsButton() {
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
                 </svg>
-                <span className="text-[10px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
+                <span className="text-[11px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
                     Get Started
                 </span>
             </button>
 
-            {/* Desktop pill */}
+            {/* Desktop pill — quieter weight so it sits evenly next to the icon tiles */}
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="hidden sm:flex items-center gap-2 h-[34px] px-4 rounded-md transition-colors bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+                className="hidden sm:flex items-center gap-2 h-10 px-4 rounded-[10px] bg-white/[0.06] text-[#9ca3af] hover:bg-white/[0.12] hover:text-white transition-colors group"
                 aria-label="Get Started"
+                title="Get Started (⌘K)"
             >
                 <svg
-                    width="16"
-                    height="16"
+                    width="20"
+                    height="20"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -59,9 +60,7 @@ export function NavAppsButton() {
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
                 </svg>
-                <span className="text-[13px] font-semibold">
-                    Get Started
-                </span>
+                <span className="text-sm font-medium">Get Started</span>
             </button>
 
             {/* Launchpad modal */}

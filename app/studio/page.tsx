@@ -50,7 +50,7 @@ export default async function StudioPage() {
                 than nested in <main> so the left padding matches the
                 nav's right padding on wide screens. */}
             <div className="px-4 pt-4 sm:px-6">
-                <AppBrandMark />
+                <AppBrandMark size="sm" />
             </div>
 
             <main className="mx-auto max-w-[85rem] px-4 pb-8 sm:px-6">

@@ -135,9 +135,15 @@ export function NavProfileMenu({
     const initial = (name || email)[0]?.toUpperCase() ?? "?";
 
     // Close desktop dropdown on outside click or Escape.
+    // The outside-click listener is desktop-only — on mobile the menu
+    // renders as a full-screen overlay that owns its own dismissal (tap
+    // the Profile tab again to close), so firing this globally would
+    // collapse the overlay on any interaction inside it.
     useEffect(() => {
         if (!open) return;
         function handleClick(e: MouseEvent) {
+            // Skip when the desktop dropdown isn't the active surface.
+            if (!window.matchMedia("(min-width: 640px)").matches) return;
             if (
                 desktopRef.current &&
                 !desktopRef.current.contains(e.target as Node)
@@ -180,10 +186,10 @@ export function NavProfileMenu({
                 aria-label="Profile menu"
             >
                 {open ? (
-                    <div className="flex h-[26px] w-[26px] items-center justify-center rounded-lg bg-[#1c1c1e]">
+                    <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#1c1c1e]">
                         <svg
-                            width="14"
-                            height="14"
+                            width="16"
+                            height="16"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="#9ca3af"
@@ -196,13 +202,13 @@ export function NavProfileMenu({
                         </svg>
                     </div>
                 ) : (
-                    <div className="flex h-[26px] w-[26px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08]">
-                        <span className="text-[13px] font-semibold text-[#9ca3af] leading-none">
+                    <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08]">
+                        <span className="text-[15px] font-semibold text-[#9ca3af] leading-none">
                             {initial}
                         </span>
                     </div>
                 )}
-                <span className={`text-[10px] font-medium transition-colors ${open ? "text-[#52525b]" : "text-[#9ca3af]"}`}>
+                <span className={`text-[11px] font-medium transition-colors ${open ? "text-[#52525b]" : "text-[#9ca3af]"}`}>
                     Profile
                 </span>
             </button>
@@ -219,7 +225,7 @@ export function NavProfileMenu({
                 <button
                     type="button"
                     onClick={() => setOpen(!open)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.07] text-sm font-semibold text-[#9ca3af] ring-1 ring-white/[0.08] transition-colors hover:bg-white/[0.12] hover:ring-white/[0.15]"
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.07] text-base font-semibold text-[#9ca3af] ring-1 ring-white/[0.08] transition-colors hover:bg-white/[0.12] hover:ring-white/[0.15]"
                     aria-label="User menu"
                     aria-expanded={open}
                 >

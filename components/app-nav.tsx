@@ -39,23 +39,25 @@ export async function AppNav() {
                 aria-label="Auteur"
             >
                 <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 19.5 19.5"
+                    width="26"
+                    height="26"
+                    viewBox="0 0 22 22"
                     fill="none"
                     className="group-hover:stroke-white transition-colors"
                 >
                     <path
-                        d="M13.75 0.75H5.75C2.98858 0.75 0.75 2.98858 0.75 5.75V13.75C0.75 16.5114 2.98858 18.75 5.75 18.75H13.75C16.5114 18.75 18.75 16.5114 18.75 13.75V5.75C18.75 2.98858 16.5114 0.75 13.75 0.75Z"
+                        d="M15.5129 0.846191H6.48722C3.37337 0.846191 0.846191 3.37337 0.846191 6.48722V15.5129C0.846191 18.6267 3.37337 21.1539 6.48722 21.1539H15.5129C18.6267 21.1539 21.1539 18.6267 21.1539 15.5129V6.48722C21.1539 3.37337 18.6267 0.846191 15.5129 0.846191Z"
                         stroke="#9ca3af"
-                        strokeWidth="1.5"
+                        strokeWidth="1.69231"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
-                    <rect x="5.75" y="6.75" width="2" height="6" rx="1" fill="#9ca3af" className="group-hover:fill-white transition-colors" />
-                    <rect x="11.75" y="6.75" width="2" height="6" rx="1" fill="#9ca3af" className="group-hover:fill-white transition-colors" />
+                    <path d="M8 9V13" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M14 9V13" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M8 10V11" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M14 10V11" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
                 </svg>
-                <span className="text-[10px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
+                <span className="text-[11px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
                     Auteur
                 </span>
             </Link>
@@ -70,8 +72,8 @@ export async function AppNav() {
                 aria-label="Projects"
             >
                 <svg
-                    width="22"
-                    height="22"
+                    width="26"
+                    height="26"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="#9ca3af"
@@ -84,31 +86,33 @@ export async function AppNav() {
                     <rect x="14" y="3" width="7" height="8" rx="1.5" />
                     <rect x="14" y="15" width="7" height="6" rx="1.5" />
                 </svg>
-                <span className="text-[10px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
+                <span className="text-[11px] font-medium text-[#9ca3af] group-hover:text-white transition-colors">
                     Projects
                 </span>
             </Link>
             <Link
                 href="/auteur"
-                className="relative hidden sm:flex items-center justify-center w-[34px] h-[34px] rounded-[10px] hover:bg-white/5 group"
+                className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-[10px] hover:bg-white/5 group"
                 aria-label="Auteur"
             >
                 <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 19.5 19.5"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 22 22"
                     fill="none"
                     className="group-hover:stroke-white transition-colors"
                 >
                     <path
-                        d="M13.75 0.75H5.75C2.99 0.75 0.75 2.99 0.75 5.75V13.75C0.75 16.51 2.99 18.75 5.75 18.75H13.75C16.51 18.75 18.75 16.51 18.75 13.75V5.75C18.75 2.99 16.51 0.75 13.75 0.75Z"
+                        d="M15.5129 0.846191H6.48722C3.37337 0.846191 0.846191 3.37337 0.846191 6.48722V15.5129C0.846191 18.6267 3.37337 21.1539 6.48722 21.1539H15.5129C18.6267 21.1539 21.1539 18.6267 21.1539 15.5129V6.48722C21.1539 3.37337 18.6267 0.846191 15.5129 0.846191Z"
                         stroke="#9ca3af"
-                        strokeWidth="1.5"
+                        strokeWidth="1.69231"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />
-                    <rect x="5.75" y="6.75" width="2" height="6" rx="1" fill="#9ca3af" className="group-hover:fill-white transition-colors" />
-                    <rect x="11.75" y="6.75" width="2" height="6" rx="1" fill="#9ca3af" className="group-hover:fill-white transition-colors" />
+                    <path d="M8 9V13" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M14 9V13" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M8 10V11" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
+                    <path d="M14 10V11" stroke="#9ca3af" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
                 </svg>
             </Link>
 

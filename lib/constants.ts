@@ -100,7 +100,7 @@ export const SUBSCRIPTION_PLANS = [
         priceLabel: "$50",
         interval: "month" as const,
         description:
-            "Full production power — 4K renders and priority queue. Most popular.",
+            "Full production power — 4K renders and priority queue.",
         features: [
             "500 credits / month",
             "Up to 4K resolution",
