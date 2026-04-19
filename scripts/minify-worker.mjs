@@ -70,6 +70,12 @@ for (const relPath of TARGETS) {
         },
         bundle: false,
         minify: true,
+        // keepNames is critical: Better Auth's email-OTP plugin (and
+        // other Better Auth internals) resolve handlers by `fn.name`
+        // / class name at runtime. Stripping those names breaks auth
+        // routing — OTP-send returns the wrong handler and silently
+        // no-ops. Tradeoff: slightly larger bundle for a reliable auth.
+        keepNames: true,
         format: "esm",
         platform: "neutral",
         target: "es2022",
