@@ -1,0 +1,52 @@
+.viewport {
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 10%,
+        #000 90%,
+        transparent
+    );
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 10%,
+        #000 90%,
+        transparent
+    );
+    padding: 2rem 0;
+}
+
+.track {
+    display: flex;
+    width: max-content;
+    align-items: center;
+    animation: marquee 60s linear infinite;
+}
+
+/* Margin-right (not flex gap) so each item's slot width is uniform,
+   including after the final item of each copy. That makes the
+   translate(-50%) loop land exactly where copy A started — seamless. */
+.track > * {
+    margin-right: 2.5rem;
+}
+
+.viewport:hover .track {
+    animation-play-state: paused;
+}
+
+@keyframes marquee {
+    from {
+        transform: translate3d(0, 0, 0);
+    }
+    to {
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .track {
+        animation: none;
+    }
+}

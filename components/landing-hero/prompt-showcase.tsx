@@ -65,6 +65,15 @@ export function PromptShowcase({
     const stepWidthRef = useRef(0);
     const isAnimatingRef = useRef(false);
     const pausedRef = useRef(false);
+    const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+
+    const registerVideo = useCallback(
+        (id: string) => (node: HTMLVideoElement | null) => {
+            if (node) videoRefs.current.set(id, node);
+            else videoRefs.current.delete(id);
+        },
+        [],
+    );
 
     // Logical order of slides. We mutate it when the user steps through
     // the carousel so React keeps rendering them in the correct row
@@ -231,6 +240,23 @@ export function PromptShowcase({
         };
     }, [autoplayInterval, goNext, slides.length]);
 
+    // Only the active slide's video plays. Non-active videos pause
+    // but keep their playhead so the outgoing clip doesn't snap to
+    // frame 0 while it's still visible during the slide.
+    useEffect(() => {
+        const activeId = slides[activeIndex]?.id;
+        videoRefs.current.forEach((video, id) => {
+            if (id === activeId) {
+                const playResult = video.play();
+                if (playResult && typeof playResult.catch === "function") {
+                    playResult.catch(() => {});
+                }
+            } else {
+                video.pause();
+            }
+        });
+    }, [activeIndex, slides]);
+
     const rows = useMemo(
         () => order.map((slotIndex) => slides[slotIndex]),
         [order, slides],
@@ -256,10 +282,10 @@ export function PromptShowcase({
                                 data-slide-id={slide.id}
                             >
                                 <video
+                                    ref={registerVideo(slide.id)}
                                     className={styles.showcaseVideo}
                                     src={slide.videoSrc}
                                     poster={slide.poster}
-                                    autoPlay
                                     muted
                                     loop
                                     playsInline

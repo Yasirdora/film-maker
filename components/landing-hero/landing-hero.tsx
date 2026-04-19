@@ -38,6 +38,7 @@ import { EditorToolbar } from "./editor-toolbar";
 import { HeroBackground } from "./hero-background";
 import { HeroContent } from "./hero-content";
 import { HeroPrompt } from "./hero-prompt";
+import { ModelProviders } from "./model-providers";
 import { PromptShowcase, type ShowcaseSlide } from "./prompt-showcase";
 import { ScrollIndicator } from "./scroll-indicator";
 import { TaglineSection } from "./tagline-section";
@@ -64,6 +65,8 @@ const COPY = {
         "Artistic Intelligence designed by and for filmmakers.",
     promptPlaceholder: "Ask Auteur anything about your creative vision...",
     taglineLead: "Great stories start with you.",
+    taglineTrail: "From first to final frame.",
+    taglineCta: { href: "/studio", label: "Launch the studio" },
     footerYear: new Date().getFullYear(),
 } as const;
 
@@ -166,9 +169,16 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                     <EditorToolbar />
                 </section>
 
+                <ModelProviders />
+
                 <ScrollIndicator />
 
-                <TaglineSection lead={COPY.taglineLead} reveal={reveal} />
+                <TaglineSection
+                    lead={COPY.taglineLead}
+                    trail={COPY.taglineTrail}
+                    cta={COPY.taglineCta}
+                    reveal={reveal}
+                />
 
                 <PromptShowcase slides={SHOWCASE_SLIDES} />
             </main>

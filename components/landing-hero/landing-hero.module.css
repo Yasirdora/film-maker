@@ -950,14 +950,57 @@
     margin: 0 auto;
     padding: 120px 24px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(16px, 2vw, 24px);
 }
 
 .taglineMain {
     display: block;
     color: var(--lp-subtitle-headline);
-    font-weight: 400;
+    font-weight: 700;
     font-size: clamp(2rem, 5vw, 3.5rem);
     line-height: 1.3;
+}
+
+.taglineSecondary {
+    display: block;
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--lp-text-muted);
+}
+
+.taglineCta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: clamp(8px, 1.5vw, 16px);
+    padding: 14px 28px;
+    background: var(--lp-accent);
+    color: #fff;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    border-radius: 9999px;
+    text-decoration: none;
+    box-shadow: var(--lp-submit-shadow);
+    transition:
+        background 0.2s ease,
+        box-shadow 0.35s ease,
+        transform 0.15s ease;
+}
+
+.taglineCta:hover {
+    background: var(--lp-accent-hover);
+    box-shadow: var(--lp-submit-hover-shadow);
+    transform: translateY(-1px);
+}
+
+.taglineCta:active {
+    transform: translateY(0) scale(0.98);
 }
 
 .taglineAccent {
@@ -977,7 +1020,7 @@
    this block (reveal margin, font stack inheritance). */
 .showcase {
     --showcase-container-max: 1200px;
-    --showcase-side-padding: 24px;
+    --showcase-side-padding: 40px;
     --showcase-card-gap: 32px;
     --showcase-radius: 20px;
     --showcase-ease: var(--lp-ease);
@@ -991,7 +1034,7 @@
 
 @media (min-width: 768px) {
     .showcase {
-        --showcase-side-padding: 48px;
+        --showcase-side-padding: 80px;
         --showcase-card-gap: 40px;
     }
 }
@@ -1001,13 +1044,8 @@
     overflow: hidden;
 }
 
-/* Dynamic left padding aligns the first card to the centered
-   container edge while letting the track overflow on the right. */
 .showcaseTrackWrapper {
-    padding-left: max(
-        var(--showcase-side-padding),
-        calc((100vw - var(--showcase-container-max)) / 2)
-    );
+    padding-left: var(--showcase-side-padding);
 }
 
 .showcaseTrack {
@@ -1064,10 +1102,6 @@
 
 .showcaseUi {
     width: 100%;
-    max-width: calc(
-        var(--showcase-container-max) + (var(--showcase-side-padding) * 2)
-    );
-    margin: 0 auto;
     padding: 0 var(--showcase-side-padding);
     display: flex;
     justify-content: space-between;
