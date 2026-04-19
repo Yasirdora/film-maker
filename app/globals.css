@@ -46,6 +46,48 @@
     animation: clapperboard-clap 0.8s ease-in-out forwards;
 }
 
+/* Auteur "alive" blink — swaps a tall "open" eye stroke for a short
+   "closed" eye stroke by cross-fading their opacities. Both strokes share
+   the same round caps and stroke width, so the transition reads as the
+   eye truly shortening (not squishing). The two keyframe curves are
+   synchronized inverses: the open stroke fades out as the closed stroke
+   fades in, held briefly at closed, then reversed. */
+.auteur-eye-closed {
+    opacity: 0;
+}
+
+@keyframes auteur-eye-close {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    36%,
+    56% {
+        opacity: 0;
+    }
+}
+
+@keyframes auteur-eye-open {
+    0%,
+    100% {
+        opacity: 0;
+    }
+    36%,
+    56% {
+        opacity: 1;
+    }
+}
+
+.group:hover .auteur-eye-open,
+.group:focus-visible .auteur-eye-open {
+    animation: auteur-eye-close 420ms ease-in-out;
+}
+
+.group:hover .auteur-eye-closed,
+.group:focus-visible .auteur-eye-closed {
+    animation: auteur-eye-open 420ms ease-in-out;
+}
+
 :root {
     --background: #ffffff;
     --foreground: #0a0a0a;

@@ -41,20 +41,8 @@ const nextConfig: NextConfig = {
             },
         ];
     },
-    async redirects() {
-        return [
-            // Canonicalize on the bare apex. Without this, users on
-            // www.film-maker.net set OAuth state cookies on the www host,
-            // but Google redirects back to the bare apex (per BETTER_AUTH_URL),
-            // and the cookie isn't sent — causing state_mismatch errors.
-            {
-                source: "/:path*",
-                has: [{ type: "host", value: "www.film-maker.net" }],
-                destination: "https://film-maker.net/:path*",
-                permanent: true,
-            },
-        ];
-    },
+    // www→apex canonicalization lives in middleware.ts because OpenNext
+    // does not interpolate `:path*` in redirect destinations.
 };
 
 export default nextConfig;

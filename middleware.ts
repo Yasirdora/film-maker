@@ -27,6 +27,7 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 // ─── Auth guard ─────────────────────────────────────────────────────────────
 
@@ -47,9 +48,6 @@ const PROTECTED_PREFIXES = [
     "/welcome",
 ];
 
-/** Better Auth's default session cookie name. */
-const SESSION_COOKIE = "better-auth.session_token";
-
 function isProtectedRoute(pathname: string): boolean {
     return PROTECTED_PREFIXES.some(
         (prefix) => pathname === prefix || pathname.startsWith(prefix + "/"),
@@ -61,10 +59,30 @@ function isProtectedRoute(pathname: string): boolean {
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
+    // Canonicalize on the bare apex. Without this, users on
+    // www.film-maker.net set OAuth state cookies on the www host, but
+    // Google redirects back to the bare apex (per BETTER_AUTH_URL), and
+    // the cookie isn't sent — causing state_mismatch errors.
+    //
+    // Lives in middleware (not next.config redirects) because OpenNext on
+    // Cloudflare Workers does not interpolate the `:path*` placeholder in
+    // a `destination` with an absolute URL — it emits the literal string.
+    const host = request.headers.get("host");
+    if (host === "www.film-maker.net") {
+        const apexUrl = request.nextUrl.clone();
+        apexUrl.host = "film-maker.net";
+        apexUrl.protocol = "https:";
+        apexUrl.port = "";
+        return NextResponse.redirect(apexUrl, 308);
+    }
+
     // Auth guard — redirect unauthenticated users before the page renders.
+    // `getSessionCookie` reads Better Auth's session cookie under either
+    // the default (`better-auth.session_token`) or the `__Secure-` prefixed
+    // name used automatically on HTTPS.
     if (isProtectedRoute(pathname)) {
-        const sessionCookie = request.cookies.get(SESSION_COOKIE);
-        if (!sessionCookie?.value) {
+        const sessionCookie = getSessionCookie(request);
+        if (!sessionCookie) {
             const loginUrl = request.nextUrl.clone();
             loginUrl.pathname = "/login";
             loginUrl.searchParams.set("from", pathname);

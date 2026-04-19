@@ -1,90 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/x/Documents/Antigravity/AI/**)",
-      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/ConveX/.env.local)",
-      "Bash(npm install:*)",
-      "Bash(npm view:*)",
-      "Bash(wait %1)",
-      "Bash(npx tsc:*)",
-      "Bash(npx eslint:*)",
-      "Bash(git remote:*)",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(grep -rn \"initOpenNextCloudflareForDev\\\\|getCloudflareContext\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@opennextjs/cloudflare/dist/api/*.d.ts)",
-      "Bash(ls -la /Users/x/Documents/Antigravity/AI/anthropist/.env* /Users/x/Documents/Antigravity/AI/anthropist/.dev.vars*)",
-      "Bash(ls -la /Users/x/Documents/Antigravity/AI/anthropist/.env*)",
-      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/anthropist/.env.local)",
-      "Bash(awk -F= '{print $1}' /Users/x/Documents/Antigravity/AI/Film-maker/.env.local)",
-      "Bash(node -e ':*)",
-      "Bash(git mv:*)",
-      "Bash(node --env-file=.env.local -e ':*)",
-      "Bash(npx wrangler:*)",
-      "Bash(npm run:*)",
-      "Bash(awk -F= '/^STRIPE_PRICE_/ {print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET>\" : \"<EMPTY>\"\\)}' .env.local)",
-      "Read(//tmp/**)",
-      "Bash(echo \"EXIT=$?\")",
-      "Bash(awk -F= '{if \\($1 ~ /BETTER_AUTH|GOOGLE_CLIENT/\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
-      "Bash(awk -F= '{print NR, $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET>\" : \"\"\\)}' .env.local)",
-      "Bash(awk -F= '{if \\($1 ~ /^\\(GOOGLE_CLIENT_|BETTER_AUTH_SECRET|STRIPE_SECRET_KEY|GMAIL_CLIENT_ID\\)$/\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
-      "Bash(awk -F= '{if \\($1 == \"GOOGLE_CLIENT_ID\" || $1 == \"GOOGLE_CLIENT_SECRET\"\\) print $1 \"=\" \\(length\\($2\\) > 0 ? \"<SET:\" length\\($2\\) \"chars>\" : \"<EMPTY>\"\\)}' .env.local)",
-      "Bash(npx opennextjs-cloudflare:*)",
-      "Bash(curl -s -o /tmp/home.html -w \"HTTP %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}B\\\\n\" https://film-maker.net/)",
-      "Bash(curl -v https://film-maker.net/)",
-      "Bash(curl -s -o /tmp/wd.html -w \"HTTP %{http_code}\\\\n\" https://film-maker.yasirdora.workers.dev/)",
-      "Bash(dig +short NS film-maker.net)",
-      "Bash(dig +short film-maker.net)",
-      "Bash(dig +short www.film-maker.net)",
-      "Bash(dig +short CNAME www.film-maker.net)",
-      "Bash(curl -s -o /tmp/home.html -w \"HTTP %{http_code}\\\\nContent-Type: %{content_type}\\\\nSize: %{size_download}B\\\\n\" https://www.film-maker.net/)",
-      "Bash(curl -s -o /tmp/home2.html -w \"HTTP %{http_code}\\\\n\" https://www.film-maker.net/)",
-      "Bash(curl -sI https://www.film-maker.net/auth/link?verify=bogus)",
-      "Bash(curl -sI https://www.film-maker.net/)",
-      "Read(//Users/x/Library/Preferences/.wrangler/**)",
-      "Read(//Users/x/**)",
-      "Bash(dig +short film-maker.net A)",
-      "Bash(dig +short film-maker.net AAAA)",
-      "Bash(curl -sI https://film-maker.net/)",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\n---HTTP %{http_code}---\\\\n\")",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -i)",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}')",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\n---STATUS %{http_code}---\\\\n\")",
-      "Bash(curl -sS \"http://localhost:3000/api/dev/test-magic-link?to=ysrdora@gmail.com\")",
-      "Bash(curl -sS -X POST http://localhost:3000/api/auth/sign-in/magic-link -H \"Content-Type: application/json\" -d '{\"email\":\"ysrdora@gmail.com\",\"callbackURL\":\"/dashboard\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
-      "Bash(curl -sS -o /tmp/authlink.html -w \"HTTP %{http_code}\\\\n\" \"https://film-maker.net/auth/link?verify=bogus&callbackURL=%2Fdashboard\")",
-      "Bash(curl -sI \"https://film-maker.net/auth/link?verify=bogus_test&callbackURL=%2Fdashboard\")",
-      "Bash(curl -sS -X POST https://film-maker.net/api/auth/sign-in/social -H 'Content-Type: application/json' -H 'Origin: https://film-maker.net' -d '{\"provider\":\"google\",\"callbackURL\":\"/dashboard\"}' -D /tmp/social-headers.txt -o /tmp/social-body.txt)",
-      "Bash(curl -sI \"https://www.film-maker.net/login\")",
-      "Bash(npm search:*)",
-      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/.env*)",
-      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/middleware* /Users/x/Documents/Antigravity/AI/Film-maker/app/middleware*)",
-      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/app/error* /Users/x/Documents/Antigravity/AI/Film-maker/app/not-found*)",
-      "Bash(ls /Users/x/Documents/Antigravity/AI/Film-maker/sentry* /Users/x/Documents/Antigravity/AI/Film-maker/instrumentation*)",
-      "Bash(npm uninstall:*)",
-      "Bash(grep -rn \"generateImage\\\\|imagen\\\\|ImageGeneration\" /Users/x/Documents/Antigravity/AI/Film-maker/node_modules/@google/genai/dist/*.d.ts)",
-      "Bash(node --env-file=.env.local -e \"process.stdout.write\\(process.env.GOOGLE_GEMINI_API_KEY || ''\\)\")",
-      "WebSearch",
-      "WebFetch(domain:stripe.com)",
-      "Bash(curl -sI https://film-maker.net/dashboard)",
-      "Bash(curl -sI https://film-maker.net/auteur)",
-      "Bash(npx vitest:*)",
-      "Bash(git commit -m ':*)",
-      "Bash(git rm:*)",
-      "Bash(curl -s -X POST http://localhost:3000/api/health)",
-      "Bash(curl -s http://localhost:3000/api/health)"
-    ],
-    "additionalDirectories": [
-      "/tmp"
-    ]
-  }
-},
-{
-  "permissions": {
-    "allow": [
       "Bash(*)",
       "Read",
       "Write",
-      "Edit"
+      "Edit",
+      "WebSearch",
+      "WebFetch(domain:stripe.com)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
     ]
   }
 }
