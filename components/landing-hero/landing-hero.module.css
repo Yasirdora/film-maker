@@ -978,15 +978,17 @@
     justify-content: center;
     margin-top: clamp(8px, 1.5vw, 16px);
     padding: 14px 28px;
-    background: var(--lp-accent);
-    color: #fff;
+    background: #fff;
+    color: #0a0a0a;
     font-family: inherit;
     font-size: 15px;
     font-weight: 600;
     letter-spacing: -0.005em;
-    border-radius: 9999px;
+    border: 0;
+    border-radius: 12px;
     text-decoration: none;
-    box-shadow: var(--lp-submit-shadow);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.2), 0 10px 30px rgb(0 0 0 / 0.25);
     transition:
         background 0.2s ease,
         box-shadow 0.35s ease,
@@ -994,8 +996,8 @@
 }
 
 .taglineCta:hover {
-    background: var(--lp-accent-hover);
-    box-shadow: var(--lp-submit-hover-shadow);
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.3), 0 14px 36px rgb(0 0 0 / 0.35);
     transform: translateY(-1px);
 }
 
@@ -1011,6 +1013,62 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* ── Showcase intro heading ────────────────────────────────────────────── */
+
+.showcaseIntro {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 1.5vw, 20px);
+}
+
+.showcaseIntroHeadline {
+    margin: 0;
+    color: var(--lp-subtitle-headline);
+    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    font-weight: 300;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+}
+
+.showcaseIntroHeadlineLead {
+    font-weight: 300;
+    color: var(--lp-text-muted);
+}
+
+.showcaseIntroHeadlineEmphasis {
+    font-weight: 700;
+    color: var(--lp-subtitle-headline);
+}
+
+/* ── Showcase outro heading ────────────────────────────────────────────── */
+
+.showcaseOutro {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(64px, 9vw, 128px) clamp(24px, 4vw, 48px);
+    text-align: center;
+}
+
+.showcaseOutroHeadline {
+    margin: 0;
+    color: var(--lp-subtitle-headline);
+    font-size: clamp(2rem, 5vw, 3.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+}
+
+.showcaseOutroHeadlineLead {
+    font-weight: 200;
+    color: var(--lp-text-muted);
+}
+
+.showcaseOutroHeadlineEmphasis {
+    font-weight: 700;
+    color: var(--lp-subtitle-headline);
 }
 
 /* ── Prompt showcase carousel ──────────────────────────────────────────── */
@@ -1275,8 +1333,13 @@
         max-width: 100%;
     }
     .searchInput {
-        font-size: 15px;
+        /* 16px floor prevents iOS Safari from auto-zooming on focus. */
+        font-size: 16px;
         min-width: 0;
+    }
+    .announcementInput {
+        /* Same iOS auto-zoom guard — 13px on desktop zooms on tap. */
+        font-size: 16px;
     }
     .searchActions {
         gap: 4px;

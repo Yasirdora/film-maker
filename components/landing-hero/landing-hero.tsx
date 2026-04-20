@@ -65,8 +65,11 @@ const COPY = {
         "Artistic Intelligence designed by and for filmmakers.",
     promptPlaceholder: "Ask Auteur anything about your creative vision...",
     taglineLead: "Great stories start with you.",
-    taglineTrail: "From first to final frame.",
     taglineCta: { href: "/studio", label: "Launch the studio" },
+    showcaseHeadlineLead: "Discover a ",
+    showcaseHeadlineEmphasis: "universe of possibilities.",
+    showcaseOutroLead: "Create with our ",
+    showcaseOutroEmphasis: "Artistic Intelligence.",
     footerYear: new Date().getFullYear(),
 } as const;
 
@@ -75,6 +78,13 @@ const HERO_VIDEO_SRC = "/assets/bg.mp4";
 // Showcase reel. Swap in production renders as they land — the
 // carousel reads this list verbatim and adapts to any length ≥ 2.
 const SHOWCASE_SLIDES: readonly ShowcaseSlide[] = [
+    {
+        id: "ex01",
+        videoSrc: "/assets/ex01.mp4",
+        label: "Opening frame.",
+        prompt:
+            "A cinematic opening shot with rich color and deliberate motion — tune this prompt to match the clip.",
+    },
     {
         id: "neon-rainfall",
         videoSrc: "/assets/bg.mp4",
@@ -175,12 +185,42 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
 
                 <TaglineSection
                     lead={COPY.taglineLead}
-                    trail={COPY.taglineTrail}
+                    middleContent={
+                        <div className={styles.showcaseIntro}>
+                            <h2 className={styles.showcaseIntroHeadline}>
+                                <span
+                                    className={
+                                        styles.showcaseIntroHeadlineLead
+                                    }
+                                >
+                                    {COPY.showcaseHeadlineLead}
+                                </span>
+                                <span
+                                    className={
+                                        styles.showcaseIntroHeadlineEmphasis
+                                    }
+                                >
+                                    {COPY.showcaseHeadlineEmphasis}
+                                </span>
+                            </h2>
+                        </div>
+                    }
                     cta={COPY.taglineCta}
                     reveal={reveal}
                 />
 
-                <PromptShowcase slides={SHOWCASE_SLIDES} />
+                <PromptShowcase slides={SHOWCASE_SLIDES} autoplayInterval={6000} />
+
+                <section className={styles.showcaseOutro}>
+                    <h2 className={styles.showcaseOutroHeadline}>
+                        <span className={styles.showcaseOutroHeadlineLead}>
+                            {COPY.showcaseOutroLead}
+                        </span>
+                        <span className={styles.showcaseOutroHeadlineEmphasis}>
+                            {COPY.showcaseOutroEmphasis}
+                        </span>
+                    </h2>
+                </section>
             </main>
         </>
     );

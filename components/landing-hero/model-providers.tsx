@@ -7,13 +7,13 @@
  * so long lists never force awkward line breaks on narrow viewports.
  */
 
-import type { SVGProps } from "react";
+import type { ReactElement, SVGProps } from "react";
 
 import styles from "./model-providers.module.css";
 
 interface Provider {
     name: string;
-    Icon: (props: SVGProps<SVGSVGElement>) => JSX.Element;
+    Icon: (props: SVGProps<SVGSVGElement>) => ReactElement;
 }
 
 const PROVIDERS: readonly Provider[] = [
@@ -22,14 +22,19 @@ const PROVIDERS: readonly Provider[] = [
     { name: "ElevenLabs", Icon: ElevenLabsMark },
     { name: "Kling", Icon: KlingMark },
     { name: "Seedream", Icon: SeedreamMark },
+    { name: "Luma", Icon: LumaMark },
     { name: "Film-maker", Icon: FilmMakerMark },
     { name: "Flux", Icon: FluxMark },
     { name: "Ideogram", Icon: IdeogramMark },
 ];
 
 export function ModelProviders() {
-    // Duplicated list so the translateX(-50%) loop seams invisibly.
-    const loop = [...PROVIDERS, ...PROVIDERS];
+    // Tripled list. Two copies wasn't enough — on wide viewports the
+    // track shifted by one copy's width while the viewport was wider
+    // than one copy, leaving empty space at the seam. Three copies
+    // with a -33.333% shift guarantees the visible area is always
+    // backed by the next copy.
+    const loop = [...PROVIDERS, ...PROVIDERS, ...PROVIDERS];
 
     return (
         <div className={styles.viewport}>
@@ -94,6 +99,20 @@ function SeedreamMark(props: SVGProps<SVGSVGElement>) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 32 32" {...props}>
             <path d="M5.915 25.44 1 26.702V4.311l4.915 1.263zm23.75 1.31-4.924 1.264V3l4.924 1.254zm-15.952-.627-4.915 1.264v-13.19l4.915 1.263zm3.21-13.883 4.925-1.264v13.19l-4.924-1.264z" />
+        </svg>
+    );
+}
+
+function LumaMark(props: SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            {...props}
+        >
+            <path d="M2 5.999L12.392 0v24L2 18V5.999z" />
+            <path d="M12.392 24L2 18l10.392-6 10.393 6-10.393 6z" />
         </svg>
     );
 }

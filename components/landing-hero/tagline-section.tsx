@@ -6,7 +6,7 @@
  * treatment defined in the CSS module.
  */
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import styles from "./landing-hero.module.css";
 
@@ -27,6 +27,8 @@ interface TaglineSectionProps {
     trail?: string;
     /** Small muted line rendered under the accent. */
     subtitle?: string;
+    /** Optional slot rendered between the lead and the trail/CTA. */
+    middleContent?: React.ReactNode;
     /** Optional call-to-action rendered beneath the copy block. */
     cta?: TaglineCta;
     reveal: RevealController;
@@ -37,9 +39,11 @@ export function TaglineSection({
     accent,
     trail,
     subtitle,
+    middleContent,
     cta,
     reveal,
 }: TaglineSectionProps) {
+    const router = useRouter();
     const active = reveal.has("tagline");
     const hasSecondLine = Boolean(accent || trail);
 
@@ -56,6 +60,7 @@ export function TaglineSection({
                 .join(" ")}
         >
             <span className={styles.taglineMain}>{lead}</span>
+            {middleContent}
             {hasSecondLine && (
                 <span className={styles.taglineSecondary}>
                     {accent && (
@@ -69,9 +74,13 @@ export function TaglineSection({
                 <span className={styles.taglineSubtitle}>{subtitle}</span>
             )}
             {cta && (
-                <Link href={cta.href} className={styles.taglineCta}>
+                <button
+                    type="button"
+                    className={styles.taglineCta}
+                    onClick={() => router.push(cta.href)}
+                >
                     {cta.label}
-                </Link>
+                </button>
             )}
         </section>
     );

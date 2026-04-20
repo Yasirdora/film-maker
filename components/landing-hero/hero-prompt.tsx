@@ -75,7 +75,19 @@ export function HeroPrompt({
                         anchorRef={menuAnchorRef}
                         activeModeId={modeId}
                         open={menuOpen}
-                        onToggle={() => setMenuOpen((v) => !v)}
+                        onToggle={() => {
+                            // Dismiss the virtual keyboard before opening
+                            // the mode menu — on mobile the menu renders
+                            // as a fixed bottom-sheet and would otherwise
+                            // be hidden behind an open keyboard.
+                            if (
+                                typeof document !== "undefined" &&
+                                document.activeElement instanceof HTMLElement
+                            ) {
+                                document.activeElement.blur();
+                            }
+                            setMenuOpen((v) => !v);
+                        }}
                         onSelect={(id) => {
                             setModeId(id);
                             setMenuOpen(false);
