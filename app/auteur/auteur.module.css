@@ -192,14 +192,24 @@
     }
 
     .sidebarCollapsed .modeNav {
-        padding: 12px 10px 0;
+        margin: 12px 8px 0;
+        padding: 4px;
+        background: transparent;
+        border-color: transparent;
     }
 
     .sidebarCollapsed .modeItem {
         justify-content: center;
         padding: 0;
-        height: 44px;
+        height: 40px;
         gap: 0;
+    }
+    
+    .sidebarCollapsed .modeItemActive {
+        padding: 0; 
+        border-color: transparent;
+        box-shadow: none;
+        background: var(--auteur-sidebar-hover);
     }
 
     .sidebarCollapsed .modeLockIcon {
@@ -214,8 +224,6 @@
         justify-content: center;
         padding: 0;
         height: 44px;
-        border-style: solid;
-        border-color: transparent;
         gap: 0;
     }
 
@@ -236,11 +244,15 @@
 /* ── Mode navigation ── */
 
 .modeNav {
-    padding: 12px 12px 0;
+    margin: 12px 12px 0;
+    padding: 4px;
     display: flex;
     flex-direction: column;
     gap: 2px;
     flex-shrink: 0;
+    background: var(--auteur-user-bg);
+    border: 1px solid var(--auteur-sidebar-border);
+    border-radius: 12px;
 }
 
 .modeItem {
@@ -248,16 +260,16 @@
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 10px 14px;
+    padding: 8px 10px;
     border: none;
-    border-radius: 10px;
+    border-radius: 8px;
     background: transparent;
     color: var(--auteur-text);
     font-size: 14px;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .modeItem svg {
@@ -283,7 +295,11 @@
 }
 
 .modeItemActive {
-    background: var(--auteur-sidebar-active);
+    background: var(--auteur-sidebar-bg); /* Use solid sidebar background for the active block */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--auteur-sidebar-border);
+    /* padding compensation for the border */
+    padding: 7px 9px;
 }
 
 .modeItemActive svg {
@@ -319,24 +335,26 @@
     gap: 10px;
     width: 100%;
     padding: 10px 14px;
-    border: 1px dashed var(--auteur-input-border);
+    border: 1px solid var(--auteur-sidebar-border);
     border-radius: 10px;
-    background: transparent;
-    color: var(--auteur-accent);
+    background: var(--auteur-input-bg);
+    color: var(--auteur-text);
     font-size: 14px;
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.15s ease;
 }
 
 .sidebarNewChatBtn svg {
     flex-shrink: 0;
+    color: var(--auteur-accent);
 }
 
 .sidebarNewChatBtn:hover {
-    background: rgba(234, 179, 8, 0.06);
-    border-color: var(--auteur-accent);
+    background: var(--auteur-sidebar-hover);
+    border-color: var(--auteur-input-border);
 }
 
 /* ── Section header ── */
