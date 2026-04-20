@@ -16,7 +16,14 @@ import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { getProject } from "@/lib/projects";
 import { listGenerationsByProject } from "@/lib/generations";
-import { getPlan, PHOTO_MODELS, VIDEO_MODELS, RESOLUTIONS } from "@/lib/constants";
+import {
+    getPlan,
+    isFreePlan,
+    PHOTO_MODELS,
+    VIDEO_MODELS,
+    RESOLUTIONS,
+    SOLO_ALLOWED_VIDEO_MODEL_IDS,
+} from "@/lib/constants";
 import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
 import { ProjectWorkspace } from "./project-workspace";
@@ -52,6 +59,13 @@ export default async function ProjectPage({ params }: PageProps) {
     const maxResolution = plan?.maxResolution ?? "1K";
     const maxIdx = RESOLUTIONS.indexOf(maxResolution);
     const availableResolutions = RESOLUTIONS.filter((_, i) => i <= maxIdx);
+
+    // Solo (free) plan only sees the cheapest video model in the composer.
+    const availableVideoModels = isFreePlan(balance.plan)
+        ? VIDEO_MODELS.filter((m) =>
+              (SOLO_ALLOWED_VIDEO_MODEL_IDS as readonly string[]).includes(m.id),
+          )
+        : VIDEO_MODELS;
 
     const totalCredits =
         balance.subscriptionCredits + balance.purchasedCredits;
@@ -115,7 +129,7 @@ export default async function ProjectPage({ params }: PageProps) {
                 description: m.description,
                 creditBase: m.creditBase,
             }))}
-            videoModels={VIDEO_MODELS.map((m) => ({
+            videoModels={availableVideoModels.map((m) => ({
                 id: m.id,
                 name: m.name,
                 description: m.description,

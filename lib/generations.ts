@@ -385,12 +385,12 @@ export async function recoverStaleGenerations(
 
     const { results } = await db
         .prepare(
-            `SELECT id, credit_cost
+            `SELECT id, credit_cost, kind
                FROM generation
               WHERE user_id = ? AND status = 'pending' AND created_at < ?`,
         )
         .bind(userId, cutoff)
-        .all<{ id: number; credit_cost: number }>();
+        .all<{ id: number; credit_cost: number; kind: string }>();
 
     if (results.length === 0) return 0;
 
@@ -412,6 +412,7 @@ export async function recoverStaleGenerations(
                     fromSubscription: gen.credit_cost,
                     fromPurchased: 0,
                 },
+                kind: gen.kind === "video" ? "video" : "image",
             });
         }
     }

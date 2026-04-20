@@ -22,7 +22,7 @@ import {
     getStripe,
     getStripePriceId,
 } from "@/lib/stripe";
-import { isFreePlan, getPlan } from "@/lib/constants";
+import { isFreePlan, getPlan, PAID_PLANS_ENABLED } from "@/lib/constants";
 import { getMonthlyTopupAllowance } from "@/lib/credits";
 
 const BodySchema = z.object({
@@ -33,6 +33,19 @@ export async function POST(request: Request): Promise<Response> {
     // ─── CSRF ───────────────────────────────────────────────────────
     const originError = validateOrigin(request);
     if (originError) return originError;
+
+    // ─── Kill switch ────────────────────────────────────────────────
+    // Paid plans are disabled during the public testing phase. The
+    // pricing page hides the CTA; this is the server-side counterpart
+    // so crafted requests can't bypass the UI gate.
+    if (!PAID_PLANS_ENABLED) {
+        return NextResponse.json(
+            {
+                error: "Paid plans are not available yet — Film-maker is in its public testing phase. The free Solo tier is active.",
+            },
+            { status: 503 },
+        );
+    }
 
     // ─── Auth ───────────────────────────────────────────────────────
     const result = await getSession();

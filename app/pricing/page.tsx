@@ -16,6 +16,7 @@ import { Newsreader } from "next/font/google";
 
 import {
     SUBSCRIPTION_PLANS,
+    PAID_PLANS_ENABLED,
     type SubscriptionPlan,
 } from "@/lib/constants";
 import { getSession } from "@/lib/auth-server";
@@ -100,9 +101,21 @@ export default async function PricingPage() {
             </section>
 
             <section className="mx-auto max-w-7xl px-6 pt-12 pb-16 sm:pt-16 sm:pb-24">
-                <h2 className="mb-6 text-center text-sm font-semibold text-neutral-500">
+                <h2 className="mb-3 text-center text-sm font-semibold text-neutral-500">
                     Upgrade when you&rsquo;re ready
                 </h2>
+
+                {!PAID_PLANS_ENABLED && (
+                    <div
+                        role="status"
+                        className="mx-auto mb-8 max-w-2xl rounded-2xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 text-center text-sm text-amber-200/90"
+                    >
+                        Film-maker is in its public testing phase — only the
+                        free Solo tier is active right now. Paid plans are
+                        previewed here for transparency and will unlock soon.
+                    </div>
+                )}
+
                 <div className="grid items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {PAID_PLANS.map((plan) => (
                         <PlanCard
@@ -110,6 +123,7 @@ export default async function PricingPage() {
                             plan={plan}
                             currentPlan={currentPlan}
                             isAuthenticated={isAuthenticated}
+                            paidPlansEnabled={PAID_PLANS_ENABLED}
                         />
                     ))}
                 </div>
@@ -161,7 +175,7 @@ function SoloCard({ plan, isCurrent, isAuthenticated }: SoloCardProps) {
                     </span>
                 </div>
                 <p className="mt-2 text-sm text-neutral-400">
-                    Generate images &amp; video
+                    Generate images &amp; video &middot; Up to 6 projects
                 </p>
             </div>
 
@@ -193,9 +207,15 @@ interface PlanCardProps {
     plan: SubscriptionPlan;
     currentPlan: string | null;
     isAuthenticated: boolean;
+    paidPlansEnabled: boolean;
 }
 
-function PlanCard({ plan, currentPlan, isAuthenticated }: PlanCardProps) {
+function PlanCard({
+    plan,
+    currentPlan,
+    isAuthenticated,
+    paidPlansEnabled,
+}: PlanCardProps) {
     const isFeatured = "featured" in plan && plan.featured === true;
     const isCurrent = currentPlan === plan.id;
 
@@ -255,6 +275,7 @@ function PlanCard({ plan, currentPlan, isAuthenticated }: PlanCardProps) {
                     isCurrent={isCurrent}
                     isAuthenticated={isAuthenticated}
                     isFeatured={isFeatured}
+                    paidPlansEnabled={paidPlansEnabled}
                 />
             </div>
 

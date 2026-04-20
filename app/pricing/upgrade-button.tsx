@@ -27,6 +27,8 @@ interface UpgradeButtonProps {
     isCurrent: boolean;
     isAuthenticated: boolean;
     isFeatured: boolean;
+    /** When false, paid upgrades are disabled site-wide (testing phase). */
+    paidPlansEnabled: boolean;
 }
 
 const BASE_CLASSES =
@@ -38,10 +40,34 @@ export function UpgradeButton({
     isCurrent,
     isAuthenticated,
     isFeatured,
+    paidPlansEnabled,
 }: UpgradeButtonProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Testing-phase short-circuit: paid plans are visible for roadmap
+    // discoverability, but not purchasable yet.
+    if (!paidPlansEnabled && !isCurrent) {
+        return (
+            <div className="space-y-2">
+                <button
+                    type="button"
+                    disabled
+                    aria-label={`${planName} coming soon`}
+                    className={cn(
+                        BASE_CLASSES,
+                        "bg-white/[0.04] text-neutral-400 ring-1 ring-inset ring-white/10",
+                    )}
+                >
+                    Coming soon
+                </button>
+                <p className="text-center text-xs text-neutral-500">
+                    Paid plans unlock after the testing phase.
+                </p>
+            </div>
+        );
+    }
 
     async function handleCheckout() {
         if (!isAuthenticated) {

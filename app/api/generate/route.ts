@@ -246,6 +246,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             description: `Image: ${input.model}, ${input.resolution}, ${input.aspectRatio}`,
+            kind: "image",
         });
     } catch (err) {
         await failGeneration(generation.id, "Credit deduction failed");
@@ -283,6 +284,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             deduction,
+            kind: "image",
         });
 
         const message =
@@ -344,6 +346,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             deduction,
+            kind: "image",
         });
         await failGeneration(generation.id, "Image storage failed");
         console.error("[api/generate] R2 upload error:", err);

@@ -29,13 +29,19 @@ import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
 import { getR2 } from "@/lib/db";
 import {
+    getBalance,
     deductCredits,
     refundCredits,
     InsufficientCreditsError,
     DailyLimitError,
+    MonthlyVideoLimitError,
     type DeductionResult,
 } from "@/lib/credits";
-import { computeVideoCreditCost, VIDEO_MODELS } from "@/lib/constants";
+import {
+    computeVideoCreditCost,
+    VIDEO_MODELS,
+    isVideoModelAllowedForPlan,
+} from "@/lib/constants";
 import { getImageUrl } from "@/lib/image-url";
 import { generateVideo, GenerationError } from "@/lib/gemini";
 import {
@@ -178,6 +184,19 @@ export async function POST(request: Request): Promise<Response> {
         );
     }
 
+    // ─── Plan-based model gate ──────────────────────────────────────
+    // Solo (free) plan is restricted to the cheapest video model so one
+    // monthly video doesn't burn a disproportionate share of the pool.
+    const balance = await getBalance(userId);
+    if (!isVideoModelAllowedForPlan(balance.plan, input.model)) {
+        return NextResponse.json(
+            {
+                error: `${input.model} is not available on your plan. Upgrade for access to premium video models.`,
+            },
+            { status: 403 },
+        );
+    }
+
     // ─── Credit cost ────────────────────────────────────────────────
     const creditCost = computeVideoCreditCost(input.model, input.sampleCount);
 
@@ -211,6 +230,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             description: `Video: ${input.model}, ${input.aspectRatio}, ${input.durationSeconds}s`,
+            kind: "video",
         });
     } catch (err) {
         await failGeneration(generation.id, "Credit deduction failed");
@@ -222,6 +242,12 @@ export async function POST(request: Request): Promise<Response> {
             );
         }
         if (err instanceof DailyLimitError) {
+            return NextResponse.json(
+                { error: err.message },
+                { status: 429 },
+            );
+        }
+        if (err instanceof MonthlyVideoLimitError) {
             return NextResponse.json(
                 { error: err.message },
                 { status: 429 },
@@ -247,6 +273,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             deduction,
+            kind: "video",
         });
 
         const message =
@@ -305,6 +332,7 @@ export async function POST(request: Request): Promise<Response> {
             cost: creditCost,
             generationId: generation.id,
             deduction,
+            kind: "video",
         });
         await failGeneration(generation.id, "Video storage failed");
         console.error("[api/generate-video] R2 upload error:", err);

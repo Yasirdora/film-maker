@@ -15,6 +15,26 @@
 // user_profile row.
 export const SOLO_DAILY_CREDIT_LIMIT = 3;
 
+// ─── Free tier monthly video cap ────────────────────────────────────────────
+// Solo users get this many video generations per calendar month. Videos are
+// exempt from the daily credit cap (a single video costs more than 3 credits)
+// and are instead governed by this separate monthly counter. Paid plans have
+// no video cap. Counter resets on the first day of each UTC month.
+export const SOLO_MONTHLY_VIDEO_LIMIT = 1;
+
+// Video models the Solo plan is allowed to use. Restricted to the cheapest
+// model so one monthly video doesn't consume a disproportionate share of
+// the 100-credit monthly allotment.
+export const SOLO_ALLOWED_VIDEO_MODEL_IDS = ["veo-3-fast"] as const;
+
+// ─── Paid plans kill switch ─────────────────────────────────────────────────
+// During the public testing phase only the free Solo tier is active.
+// Indie / Creator / Studio cards still render on the pricing page for
+// discoverability, but the Upgrade CTA is disabled and the server-side
+// Stripe checkout route refuses these plan ids. Flip to `true` once we're
+// ready to accept payment.
+export const PAID_PLANS_ENABLED = false;
+
 // ─── Monthly top-up USD spend ceiling ───────────────────────────────────────
 // Hard cap on how much USD a user can spend on credit top-ups per calendar
 // month. Raisable on request. Prevents runaway charges from compromised
@@ -58,6 +78,7 @@ export const SUBSCRIPTION_PLANS = [
         name: "Solo",
         credits: 100,
         dailyLimit: SOLO_DAILY_CREDIT_LIMIT,
+        maxProjects: 6,
         priceUsdCents: 0,
         priceLabel: "Free",
         interval: null,
@@ -65,7 +86,9 @@ export const SUBSCRIPTION_PLANS = [
             "Try Film-maker. Perfect for students, hobbyists, and anyone exploring their visual ideas.",
         features: [
             "100 credits / month",
-            `${SOLO_DAILY_CREDIT_LIMIT} credits / day`,
+            `${SOLO_DAILY_CREDIT_LIMIT} images / day`,
+            `${SOLO_MONTHLY_VIDEO_LIMIT} video / month`,
+            "Up to 6 projects",
             "1K resolution",
             "Personal use",
         ],
@@ -77,6 +100,7 @@ export const SUBSCRIPTION_PLANS = [
         name: "Indie",
         credits: 200,
         dailyLimit: null,
+        maxProjects: null,
         priceUsdCents: 2000,
         priceLabel: "$20",
         interval: "month" as const,
@@ -86,6 +110,7 @@ export const SUBSCRIPTION_PLANS = [
             "200 credits / month",
             "Up to 2K resolution",
             "Unlimited daily generations",
+            "Unlimited projects",
             "Commercial license",
         ],
         maxResolution: "2K",
@@ -96,6 +121,7 @@ export const SUBSCRIPTION_PLANS = [
         name: "Creator",
         credits: 500,
         dailyLimit: null,
+        maxProjects: null,
         priceUsdCents: 5000,
         priceLabel: "$50",
         interval: "month" as const,
@@ -116,6 +142,7 @@ export const SUBSCRIPTION_PLANS = [
         name: "Studio",
         credits: 2000,
         dailyLimit: null,
+        maxProjects: null,
         priceUsdCents: 20_000,
         priceLabel: "$200",
         interval: "month" as const,
@@ -264,6 +291,23 @@ export type VideoModel = (typeof VIDEO_MODELS)[number];
 
 export function getVideoModel(id: string): VideoModel | undefined {
     return VIDEO_MODELS.find((m) => m.id === id);
+}
+
+/**
+ * Returns true if the given plan is allowed to use the given video model.
+ * Solo is restricted to SOLO_ALLOWED_VIDEO_MODEL_IDS; paid plans may use
+ * any video model.
+ */
+export function isVideoModelAllowedForPlan(
+    planId: string,
+    modelId: string,
+): boolean {
+    if (isFreePlan(planId)) {
+        return (SOLO_ALLOWED_VIDEO_MODEL_IDS as readonly string[]).includes(
+            modelId,
+        );
+    }
+    return getVideoModel(modelId) !== undefined;
 }
 
 /**

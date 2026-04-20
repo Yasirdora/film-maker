@@ -22,6 +22,7 @@ import {
     downgradeToSolo,
     InsufficientCreditsError,
     DailyLimitError,
+    MonthlyVideoLimitError,
 } from "@/lib/credits";
 
 // ─── D1 mock ──────────────────────────────────────────────────────────────
@@ -73,6 +74,8 @@ function mockProfile(overrides: Partial<{
     plan: string;
     daily_credits_used: number;
     last_daily_reset: number;
+    monthly_videos_used: number;
+    monthly_video_reset_at: number;
 }> = {}) {
     return {
         subscription_credits: 100,
@@ -81,6 +84,8 @@ function mockProfile(overrides: Partial<{
         plan: "indie",
         daily_credits_used: 0,
         last_daily_reset: 0,
+        monthly_videos_used: 0,
+        monthly_video_reset_at: 0,
         ...overrides,
     };
 }
@@ -98,6 +103,7 @@ describe("deductCredits", () => {
             cost: 3,
             generationId: 1,
             description: "test",
+            kind: "image",
         });
 
         expect(result.fromSubscription).toBe(3);
@@ -117,6 +123,7 @@ describe("deductCredits", () => {
             cost: 5,
             generationId: 1,
             description: "test",
+            kind: "image",
         });
 
         expect(result.fromSubscription).toBe(2);
@@ -135,6 +142,7 @@ describe("deductCredits", () => {
             cost: 4,
             generationId: 1,
             description: "test",
+            kind: "image",
         });
 
         expect(result.fromSubscription).toBe(0);
@@ -154,6 +162,7 @@ describe("deductCredits", () => {
                 cost: 5,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow(InsufficientCreditsError);
     });
@@ -171,6 +180,7 @@ describe("deductCredits", () => {
                 cost: 5,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow(InsufficientCreditsError);
     });
@@ -192,6 +202,7 @@ describe("deductCredits", () => {
                 cost: 2,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow(DailyLimitError);
     });
@@ -211,6 +222,7 @@ describe("deductCredits", () => {
             cost: 1,
             generationId: 1,
             description: "test",
+            kind: "image",
         });
 
         expect(result.fromSubscription).toBe(1);
@@ -232,6 +244,7 @@ describe("deductCredits", () => {
             cost: 1,
             generationId: 1,
             description: "test",
+            kind: "image",
         });
 
         expect(result.fromSubscription).toBe(1);
@@ -244,6 +257,7 @@ describe("deductCredits", () => {
                 cost: 0,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow("Credit cost must be positive");
     });
@@ -255,6 +269,7 @@ describe("deductCredits", () => {
                 cost: -1,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow("Credit cost must be positive");
     });
@@ -268,8 +283,93 @@ describe("deductCredits", () => {
                 cost: 1,
                 generationId: 1,
                 description: "test",
+                kind: "image",
             }),
         ).rejects.toThrow("No user_profile");
+    });
+
+    it("allows solo video even when daily cap is already hit", async () => {
+        // Solo user has already spent 3 credits on images today. A video
+        // (5+ credits) would exceed the daily cap, but videos bypass it.
+        const now = Date.now();
+        firstReturnValue = mockProfile({
+            plan: "solo",
+            subscription_credits: 100,
+            daily_credits_used: 3,
+            last_daily_reset: now,
+            monthly_videos_used: 0,
+        });
+
+        const result = await deductCredits({
+            userId: "u1",
+            cost: 5,
+            generationId: 1,
+            description: "test",
+            kind: "video",
+        });
+
+        expect(result.fromSubscription).toBe(5);
+    });
+
+    it("throws MonthlyVideoLimitError when solo user already used their video", async () => {
+        const now = Date.now();
+        firstReturnValue = mockProfile({
+            plan: "solo",
+            subscription_credits: 100,
+            monthly_videos_used: 1,
+            monthly_video_reset_at: now, // Same month
+        });
+
+        await expect(
+            deductCredits({
+                userId: "u1",
+                cost: 5,
+                generationId: 1,
+                description: "test",
+                kind: "video",
+            }),
+        ).rejects.toThrow(MonthlyVideoLimitError);
+    });
+
+    it("does not enforce monthly video cap on paid plans", async () => {
+        const now = Date.now();
+        firstReturnValue = mockProfile({
+            plan: "indie",
+            subscription_credits: 100,
+            monthly_videos_used: 999, // irrelevant — ignored on paid
+            monthly_video_reset_at: now,
+        });
+
+        const result = await deductCredits({
+            userId: "u1",
+            cost: 5,
+            generationId: 1,
+            description: "test",
+            kind: "video",
+        });
+
+        expect(result.fromSubscription).toBe(5);
+    });
+
+    it("resets monthly video counter when new UTC month", async () => {
+        // Prior month's counter is at cap; a fresh month should allow 1 video.
+        const longAgo = Date.UTC(2020, 0, 1);
+        firstReturnValue = mockProfile({
+            plan: "solo",
+            subscription_credits: 100,
+            monthly_videos_used: 1,
+            monthly_video_reset_at: longAgo,
+        });
+
+        const result = await deductCredits({
+            userId: "u1",
+            cost: 5,
+            generationId: 1,
+            description: "test",
+            kind: "video",
+        });
+
+        expect(result.fromSubscription).toBe(5);
     });
 });
 
@@ -278,23 +378,26 @@ describe("deductCredits", () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe("refundCredits", () => {
-    it("refunds to both pools proportionally and decrements daily counter", async () => {
+    it("refunds to both pools proportionally and decrements daily counter for image", async () => {
         await refundCredits({
             userId: "u1",
             cost: 5,
             generationId: 1,
             deduction: { fromSubscription: 3, fromPurchased: 2 },
+            kind: "image",
         });
 
         expect(batchCalled).toBe(true);
 
         // Verify the batch was called with correct bind values.
         // UPDATE: subscription_credits + ?, purchased_credits + ?,
-        //         MAX(0, daily_credits_used - ?), updated_at, user_id
+        //         daily_credits_used - ?, monthly_videos_used - ?,
+        //         updated_at, user_id
         const updateBinds = bindArgs[0];
         expect(updateBinds?.[0]).toBe(3); // fromSubscription
         expect(updateBinds?.[1]).toBe(2); // fromPurchased
         expect(updateBinds?.[2]).toBe(5); // cost (daily counter decrement)
+        expect(updateBinds?.[3]).toBe(0); // no video counter decrement
     });
 
     it("refunds to subscription only when no purchased used", async () => {
@@ -303,12 +406,28 @@ describe("refundCredits", () => {
             cost: 4,
             generationId: 1,
             deduction: { fromSubscription: 4, fromPurchased: 0 },
+            kind: "image",
         });
 
         expect(batchCalled).toBe(true);
         const updateBinds = bindArgs[0];
         expect(updateBinds?.[0]).toBe(4);
         expect(updateBinds?.[1]).toBe(0);
+    });
+
+    it("decrements monthly video counter but not daily for video kind", async () => {
+        await refundCredits({
+            userId: "u1",
+            cost: 5,
+            generationId: 1,
+            deduction: { fromSubscription: 5, fromPurchased: 0 },
+            kind: "video",
+        });
+
+        expect(batchCalled).toBe(true);
+        const updateBinds = bindArgs[0];
+        expect(updateBinds?.[2]).toBe(0); // daily counter untouched
+        expect(updateBinds?.[3]).toBe(1); // monthly video counter decremented
     });
 });
 

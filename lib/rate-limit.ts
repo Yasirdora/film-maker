@@ -123,4 +123,12 @@ export const RATE_LIMITS = {
         maxRequests: 10,
         windowMs: HOUR_MS,
     },
+    // Caps new-account creation attempts from a single IP to curb abuse
+    // of the free Solo tier (3 images/day + 1 video/month per account).
+    // Turnstile stops bots; this stops a human farming accounts manually.
+    signupPerIp: {
+        endpoint: "signup",
+        maxRequests: 5,
+        windowMs: HOUR_MS,
+    },
 } as const satisfies Record<string, IpRateLimitConfig>;

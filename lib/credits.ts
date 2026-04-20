@@ -28,10 +28,13 @@ import {
     getPlan,
     isFreePlan,
     SOLO_DAILY_CREDIT_LIMIT,
+    SOLO_MONTHLY_VIDEO_LIMIT,
     MONTHLY_TOPUP_USD_CENTS_CEILING,
     SUBSCRIPTION_PLANS,
 } from "./constants";
 import { generateUid } from "./utils";
+
+export type GenerationKind = "image" | "video";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -258,6 +261,8 @@ export async function downgradeToSolo(params: {
                         plan = 'solo',
                         daily_credits_used = 0,
                         last_daily_reset = 0,
+                        monthly_videos_used = 0,
+                        monthly_video_reset_at = 0,
                         updated_at = ?
                   WHERE user_id = ?`,
             )
@@ -336,6 +341,13 @@ export class DailyLimitError extends Error {
     }
 }
 
+export class MonthlyVideoLimitError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "MonthlyVideoLimitError";
+    }
+}
+
 export interface DeductionResult {
     fromSubscription: number;
     fromPurchased: number;
@@ -357,21 +369,25 @@ function todayStartUtc(): number {
  * Rules:
  *   • Subscription credits are consumed first (they expire).
  *   • Purchased credits cover the remainder IF `useExtraCredits` is on.
- *   • Solo (free) plan has a daily credit cap — enforced here.
+ *   • Solo (free) plan has a daily credit cap on images and a monthly
+ *     video cap. Videos are exempt from the daily cap since a single
+ *     video costs more than the daily credit allowance.
  *   • The deduction + transaction log are written in a D1 batch so they
  *     succeed or fail together.
  *
  * Throws:
  *   • `InsufficientCreditsError` if the user doesn't have enough.
- *   • `DailyLimitError` if the Solo plan's daily cap would be exceeded.
+ *   • `DailyLimitError` if the Solo plan's daily image cap would be exceeded.
+ *   • `MonthlyVideoLimitError` if the Solo plan's monthly video cap is hit.
  */
 export async function deductCredits(params: {
     userId: string;
     cost: number;
     generationId: number;
     description: string;
+    kind: GenerationKind;
 }): Promise<DeductionResult> {
-    const { userId, cost, generationId, description } = params;
+    const { userId, cost, generationId, description, kind } = params;
 
     if (cost <= 0) {
         throw new Error("Credit cost must be positive");
@@ -380,13 +396,15 @@ export async function deductCredits(params: {
     const db = await getDb();
     const now = Date.now();
     const dayStart = todayStartUtc();
+    const monthStart = getMonthStartMs();
 
     // Read current state.
     const profile = await db
         .prepare(
             `SELECT subscription_credits, purchased_credits,
                     use_extra_credits, plan, daily_credits_used,
-                    last_daily_reset
+                    last_daily_reset, monthly_videos_used,
+                    monthly_video_reset_at
                FROM user_profile
               WHERE user_id = ?`,
         )
@@ -398,23 +416,42 @@ export async function deductCredits(params: {
             plan: string;
             daily_credits_used: number;
             last_daily_reset: number;
+            monthly_videos_used: number;
+            monthly_video_reset_at: number;
         }>();
 
     if (!profile) {
         throw new Error(`No user_profile for user ${userId}`);
     }
 
-    // Daily limit check — Solo plan only.
     const isFree = isFreePlan(profile.plan);
+    const isVideo = kind === "video";
+
+    // Daily limit check — Solo plan, images only. Videos are exempt
+    // because a single video's credit cost exceeds the daily cap.
     const dailyUsed =
         profile.last_daily_reset < dayStart ? 0 : profile.daily_credits_used;
 
-    if (isFree && dailyUsed + cost > SOLO_DAILY_CREDIT_LIMIT) {
+    if (isFree && !isVideo && dailyUsed + cost > SOLO_DAILY_CREDIT_LIMIT) {
         const remaining = Math.max(0, SOLO_DAILY_CREDIT_LIMIT - dailyUsed);
         throw new DailyLimitError(
             `Daily limit reached. Solo plan allows ${SOLO_DAILY_CREDIT_LIMIT} ` +
             `credits per day. You have ${remaining} remaining today. ` +
             `Upgrade for unlimited daily generations.`,
+        );
+    }
+
+    // Monthly video cap — Solo plan only. Reset on first of each UTC month.
+    const videosUsed =
+        profile.monthly_video_reset_at < monthStart
+            ? 0
+            : profile.monthly_videos_used;
+
+    if (isFree && isVideo && videosUsed + 1 > SOLO_MONTHLY_VIDEO_LIMIT) {
+        throw new MonthlyVideoLimitError(
+            `Monthly video limit reached. Solo plan allows ` +
+            `${SOLO_MONTHLY_VIDEO_LIMIT} video per month. ` +
+            `Upgrade for unlimited video generation.`,
         );
     }
 
@@ -439,6 +476,11 @@ export async function deductCredits(params: {
     const fromSubscription = Math.min(subCredits, cost);
     const fromPurchased = extraEnabled ? cost - fromSubscription : 0;
 
+    // Images tick the daily counter; videos tick the monthly video counter.
+    // Paid plans tick both harmlessly (they're never checked against).
+    const nextDailyUsed = isVideo ? dailyUsed : dailyUsed + cost;
+    const nextVideosUsed = isVideo ? videosUsed + 1 : videosUsed;
+
     // Atomic batch: deduct balance + log the transaction.
     await db.batch([
         db
@@ -448,14 +490,18 @@ export async function deductCredits(params: {
                         purchased_credits = purchased_credits - ?,
                         daily_credits_used = ?,
                         last_daily_reset = ?,
+                        monthly_videos_used = ?,
+                        monthly_video_reset_at = ?,
                         updated_at = ?
                   WHERE user_id = ?`,
             )
             .bind(
                 fromSubscription,
                 fromPurchased,
-                dailyUsed + cost,
+                nextDailyUsed,
                 dayStart,
+                nextVideosUsed,
+                monthStart,
                 now,
                 userId,
             ),
@@ -484,21 +530,31 @@ export async function deductCredits(params: {
 
 /**
  * Refunds credits after a failed generation. Adds the credits back to
- * the same pools they were deducted from, reverses the daily counter
- * increment (clamped to zero), and logs a refund transaction.
+ * the same pools they were deducted from, reverses the quota counter
+ * appropriate to the kind (daily for images, monthly for videos), and
+ * logs a refund transaction.
  *
- * Without the daily counter reversal, a Solo user who hits a Gemini
- * safety filter would permanently lose one of their 3 daily slots.
+ * Without the counter reversal, a Solo user who hits a Gemini safety
+ * filter would permanently lose one of their 3 daily slots (image) or
+ * their single monthly video slot.
  */
 export async function refundCredits(params: {
     userId: string;
     cost: number;
     generationId: number;
     deduction: DeductionResult;
+    kind: GenerationKind;
 }): Promise<void> {
-    const { userId, cost, generationId, deduction } = params;
+    const { userId, cost, generationId, deduction, kind } = params;
     const db = await getDb();
     const now = Date.now();
+    const isVideo = kind === "video";
+
+    // Images decrement the daily counter; videos decrement the monthly
+    // video counter. Only one counter was incremented at deduction time,
+    // so only one is reversed here.
+    const dailyDelta = isVideo ? 0 : cost;
+    const monthlyVideoDelta = isVideo ? 1 : 0;
 
     await db.batch([
         db
@@ -507,10 +563,18 @@ export async function refundCredits(params: {
                     SET subscription_credits = subscription_credits + ?,
                         purchased_credits = purchased_credits + ?,
                         daily_credits_used = MAX(0, daily_credits_used - ?),
+                        monthly_videos_used = MAX(0, monthly_videos_used - ?),
                         updated_at = ?
                   WHERE user_id = ?`,
             )
-            .bind(deduction.fromSubscription, deduction.fromPurchased, cost, now, userId),
+            .bind(
+                deduction.fromSubscription,
+                deduction.fromPurchased,
+                dailyDelta,
+                monthlyVideoDelta,
+                now,
+                userId,
+            ),
         db
             .prepare(
                 `INSERT INTO credit_transaction
@@ -540,9 +604,10 @@ async function provisionProfileOnDemand(userId: string): Promise<void> {
             `INSERT OR IGNORE INTO user_profile
              (user_id, uid, plan, subscription_credits, purchased_credits,
               use_extra_credits, daily_credits_used, last_daily_reset,
+              monthly_videos_used, monthly_video_reset_at,
               monthly_topup_usd_cents_used, monthly_topup_reset_at,
               onboarded_at, created_at, updated_at)
-             VALUES (?, ?, 'solo', ?, 0, 1, 0, 0, 0, 0, NULL, ?, ?)`,
+             VALUES (?, ?, 'solo', ?, 0, 1, 0, 0, 0, 0, 0, 0, NULL, ?, ?)`,
         )
         .bind(userId, uid, SOLO_PLAN.credits, now, now)
         .run();
