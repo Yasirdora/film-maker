@@ -529,6 +529,125 @@ export async function deductCredits(params: {
 }
 
 /**
+ * Deducts credits for an Auteur chat reply. Simpler than
+ * {@link deductCredits}:
+ *   • Same two-pool math (subscription first, purchased second).
+ *   • No daily/monthly counter bump — chat is not capped separately.
+ *   • No generation_id linkage — chat replies don't create `generation` rows.
+ *
+ * Throws {@link InsufficientCreditsError} when the user can't afford
+ * the reply. Assumes the caller has already checked plan gating.
+ */
+export async function deductChatCredits(params: {
+    userId: string;
+    cost: number;
+    description: string;
+}): Promise<DeductionResult> {
+    const { userId, cost, description } = params;
+    if (cost <= 0) throw new Error("Credit cost must be positive");
+
+    const db = await getDb();
+    const now = Date.now();
+
+    const profile = await db
+        .prepare(
+            `SELECT subscription_credits, purchased_credits, use_extra_credits
+               FROM user_profile
+              WHERE user_id = ?`,
+        )
+        .bind(userId)
+        .first<{
+            subscription_credits: number;
+            purchased_credits: number;
+            use_extra_credits: number;
+        }>();
+
+    if (!profile) throw new Error(`No user_profile for user ${userId}`);
+
+    const subCredits = profile.subscription_credits;
+    const purchCredits = profile.purchased_credits;
+    const extraEnabled = profile.use_extra_credits === 1;
+
+    const available = extraEnabled ? subCredits + purchCredits : subCredits;
+    if (available < cost) {
+        throw new InsufficientCreditsError(
+            `This reply costs ${cost} credit${cost === 1 ? "" : "s"} but you have ${available}. ` +
+            (extraEnabled
+                ? "Purchase more credits or upgrade your plan."
+                : "Enable extra credits in settings or upgrade."),
+        );
+    }
+
+    const fromSubscription = Math.min(subCredits, cost);
+    const fromPurchased = extraEnabled ? cost - fromSubscription : 0;
+
+    await db.batch([
+        db
+            .prepare(
+                `UPDATE user_profile
+                    SET subscription_credits = subscription_credits - ?,
+                        purchased_credits = purchased_credits - ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(fromSubscription, fromPurchased, now, userId),
+        db
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, generation_id, created_at)
+                 VALUES (?, ?, 'chat', ?, ?, NULL, ?)`,
+            )
+            .bind(
+                userId,
+                -cost,
+                description,
+                fromSubscription > 0
+                    ? fromPurchased > 0
+                        ? "subscription+purchased"
+                        : "subscription"
+                    : "purchased",
+                now,
+            ),
+    ]);
+
+    return { fromSubscription, fromPurchased };
+}
+
+/**
+ * Refunds an Auteur chat deduction. Mirror of {@link deductChatCredits}
+ * and used when a stream fails before producing any text. No counter
+ * reversal because {@link deductChatCredits} never touched one.
+ */
+export async function refundChatCredits(params: {
+    userId: string;
+    cost: number;
+    deduction: DeductionResult;
+}): Promise<void> {
+    const { userId, cost, deduction } = params;
+    const db = await getDb();
+    const now = Date.now();
+
+    await db.batch([
+        db
+            .prepare(
+                `UPDATE user_profile
+                    SET subscription_credits = subscription_credits + ?,
+                        purchased_credits = purchased_credits + ?,
+                        updated_at = ?
+                  WHERE user_id = ?`,
+            )
+            .bind(deduction.fromSubscription, deduction.fromPurchased, now, userId),
+        db
+            .prepare(
+                `INSERT INTO credit_transaction
+                 (user_id, amount, type, description, pool, generation_id, created_at)
+                 VALUES (?, ?, 'refund', 'Auteur reply failed — credits refunded', NULL, NULL, ?)`,
+            )
+            .bind(userId, cost, now),
+    ]);
+}
+
+/**
  * Refunds credits after a failed generation. Adds the credits back to
  * the same pools they were deducted from, reverses the quota counter
  * appropriate to the kind (daily for images, monthly for videos), and

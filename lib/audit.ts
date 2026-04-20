@@ -36,13 +36,15 @@ export type AuditAction =
     | "plan.upgrade"
     | "plan.downgrade"
     | "user.login"
-    | "user.logout";
+    | "user.logout"
+    | "auteur.reply";
 
 export type AuditTargetType =
     | "project"
     | "generation"
     | "user"
-    | "subscription";
+    | "subscription"
+    | "auteur_conversation";
 
 // ─── Log function ──────────────────────────────────────────────────────────
 

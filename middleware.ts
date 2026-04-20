@@ -17,6 +17,7 @@
  *
  * External resources whitelisted:
  *   • img-src    → storage.film-maker.net (R2 bucket CDN for generated images)
+ *   • media-src  → storage.film-maker.net (R2 bucket CDN for generated video)
  *   • script-src → challenges.cloudflare.com (Turnstile bot protection)
  *   • frame-src  → challenges.cloudflare.com (Turnstile widget iframe)
  *
@@ -41,7 +42,11 @@ import { getSessionCookie } from "better-auth/cookies";
  */
 const PROTECTED_PREFIXES = [
     "/studio",
-    "/auteur",
+    // `/auteur` is intentionally NOT protected — it's the Auteur chat
+    // workspace, which supports anonymous visitors under a free-reply
+    // quota (see lib/auteur.ts ANON_FREE_RESPONSES). Sign-in-only
+    // capabilities (conversation history, credits) are gated inside
+    // the page's client workspace, not at the route level.
     "/credits",
     "/projects",
     "/payments",
@@ -132,6 +137,11 @@ function buildCsp(nonce: string): string {
 
         // Images: self-hosted + R2 bucket CDN + blob: for composer previews.
         "img-src 'self' https://storage.film-maker.net blob:",
+
+        // Media (<video>/<audio>): self-hosted + R2 bucket CDN + blob:
+        // for client-side previews. Falls back to default-src if omitted,
+        // which would block generated-video playback from R2.
+        "media-src 'self' https://storage.film-maker.net blob:",
 
         // Fonts: self-hosted via next/font/google (no external requests).
         "font-src 'self'",
