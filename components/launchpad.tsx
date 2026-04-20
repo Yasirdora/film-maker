@@ -14,6 +14,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
+import { AuteurIcon } from "./icons/auteur-icon";
+
 // ─── Destination registry ───────────────────────────────────────────────────
 
 interface LaunchpadItem {
@@ -35,15 +37,7 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
         href: "/auteur",
         actionLabel: "Ask",
         iconColor: "bg-purple-500/12 text-purple-300",
-        icon: (
-            <svg width="24" height="24" viewBox="0 0 22 22" fill="none">
-                <path d="M15.5129 0.846191H6.48722C3.37337 0.846191 0.846191 3.37337 0.846191 6.48722V15.5129C0.846191 18.6267 3.37337 21.1539 6.48722 21.1539H15.5129C18.6267 21.1539 21.1539 18.6267 21.1539 15.5129V6.48722C21.1539 3.37337 18.6267 0.846191 15.5129 0.846191Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M8 9V13" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" className="auteur-eye-open" />
-                <path d="M14 9V13" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" className="auteur-eye-open" />
-                <path d="M8 10V11" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" className="auteur-eye-closed" />
-                <path d="M14 10V11" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" className="auteur-eye-closed" />
-            </svg>
-        ),
+        icon: <AuteurIcon />,
     },
     {
         id: "studio",
@@ -61,7 +55,7 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
     },
     {
         id: "credits",
-        title: "Credits",
+        title: "Apps",
         subtitle: "Balance and transaction history",
         href: "/credits",
         actionLabel: "Open",
@@ -74,7 +68,7 @@ const LAUNCHPAD_ITEMS: LaunchpadItem[] = [
     },
     {
         id: "pricing",
-        title: "Pricing",
+        title: "Subscription",
         subtitle: "Plans and upgrades",
         href: "/pricing",
         actionLabel: "Open",
@@ -203,6 +197,15 @@ export function Launchpad({ open, onClose }: LaunchpadProps) {
                 <DialogPrimitive.Content
                     onOpenAutoFocus={(e) => {
                         e.preventDefault();
+                        // On touch devices, skip focusing the input — the
+                        // virtual keyboard would cover the bottom-docked
+                        // sheet. Users can tap the field explicitly to type.
+                        if (
+                            typeof window !== "undefined" &&
+                            window.matchMedia("(hover: none)").matches
+                        ) {
+                            return;
+                        }
                         searchRef.current?.focus();
                     }}
                     className="launchpad-content fixed left-1/2 top-1/2 z-[81] w-[calc(100%-32px)] max-w-[580px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[20px] border border-white/[0.08] bg-[rgba(22,22,24,0.85)] shadow-[0_24px_48px_rgba(0,0,0,0.25),0_48px_80px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)] outline-none backdrop-blur-[40px] backdrop-saturate-150 max-sm:left-0 max-sm:right-0 max-sm:top-auto max-sm:bottom-0 max-sm:w-full max-sm:max-w-full max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:pb-[env(safe-area-inset-bottom,0px)]"

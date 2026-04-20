@@ -2,7 +2,7 @@
  * AppNav — app-wide navigation.
  *
  * Mobile: fixed bottom tab bar (Auteur, Apps, Projects, Profile).
- * Desktop: fixed top-right cluster (Apps pill, Projects icon, Profile avatar).
+ * Desktop: fixed top-right cluster (Auteur icon, Apps pill, Profile avatar).
  *
  * The "Apps" button opens the Launchpad (Spotlight-style command
  * palette) for quick navigation to any destination.
@@ -22,6 +22,7 @@ import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
 import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
+import { AuteurIcon } from "./icons/auteur-icon";
 
 import styles from "./app-nav.module.css";
 
@@ -59,37 +60,28 @@ export async function AppNav() {
             {/* Auteur — mobile only */}
             <Link
                 href="/auteur"
-                className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group"
+                className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group text-[#e5e7eb] transition-colors hover:text-white"
                 aria-label="Auteur"
             >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 22 22"
-                    fill="none"
-                    className="group-hover:stroke-white transition-colors"
-                >
-                    <path
-                        d="M15.5129 0.846191H6.48722C3.37337 0.846191 0.846191 3.37337 0.846191 6.48722V15.5129C0.846191 18.6267 3.37337 21.1539 6.48722 21.1539H15.5129C18.6267 21.1539 21.1539 18.6267 21.1539 15.5129V6.48722C21.1539 3.37337 18.6267 0.846191 15.5129 0.846191Z"
-                        stroke="#e5e7eb"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                    <path d="M8 9V13" stroke="#e5e7eb" strokeWidth="2.1" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M14 9V13" stroke="#e5e7eb" strokeWidth="2.1" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M8 10V11" stroke="#e5e7eb" strokeWidth="2.1" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M14 10V11" stroke="#e5e7eb" strokeWidth="2.1" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
-                </svg>
-                <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
-                    Auteur
-                </span>
+                <AuteurIcon />
+                <span className="text-[11px] font-medium">Auteur</span>
             </Link>
+
+            {/* Auteur — desktop only (mobile tab is above) */}
+            {user && (
+                <Link
+                    href="/auteur"
+                    className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-[10px] text-[#e5e7eb] transition-colors hover:bg-white/5 hover:text-white group"
+                    aria-label="Auteur"
+                >
+                    <AuteurIcon />
+                </Link>
+            )}
 
             {/* Apps — opens Launchpad (client component) */}
             <NavAppsButton />
 
-            {/* Projects (mobile) / Auteur (desktop) */}
+            {/* Projects — mobile only */}
             <Link
                 href="/studio"
                 className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group"
@@ -113,31 +105,6 @@ export async function AppNav() {
                 <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
                     Projects
                 </span>
-            </Link>
-            <Link
-                href="/auteur"
-                className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-[10px] hover:bg-white/5 group"
-                aria-label="Auteur"
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 22 22"
-                    fill="none"
-                    className="group-hover:stroke-white transition-colors"
-                >
-                    <path
-                        d="M15.5129 0.846191H6.48722C3.37337 0.846191 0.846191 3.37337 0.846191 6.48722V15.5129C0.846191 18.6267 3.37337 21.1539 6.48722 21.1539H15.5129C18.6267 21.1539 21.1539 18.6267 21.1539 15.5129V6.48722C21.1539 3.37337 18.6267 0.846191 15.5129 0.846191Z"
-                        stroke="#e5e7eb"
-                        strokeWidth="1.69231"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
-                    <path d="M8 9V13" stroke="#e5e7eb" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M14 9V13" stroke="#e5e7eb" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-open group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M8 10V11" stroke="#e5e7eb" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
-                    <path d="M14 10V11" stroke="#e5e7eb" strokeWidth="2.25641" strokeLinecap="round" className="auteur-eye-closed group-hover:stroke-[#d4d4d8] transition-colors" />
-                </svg>
             </Link>
 
             {/* Profile (signed in) — mobile bottom sheet, desktop dropdown.
