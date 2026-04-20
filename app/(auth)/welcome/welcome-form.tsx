@@ -102,6 +102,8 @@ export function WelcomeForm({ email, credits }: WelcomeFormProps) {
                     <Perk label={`${SOLO_DAILY_CREDIT_LIMIT} credits per day`} />
                     <Perk label="1K resolution images" />
                     <Perk label="Personal use license" />
+                    <Perk label="6 projects" />
+                    <Perk label="1 HD video every month" />
                 </ul>
 
                 <div className="mt-[clamp(1.5rem,3vw,2rem)] space-y-3">

@@ -11,13 +11,13 @@ const googleSans = Google_Sans({
 export const metadata: Metadata = {
     metadataBase: new URL("https://film-maker.net"),
     title: {
-        default: "Film-maker — AI filmmaking, simplified",
-        template: "%s · Film-maker",
+        default: "Film-maker — The Artistic Intelligence (AI) Studio",
+        template: "%s · Film-maker Studio",
     },
     description:
         "AI-powered filmmaking. Generate cinematic images and videos with Google's latest models, in one simple tool.",
     openGraph: {
-        title: "Film-maker",
+        title: "Film-maker — The Artistic Intelligence (AI) Studio",
         description: "AI-powered filmmaking, simplified.",
         url: "https://film-maker.net",
         siteName: "Film-maker",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Film-maker",
+        title: "Film-maker — The Artistic Intelligence (AI) Studio",
         description: "AI-powered filmmaking, simplified.",
     },
     robots: {

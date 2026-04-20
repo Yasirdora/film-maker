@@ -500,7 +500,7 @@ function ModelListView({
                     placeholder="Search models..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="flex-1 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-[13px] text-white placeholder-[#52525b] outline-none focus:border-white/[0.12]"
+                    className="flex-1 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-[13px] text-white placeholder-[#52525b] outline-none focus:border-white/[0.12] max-sm:text-[16px]"
                     autoComplete="off"
                     autoFocus
                 />
