@@ -111,8 +111,9 @@ export default async function PricingPage() {
                         className="mx-auto mb-8 max-w-2xl rounded-2xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 text-center text-sm text-amber-200/90"
                     >
                         Film-maker is in its public testing phase — only the
-                        free Solo tier is active right now. Paid plans are
-                        previewed here for transparency and will unlock soon.
+                        free Solo tier is active right now. Paid tier pricing
+                        is still being finalized; the plans below are previewed
+                        for transparency and will unlock once pricing is set.
                     </div>
                 )}
 
@@ -129,8 +130,9 @@ export default async function PricingPage() {
                 </div>
 
                 <p className="mt-10 text-center text-xs text-neutral-500">
-                    Prices in USD. Taxes calculated at checkout where
-                    applicable. Cancel anytime.
+                    {PAID_PLANS_ENABLED
+                        ? "Prices in USD. Taxes calculated at checkout where applicable. Cancel anytime."
+                        : "Final pricing will be announced before paid plans go live. Cancel anytime once active."}
                 </p>
             </section>
         </main>
@@ -256,7 +258,13 @@ function PlanCard({
                     </div>
                     {plan.interval && (
                         <p className="mt-2 text-sm text-neutral-400">
-                            {plan.priceLabel}/mo
+                            {paidPlansEnabled ? (
+                                `${plan.priceLabel}/mo`
+                            ) : (
+                                <span className="font-medium text-neutral-300">
+                                    Pricing TBA
+                                </span>
+                            )}
                         </p>
                     )}
                 </div>
