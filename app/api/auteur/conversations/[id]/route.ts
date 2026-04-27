@@ -20,6 +20,7 @@ import {
     MAX_CONVERSATION_TITLE_LENGTH,
     deleteConversation,
     renameConversation,
+    setConversationArchived,
     setConversationPinned,
 } from "@/lib/auteur";
 
@@ -31,8 +32,9 @@ const PatchBody = z
     .object({
         title: z.string().trim().min(1).max(MAX_CONVERSATION_TITLE_LENGTH).optional(),
         pinned: z.boolean().optional(),
+        archived: z.boolean().optional(),
     })
-    .refine((o) => o.title !== undefined || o.pinned !== undefined, {
+    .refine((o) => o.title !== undefined || o.pinned !== undefined || o.archived !== undefined, {
         message: "Nothing to update",
     });
 
@@ -74,6 +76,13 @@ export async function PATCH(
                 conversationId: id,
                 userId: session.user.id,
                 pinned: input.pinned,
+            });
+        }
+        if (input.archived !== undefined) {
+            await setConversationArchived({
+                conversationId: id,
+                userId: session.user.id,
+                archived: input.archived,
             });
         }
     } catch (err) {

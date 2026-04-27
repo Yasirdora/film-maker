@@ -31,7 +31,56 @@ import { AuteurSidebar, type SidebarConversation } from "./auteur-sidebar";
 import { MessageBubble } from "./message-bubble";
 import { AuteurComposer, type Attachment } from "./auteur-composer";
 import { AuteurIcon } from "@/components/icons/auteur-icon";
+import {
+    DotsIcon,
+    PinIcon,
+    ArchiveIcon,
+    EditIcon,
+} from "@/components/icons/action-icons";
+import { InlineRenameForm } from "@/components/inline-rename-form";
+import { downloadPdf } from "@/lib/pdf";
 import styles from "./auteur.module.css";
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+
+function SearchIcon({ size = 18, className }: { size?: number; className?: string }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+        </svg>
+    );
+}
+
+function ArrowLeftIcon({ size = 16, className }: { size?: number; className?: string }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="m12 19-7-7 7-7" />
+            <path d="M19 12H5" />
+        </svg>
+    );
+}
+
+function ExportIcon({ size = 16, className }: { size?: number; className?: string }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+    );
+}
+
+function PlusIcon({ size = 16, className }: { size?: number; className?: string }) {
+    return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+        </svg>
+    );
+}
+
+// ── Types ──────────────────────────────────────────────────────────────────
 
 interface WorkspaceProps {
     viewer:
@@ -109,13 +158,23 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
     const [isStreaming, setIsStreaming] = React.useState(false);
     const [sidebarOpenMobile, setSidebarOpenMobile] = React.useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+    const [confirmingDeleteId, setConfirmingDeleteId] = React.useState<string | null>(null);
+    const [confirmDeleteMode, setConfirmDeleteMode] = React.useState(false); // Not used currently but kept for type safety if needed
     const [anonQuota, setAnonQuota] = React.useState<AnonQuota | null>(null);
     const [totalCredits, setTotalCredits] = React.useState(
         viewer.type === "authenticated" ? viewer.totalCredits : 0,
     );
+
+    // History View state
+    const [historySearch, setHistorySearch] = React.useState("");
+    const [historyFilter, setHistoryFilter] = React.useState<AuteurMode | "all">(
+        "all",
+    );
+
     const streamAbortRef = React.useRef<AbortController | null>(null);
     const activeAssistantIdRef = React.useRef<string | null>(null);
     const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+    const shouldScrollInstantRef = React.useRef(true);
 
     const unlockedModes = React.useMemo<ReadonlySet<AuteurMode>>(
         () =>
@@ -184,6 +243,8 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                             title: string;
                             mode: AuteurMode;
                             updatedAt: number;
+                            pinnedAt: number | null;
+                            archivedAt: number | null;
                         }>;
                     };
                     if (cancelled) return;
@@ -198,15 +259,14 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                             mode: c.mode,
                             updatedAt: c.updatedAt,
                             isAnonymous: false,
+                            pinnedAt: c.pinnedAt ?? null,
+                            archivedAt: c.archivedAt ?? null,
                             messages: null,
                         };
                     }
                     setConversations(next);
                     setOrder(ids);
-                    if (ids.length > 0) {
-                        setActiveId(ids[0]);
-                        setMode(next[ids[0]].mode);
-                    }
+                    // Standard landing view is History, no automatic selection.
                 } catch {
                     // Empty state is fine.
                 }
@@ -252,6 +312,8 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                             r.messages[r.messages.length - 1]?.createdAt ??
                             Date.now(),
                         isAnonymous: true,
+                        pinnedAt: null,
+                        archivedAt: null,
                         messages: r.messages,
                     };
                     validIds.push(r.id);
@@ -261,7 +323,7 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                 }
                 setConversations(next);
                 setOrder(validIds);
-                if (validIds.length > 0) setActiveId(validIds[0]);
+                // Standard landing view is History, no automatic selection.
             }
         }
 
@@ -358,6 +420,8 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
         async (id: string) => {
             setActiveId(id);
             setSidebarOpenMobile(false);
+            setHistorySearch("");
+            shouldScrollInstantRef.current = true;
             const c = conversations[id];
             if (c) setMode(c.mode);
             await ensureMessagesLoaded(id);
@@ -400,6 +464,8 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                         mode: body.conversation.mode,
                         updatedAt: body.conversation.updatedAt,
                         isAnonymous: viewer.type === "anonymous",
+                        pinnedAt: null,
+                        archivedAt: null,
                         messages: [],
                     },
                 }));
@@ -417,6 +483,7 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
 
     const handleNewChat = React.useCallback(async () => {
         setSidebarOpenMobile(false);
+        setHistorySearch("");
         await createConversation(mode);
     }, [createConversation, mode]);
 
@@ -445,9 +512,49 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
         [viewer.type],
     );
 
+    const renameConversation = React.useCallback(
+        async (id: string, nextTitle: string) => {
+            const trimmed = nextTitle.trim();
+            if (trimmed.length === 0) return;
+            try {
+                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title: trimmed }),
+                });
+                if (!res.ok) {
+                    toast.error("Couldn't rename the conversation.");
+                    return;
+                }
+                updateConversation(id, { title: trimmed });
+            } catch {
+                toast.error("Couldn't rename the conversation.");
+            }
+        },
+        [updateConversation],
+    );
+
+    const handleRename = React.useCallback(
+        (id: string) => {
+            const current = conversations[id];
+            const next = prompt("Rename conversation", current?.title ?? "");
+            if (next === null) return;
+            void renameConversation(id, next);
+        },
+        [conversations, renameConversation],
+    );
+
     const handleDelete = React.useCallback(
-        async (id: string) => {
-            if (!confirm("Delete this conversation?")) return;
+        async (id: string, isConfirmed = false) => {
+            if (!isConfirmed) {
+                setConfirmingDeleteId(id);
+                // Clear confirmation after 5 seconds of inactivity
+                setTimeout(() => {
+                    setConfirmingDeleteId(prev => prev === id ? null : prev);
+                }, 5000);
+                return;
+            }
+
             try {
                 const res = await fetch(`/api/auteur/conversations/${id}`, {
                     method: "DELETE",
@@ -463,6 +570,7 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                 });
                 setOrder((prev) => prev.filter((o) => o !== id));
                 if (activeId === id) setActiveId(null);
+                setConfirmingDeleteId(null);
             } catch {
                 toast.error("Couldn't delete the conversation.");
             }
@@ -470,28 +578,63 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
         [activeId],
     );
 
-    const handleRename = React.useCallback(
+    const handlePin = React.useCallback(
         async (id: string) => {
             const current = conversations[id];
-            const next = prompt("Rename conversation", current?.title ?? "");
-            if (!next || next.trim().length === 0) return;
+            if (!current) return;
+            const nextPinned = !current.pinnedAt;
             try {
                 const res = await fetch(`/api/auteur/conversations/${id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ title: next.trim() }),
+                    body: JSON.stringify({ pinned: nextPinned }),
                 });
-                if (!res.ok) {
-                    toast.error("Couldn't rename the conversation.");
-                    return;
-                }
-                updateConversation(id, { title: next.trim() });
+                if (!res.ok) throw new Error();
+                updateConversation(id, { pinnedAt: nextPinned ? Date.now() : null });
+                setOrder((prev) => {
+                    const others = prev.filter((o) => o !== id);
+                    if (!nextPinned) return [id, ...others]; // Just bump if newly unpinned
+                    return [id, ...others]; // Already sorting pinned-first in listUserConversations
+                });
             } catch {
-                toast.error("Couldn't rename the conversation.");
+                toast.error("Couldn't update pin status.");
             }
         },
         [conversations, updateConversation],
     );
+
+    const handleArchive = React.useCallback(
+        async (id: string) => {
+            const current = conversations[id];
+            if (!current) return;
+            const nextArchived = !current.archivedAt;
+            try {
+                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ archived: nextArchived }),
+                });
+                if (!res.ok) throw new Error();
+                updateConversation(id, { archivedAt: nextArchived ? Date.now() : null });
+                if (nextArchived && activeId === id) setActiveId(null);
+            } catch {
+                toast.error("Couldn't update archive status.");
+            }
+        },
+        [activeId, conversations, updateConversation],
+    );
+
+    const handleExport = React.useCallback(async () => {
+        if (!active || !active.messages) return;
+        await downloadPdf({
+            title: active.title,
+            mode: active.mode,
+            messages: active.messages.map((m) => ({
+                role: m.role,
+                content: m.content,
+            })),
+        });
+    }, [active]);
 
     const handleStop = React.useCallback(() => {
         if (!activeId) return;
@@ -532,6 +675,7 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
             streamAbortRef.current = abort;
             setIsStreaming(true);
             bumpConversationToTop(targetId);
+            shouldScrollInstantRef.current = false;
 
             try {
                 const res = await fetch(
@@ -648,19 +792,74 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
         ],
     );
 
-    // ─── Auto-scroll on new tokens ─────────────────────────────────────────
-    const lastMessage = active?.messages?.[active.messages.length - 1];
+    // ─── URL ↔ activeId sync ───────────────────────────────────────────────
+    // Each conversation gets its own shareable URL via ?cue=<id>. We use
+    // history.replaceState (not router.replace) so the Next.js router tree
+    // doesn't remount the workspace on every selection.
     React.useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({
-            behavior: "smooth",
+        const url = new URL(window.location.href);
+        const current = url.searchParams.get("cue");
+        if (activeId) {
+            if (current === activeId) return;
+            url.searchParams.set("cue", activeId);
+        } else {
+            if (!current) return;
+            url.searchParams.delete("cue");
+        }
+        window.history.replaceState(null, "", url.toString());
+    }, [activeId]);
+
+    // Hydrate activeId from ?cue=<id> once the conversation list lands.
+    const hydratedFromUrlRef = React.useRef(false);
+    React.useEffect(() => {
+        if (hydratedFromUrlRef.current) return;
+        if (Object.keys(conversations).length === 0) return;
+        const target = new URLSearchParams(window.location.search).get("cue");
+        if (!target) {
+            hydratedFromUrlRef.current = true;
+            return;
+        }
+        if (conversations[target]) {
+            hydratedFromUrlRef.current = true;
+            void selectConversation(target);
+        }
+    }, [conversations, selectConversation]);
+
+    // ─── Homepage prompt handoff (?q=…) ────────────────────────────────────
+    // The landing hero pushes /auteur?q=<prompt>. Drain the query param,
+    // create a fresh conversation, and fire handleSend — matches ConveX's
+    // initial-prompt handler (app/auteur/page.tsx).
+    const handledInitialPromptRef = React.useRef(false);
+    React.useEffect(() => {
+        if (handledInitialPromptRef.current) return;
+        const params = new URLSearchParams(window.location.search);
+        const initialPrompt = params.get("q");
+        if (!initialPrompt) return;
+        handledInitialPromptRef.current = true;
+
+        // Strip `q` immediately so a reload doesn't re-submit the prompt.
+        params.delete("q");
+        const search = params.toString();
+        const nextUrl =
+            window.location.pathname + (search ? `?${search}` : "");
+        window.history.replaceState(null, "", nextUrl);
+
+        void handleSend({ content: initialPrompt, attachments: [] });
+    }, [handleSend]);
+
+    // ─── Auto-scroll on new tokens ─────────────────────────────────────────
+    React.useLayoutEffect(() => {
+        const el = messagesEndRef.current;
+        if (!el) return;
+        el.scrollIntoView({
+            behavior: shouldScrollInstantRef.current ? "auto" : "smooth",
             block: "end",
         });
-    }, [lastMessage?.id, lastMessage?.content.length]);
+    }, [conversations, activeId, isStreaming]);
 
     // ─── Render ────────────────────────────────────────────────────────────
     const messages = active?.messages ?? [];
     const showEmptyState = !active || messages.length === 0;
-    const conversationTitle = active?.title ?? "";
 
     const composerHint =
         viewer.type === "anonymous" && anonQuota
@@ -707,12 +906,9 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                     activeId={activeId}
                     onSelect={(id) => void selectConversation(id)}
                     onNewChat={handleNewChat}
-                    onDelete={
-                        viewer.type === "authenticated" ? handleDelete : undefined
-                    }
-                    onRename={
-                        viewer.type === "authenticated" ? handleRename : undefined
-                    }
+                    onDelete={handleDelete}
+                    onRename={handleRename}
+                    confirmingDeleteId={confirmingDeleteId}
                     collapsed={sidebarCollapsed}
                     onToggleCollapse={() => {
                         if (sidebarOpenMobile) {
@@ -732,76 +928,76 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                             onClick={() => setSidebarOpenMobile(true)}
                             aria-label="Open chat history"
                         >
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden
-                            >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                                 <path d="M4 6h16" />
                                 <path d="M4 12h16" />
                                 <path d="M4 18h16" />
                             </svg>
                         </button>
-                        <span className={styles.topBarTitle}>
-                            {conversationTitle || `Auteur · ${MODE_LABEL[mode]}`}
-                        </span>
-                        <div className={styles.topBarRight}>
-                            {viewer.type === "authenticated" ? (
-                                <span
-                                    className={
-                                        totalCredits <= 5
-                                            ? `${styles.topBarPill} ${styles.topBarPillWarn}`
-                                            : styles.topBarPill
-                                    }
-                                    aria-label="Credits remaining"
+                        {!activeId ? (
+                            <span className={styles.topBarTitle}>History & Search</span>
+                        ) : (
+                            <>
+                                <button
+                                    type="button"
+                                    className={styles.backBtn}
+                                    onClick={() => setActiveId(null)}
+                                    title="Back to history"
                                 >
-                                    {totalCredits} cr
-                                </span>
-                            ) : (
-                                anonQuota && (
-                                    <span
-                                        className={
-                                            anonQuota.remaining === 0
-                                                ? `${styles.topBarPill} ${styles.topBarPillWarn}`
-                                                : styles.topBarPill
-                                        }
-                                    >
-                                        {anonQuota.remaining}/{anonQuota.limit} free
-                                    </span>
-                                )
-                            )}
-                        </div>
+                                    <ArrowLeftIcon />
+                                </button>
+                                {active && (
+                                    <ChatTopBarTitle
+                                        conversation={active}
+                                        isAuthenticated={viewer.type === "authenticated"}
+                                        onRename={renameConversation}
+                                        onDelete={handleDelete}
+                                        confirmingDeleteId={confirmingDeleteId}
+                                        onPin={handlePin}
+                                        onArchive={handleArchive}
+                                        onExport={handleExport}
+                                    />
+                                )}
+                            </>
+                        )}
                     </div>
 
-                    <div className={styles.messages}>
-                        <div className={styles.messagesInner}>
-                            {showEmptyState ? (
-                                <EmptyState mode={mode} />
-                            ) : (
-                                messages.map((m) => (
-                                    <MessageBubble
-                                        key={m.id}
-                                        id={m.id}
-                                        role={m.role}
-                                        content={m.content}
-                                        status={m.status}
-                                        imageUrls={m.imageUrls}
-                                        isStreaming={
-                                            isStreaming &&
-                                            ACTIVE_STATUSES.includes(m.status)
-                                        }
-                                    />
-                                ))
-                            )}
-                            <div ref={messagesEndRef} aria-hidden />
+                    {!activeId ? (
+                        <HistoryView
+                            conversations={sidebarConversations}
+                            activeMode={historyFilter}
+                            searchQuery={historySearch}
+                            onSearchChange={setHistorySearch}
+                            onFilterChange={setHistoryFilter}
+                            onSelect={selectConversation}
+                            onNewChat={handleNewChat}
+                        />
+                    ) : (
+                        <div className={styles.messages}>
+                            <div className={styles.messagesInner}>
+                                {showEmptyState ? (
+                                    <EmptyState mode={mode} />
+                                ) : (
+                                    messages.map((m) => (
+                                        <MessageBubble
+                                            key={m.id}
+                                            id={m.id}
+                                            role={m.role}
+                                            content={m.content}
+                                            status={m.status}
+                                            imageUrls={m.imageUrls}
+                                            conversationTitle={active.title}
+                                            isStreaming={
+                                                isStreaming &&
+                                                ACTIVE_STATUSES.includes(m.status)
+                                            }
+                                        />
+                                    ))
+                                )}
+                                <div ref={messagesEndRef} aria-hidden />
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className={styles.inputArea}>
                         {showQuotaGate && (
@@ -875,6 +1071,261 @@ function AuthGate({
         </div>
     );
 }
+
+// ─── Chat top bar title (with dropdown) ───────────────────────────────────
+
+function ChatTopBarTitle({
+    conversation,
+    isAuthenticated,
+    onRename,
+    onDelete,
+    confirmingDeleteId,
+    onPin,
+    onArchive,
+    onExport,
+}: {
+    conversation: ConversationState;
+    isAuthenticated: boolean;
+    onRename: (id: string, newTitle: string) => void;
+    onDelete: (id: string, confirmed?: boolean) => void;
+    confirmingDeleteId: string | null;
+    onPin: (id: string) => void;
+    onArchive: (id: string) => void;
+    onExport: () => void;
+}) {
+    const [isRenaming, setIsRenaming] = React.useState(false);
+    const [menuOpen, setMenuOpen] = React.useState(false);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    async function handleSave(newName: string): Promise<string | null> {
+        const trimmed = newName.trim();
+        if (!trimmed) return "Title is required";
+        if (trimmed === conversation.title) {
+            setIsRenaming(false);
+            return null;
+        }
+        try {
+            const res = await fetch(
+                `/api/auteur/conversations/${conversation.id}`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ title: trimmed }),
+                },
+            );
+            if (!res.ok) throw new Error();
+            onRename(conversation.id, trimmed);
+            setIsRenaming(false);
+            return null;
+        } catch {
+            return "Failed to rename";
+        }
+    }
+
+    if (isRenaming) {
+        return (
+            <div className={styles.topBarTitleWrap} style={{ flex: 1, minWidth: 0, maxWidth: 360 }}>
+                <InlineRenameForm
+                    initialName={conversation.title}
+                    onSave={handleSave}
+                    onCancel={() => setIsRenaming(false)}
+                    size="sm"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div ref={containerRef} className={styles.titleAnchor}>
+            <button
+                type="button"
+                className={styles.titleTrigger}
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label={`Conversation: ${conversation.title}`}
+            >
+                {conversation.title}
+                <DotsIcon size={14} className={styles.titleDots} />
+            </button>
+
+            {menuOpen && (
+                <>
+                    <div className={styles.contextBackdrop} onClick={() => setMenuOpen(false)} />
+                    <div className={styles.titleMenu}>
+                        <button
+                            className={styles.contextMenuItem}
+                            onClick={() => {
+                                setMenuOpen(false);
+                                setIsRenaming(true);
+                            }}
+                        >
+                            <EditIcon size={14} />
+                            Rename
+                        </button>
+                        <button
+                            className={styles.contextMenuItem}
+                            onClick={() => {
+                                setMenuOpen(false);
+                                onPin(conversation.id);
+                            }}
+                        >
+                            <PinIcon size={14} />
+                            {conversation.pinnedAt ? "Unpin" : "Pin"}
+                        </button>
+                        <button
+                            className={confirmingDeleteId === conversation.id ? `${styles.contextMenuItem} ${styles.contextMenuItemDanger}` : styles.contextMenuItem}
+                            onClick={() => {
+                                if (confirmingDeleteId === conversation.id) {
+                                    setMenuOpen(false);
+                                    onDelete(conversation.id, true);
+                                } else {
+                                    onDelete(conversation.id, false);
+                                }
+                            }}
+                        >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18" />
+                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                            </svg>
+                            {confirmingDeleteId === conversation.id ? "Confirm delete?" : "Delete"}
+                        </button>
+                        <div className={styles.contextMenuDivider} />
+                        <button
+                            className={styles.contextMenuItem}
+                            onClick={() => {
+                                setMenuOpen(false);
+                                onExport();
+                            }}
+                        >
+                            <ExportIcon size={14} />
+                            Export PDF
+                        </button>
+                        <button
+                            className={styles.contextMenuItem}
+                            onClick={() => {
+                                setMenuOpen(false);
+                                onArchive(conversation.id);
+                            }}
+                        >
+                            <ArchiveIcon size={14} />
+                            Archive
+                        </button>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+}
+
+// ─── History View ──────────────────────────────────────────────────────────
+
+function HistoryView({
+    conversations,
+    activeMode,
+    searchQuery,
+    onSearchChange,
+    onFilterChange,
+    onSelect,
+    onNewChat,
+}: {
+    conversations: ConversationState[];
+    activeMode: AuteurMode | "all";
+    searchQuery: string;
+    onSearchChange: (v: string) => void;
+    onFilterChange: (m: AuteurMode | "all") => void;
+    onSelect: (id: string) => void;
+    onNewChat: () => void;
+}) {
+    const filtered = React.useMemo(() => {
+        let list = conversations;
+        if (activeMode !== "all") {
+            list = list.filter((c) => c.mode === activeMode);
+        }
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            list = list.filter((c) => c.title.toLowerCase().includes(q));
+        }
+        return list;
+    }, [conversations, activeMode, searchQuery]);
+
+    const isEmpty = filtered.length === 0;
+
+    return (
+        <div className={styles.historyView}>
+            <div className={styles.historyContainer}>
+                <div className={styles.historyControls}>
+                    <div className={styles.historyFilterWrap}>
+                        <select
+                            className={styles.historyFilterSelect}
+                            value={activeMode}
+                            onChange={(e) => onFilterChange(e.target.value as any)}
+                        >
+                            <option value="all">All History</option>
+                            <option value="chat">Chat</option>
+                            <option value="script">Script</option>
+                            <option value="storyboard">Storyboard</option>
+                        </select>
+                        <svg className={styles.filterChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </div>
+
+                    <button className={styles.historyNewBtn} onClick={onNewChat}>
+                        <PlusIcon size={16} />
+                        New Chat
+                    </button>
+                </div>
+
+                <div className={styles.historyTopRow}>
+                    <div className={styles.historySearchWrap}>
+                        <SearchIcon className={styles.historySearchIcon} />
+                        <input
+                            type="text"
+                            className={styles.historySearchInput}
+                            placeholder="Search conversations..."
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {isEmpty ? (
+                    <div className={styles.historyEmpty}>
+                        <div className={styles.historyEmptyIcon}>
+                            <SearchIcon size={48} />
+                        </div>
+                        <h3 className={styles.historyEmptyTitle}>No conversations found</h3>
+                        <p className={styles.historyEmptyDesc}>
+                            {searchQuery ? "Try a different search term or filter." : "Start your first conversation to see it here."}
+                        </p>
+                    </div>
+                ) : (
+                    <div className={styles.historyScroll}>
+                        <h4 className={styles.historyHeading}>Recent</h4>
+                        {filtered.map((c) => (
+                            <button
+                                key={c.id}
+                                className={styles.historyItem}
+                                onClick={() => onSelect(c.id)}
+                            >
+                                <div className={styles.historyItemContent}>
+                                    <span className={styles.historyItemTitle}>{c.title}</span>
+                                </div>
+                                <span className={styles.historyItemMeta}>
+                                    {new Date(c.updatedAt).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                    })}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 
 // ─── SSE parsing (CRLF-tolerant) ────────────────────────────────────────────
 

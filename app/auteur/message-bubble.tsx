@@ -1,23 +1,11 @@
-/**
- * Auteur message bubble — the visible row per message.
- *
- * Faithfully preserves the ConveX styling cues:
- *   • User bubbles: gray card with a 6px bottom-right corner (tail).
- *   • Assistant bubbles: transparent (text only), 6px bottom-left corner.
- *   • Streaming: yellow `#eab308` 6×16 caret blinking at `steps(2)` 0.8s.
- *   • Pending: the same caret as a standalone element.
- *   • Message entrance: 8px-rise fade, `messageIn 0.3s ease-out both`.
- *
- * Rendering of assistant prose handles three markdown-ish things users
- * see the most — fenced code blocks, inline backticks, paragraph breaks.
- * Anything heavier (tables, headings) renders as plain text for now.
- */
-
 "use client";
 
 import * as React from "react";
 import Image from "next/image";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { MessageStatus } from "@/lib/auteur";
+import { downloadPdf } from "@/lib/pdf";
 import styles from "./auteur.module.css";
 
 export interface MessageBubbleProps {
@@ -27,6 +15,7 @@ export interface MessageBubbleProps {
     status: MessageStatus;
     imageUrls: string[];
     isStreaming: boolean;
+    conversationTitle?: string;
 }
 
 export function MessageBubble({
@@ -35,6 +24,7 @@ export function MessageBubble({
     status,
     imageUrls,
     isStreaming,
+    conversationTitle = "Conversation",
 }: MessageBubbleProps) {
     const isUser = role === "user";
     const isPending = status === "pending" && content.length === 0;
@@ -72,9 +62,37 @@ export function MessageBubble({
                 {isPending ? (
                     <span className={styles.pendingCursor} aria-label="Auteur is thinking" />
                 ) : isUser ? (
-                    <span>{content}</span>
+                    <span className={styles.userContent}>{content}</span>
                 ) : (
-                    <AssistantMarkdown text={content} />
+                    <div className={styles.markdown}>
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                pre: ({ children }) => {
+                                    const codeNode = React.Children.toArray(children)[0];
+                                    if (React.isValidElement<{ children?: React.ReactNode }>(codeNode) && codeNode.props.children) {
+                                        return (
+                                            <CodeBlock
+                                                code={String(codeNode.props.children).trim()}
+                                                conversationTitle={conversationTitle}
+                                            />
+                                        );
+                                    }
+                                    return <pre>{children}</pre>;
+                                },
+                                table: ({ children }) => (
+                                    <ShotListTable
+                                        content={renderChildrenToString(children)}
+                                        conversationTitle={conversationTitle}
+                                    >
+                                        <table>{children}</table>
+                                    </ShotListTable>
+                                ),
+                            }}
+                        >
+                            {content}
+                        </ReactMarkdown>
+                    </div>
                 )}
 
                 {status === "stopped" && (
@@ -92,112 +110,102 @@ export function MessageBubble({
     );
 }
 
-function AssistantMarkdown({ text }: { text: string }) {
-    const segments = React.useMemo(() => splitOnFences(text), [text]);
-    return (
-        <div className={styles.markdown}>
-            {segments.map((seg, idx) =>
-                seg.kind === "code" ? (
-                    <CodeBlock
-                        key={idx}
-                        language={seg.language}
-                        code={seg.value}
-                    />
-                ) : (
-                    <ParagraphText key={idx} text={seg.value} />
-                ),
-            )}
-        </div>
-    );
-}
-
-function ParagraphText({ text }: { text: string }) {
-    const paragraphs = text.split(/\n{2,}/).filter((p) => p.length > 0);
-    if (paragraphs.length === 0) return null;
-    return (
-        <>
-            {paragraphs.map((p, i) => (
-                <p key={i} style={{ whiteSpace: "pre-wrap" }}>
-                    {renderInlineCode(p)}
-                </p>
-            ))}
-        </>
-    );
-}
-
-function renderInlineCode(input: string): React.ReactNode[] {
-    const nodes: React.ReactNode[] = [];
-    const regex = /`([^`\n]+)`/g;
-    let last = 0;
-    let match: RegExpExecArray | null;
-    let key = 0;
-    while ((match = regex.exec(input)) !== null) {
-        if (match.index > last) nodes.push(input.slice(last, match.index));
-        nodes.push(
-            <code key={key++} className={styles.inlineCode}>
-                {match[1]}
-            </code>,
-        );
-        last = match.index + match[0].length;
-    }
-    if (last < input.length) nodes.push(input.slice(last));
-    return nodes;
-}
-
-function splitOnFences(text: string): Array<
-    | { kind: "text"; value: string }
-    | { kind: "code"; language: string; value: string }
-> {
-    const segments: Array<
-        | { kind: "text"; value: string }
-        | { kind: "code"; language: string; value: string }
-    > = [];
-    const regex = /```(\w+)?\n?([\s\S]*?)```/g;
-    let last = 0;
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(text)) !== null) {
-        if (match.index > last) {
-            segments.push({ kind: "text", value: text.slice(last, match.index) });
+/**
+ * Robustly convert React children back to a markdown-ish string for table parsing.
+ */
+function renderChildrenToString(children: React.ReactNode): string {
+    let text = "";
+    React.Children.forEach(children, (child) => {
+        if (typeof child === "string" || typeof child === "number") {
+            text += String(child);
+        } else if (React.isValidElement<{ children?: React.ReactNode }>(child)) {
+            text += renderChildrenToString(child.props.children);
+            if (child.type === "tr") text += "\n";
+            if (child.type === "td" || child.type === "th") text += " | ";
         }
-        segments.push({
-            kind: "code",
-            language: match[1] ?? "",
-            value: match[2].trimEnd(),
-        });
-        last = match.index + match[0].length;
-    }
-    if (last < text.length) {
-        segments.push({ kind: "text", value: text.slice(last) });
-    }
-    return segments;
+    });
+    return text;
 }
 
-function CodeBlock({ language, code }: { language: string; code: string }) {
+function CodeBlock({ code, conversationTitle }: { code: string; conversationTitle: string }) {
     const [copied, setCopied] = React.useState(false);
-    const copy = async () => {
+
+    const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(code);
             setCopied(true);
-            window.setTimeout(() => setCopied(false), 1500);
-        } catch {
-            // Clipboard may be denied in non-secure contexts — silent no-op.
-        }
+            setTimeout(() => setCopied(false), 2000);
+        } catch {}
     };
+
+    const handleExport = async () => {
+        await downloadPdf({
+            title: conversationTitle,
+            mode: "script",
+            messages: [
+                { role: "assistant", content: `\`\`\`\n${code}\n\`\`\`` },
+            ],
+            fileName: `${conversationTitle}_script`,
+        });
+    };
+
     return (
         <div className={styles.codeBlockWrap}>
             <pre>
                 <code>{code}</code>
             </pre>
-            <div className={styles.codeBlockToolbar}>
-                <button
-                    type="button"
-                    onClick={copy}
-                    className={styles.codeBlockBtn}
-                    aria-label={`Copy ${language || "code"}`}
-                >
+            <div className={styles.blockToolbar}>
+                <button type="button" className={styles.toolbarBtn} onClick={handleCopy}>
                     {copied ? "Copied" : "Copy"}
+                </button>
+                <button type="button" className={styles.toolbarBtn} onClick={handleExport}>
+                    PDF
                 </button>
             </div>
         </div>
     );
 }
+
+function ShotListTable({
+    children,
+    content,
+    conversationTitle,
+}: {
+    children: React.ReactNode;
+    content: string;
+    conversationTitle: string;
+}) {
+    const [copied, setCopied] = React.useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch {}
+    };
+
+    const handleExport = async () => {
+        await downloadPdf({
+            title: conversationTitle,
+            mode: "shot_list",
+            messages: [{ role: "assistant", content }],
+            fileName: `${conversationTitle}_shot_list`,
+        });
+    };
+
+    return (
+        <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>{children}</div>
+            <div className={styles.blockToolbar}>
+                <button type="button" className={styles.toolbarBtn} onClick={handleCopy}>
+                    {copied ? "Copied" : "Copy"}
+                </button>
+                <button type="button" className={styles.toolbarBtn} onClick={handleExport}>
+                    PDF
+                </button>
+            </div>
+        </div>
+    );
+}
+

@@ -28,7 +28,7 @@ export default async function AuteurPage() {
     if (!session?.user) {
         return (
             <>
-                <AppNav />
+                <AppNav hideAuteurIcon />
                 <AuteurWorkspace viewer={{ type: "anonymous" }} />
             </>
         );
@@ -40,7 +40,7 @@ export default async function AuteurPage() {
 
     return (
         <>
-            <AppNav />
+            <AppNav hideAuteurIcon />
             <AuteurWorkspace
                 viewer={{
                     type: "authenticated",

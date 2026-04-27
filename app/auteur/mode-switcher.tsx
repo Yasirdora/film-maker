@@ -1,9 +1,9 @@
 /**
  * Mode switcher — vertical nav rail rendered inside the sidebar.
  *
- * Four rows: Chat, Script, Shots, Storyboard. Locked rows render with a
+ * Three rows: Chat, Script, Storyboard. Locked rows render with a
  * small lock glyph and call `onLockedClick` (typically to surface a
- * toast / upgrade CTA). Active row shows orange icon + tinted pill.
+ * toast / upgrade CTA). Active row shows a tinted background pill.
  */
 
 "use client";
@@ -103,7 +103,7 @@ export function ModeNav({
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="2"
+                                    strokeWidth="1.75"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     aria-hidden

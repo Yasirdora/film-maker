@@ -232,7 +232,7 @@ export async function createConversation(params: {
 }): Promise<{ conversation: ConversationRow; anonToken: string | null }> {
     const db = await getDb();
     const now = Date.now();
-    const id = generateUid(16);
+    const id = crypto.randomUUID();
     const anonToken = params.userId ? null : generateAnonToken();
     const title = (params.title ?? PLACEHOLDER_TITLE).slice(
         0,
@@ -367,6 +367,32 @@ export async function setConversationPinned(params: {
         .run();
 }
 
+export async function setConversationArchived(params: {
+    conversationId: string;
+    userId: string;
+    archived: boolean;
+}): Promise<void> {
+    await requireConversationAccess({
+        conversationId: params.conversationId,
+        userId: params.userId,
+    });
+
+    const db = await getDb();
+    await db
+        .prepare(
+            `UPDATE auteur_conversation
+                SET archived_at = ?, updated_at = ?
+              WHERE id = ?`,
+        )
+        .bind(
+            params.archived ? Date.now() : null,
+            Date.now(),
+            params.conversationId,
+        )
+        .run();
+}
+
+
 export async function deleteConversation(params: {
     conversationId: string;
     userId: string;
@@ -482,7 +508,7 @@ export async function insertUserMessage(params: {
 }): Promise<MessageRow> {
     const db = await getDb();
     const now = Date.now();
-    const id = generateUid(20);
+    const id = crypto.randomUUID();
 
     await db
         .prepare(
@@ -518,7 +544,7 @@ export async function insertAssistantPlaceholder(params: {
     // +1ms so ordering-by-createdAt puts the placeholder after the user msg
     // even if they land in the same millisecond.
     const now = params.createdAt ?? Date.now() + 1;
-    const id = generateUid(20);
+    const id = crypto.randomUUID();
 
     await db
         .prepare(

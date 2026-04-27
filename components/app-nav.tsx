@@ -26,7 +26,7 @@ import { AuteurIcon } from "./icons/auteur-icon";
 
 import styles from "./app-nav.module.css";
 
-export async function AppNav() {
+export async function AppNav({ hideAuteurIcon = false }: { hideAuteurIcon?: boolean } = {}) {
     const session = await getSession();
     const user = session?.user ?? null;
 
@@ -58,6 +58,7 @@ export async function AppNav() {
                 aria-label="Main Navigation"
             >
             {/* Auteur — mobile only */}
+            {!hideAuteurIcon && (
             <Link
                 href="/auteur"
                 className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group text-[#e5e7eb] transition-colors hover:text-white"
@@ -66,9 +67,10 @@ export async function AppNav() {
                 <AuteurIcon />
                 <span className="text-[11px] font-medium">Auteur</span>
             </Link>
+            )}
 
             {/* Auteur — desktop only (mobile tab is above) */}
-            {user && (
+            {user && !hideAuteurIcon && (
                 <Link
                     href="/auteur"
                     className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-[10px] text-[#e5e7eb] transition-colors hover:bg-white/5 hover:text-white group"

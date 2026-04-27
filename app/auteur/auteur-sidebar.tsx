@@ -1,12 +1,12 @@
 /**
  * Auteur sidebar.
  *
- * Layout (top-to-bottom, vertically stacked, 260 px wide):
+ * Layout (top-to-bottom, vertically stacked, 220 px wide):
  *
- *   1. Mode navigation (Chat / Script / Shots / Storyboard)
- *   2. "New chat" — dashed button in the brand orange
- *   3. "Chat history" — section header (clock icon)
- *   4. Conversation list — hover/active states, contextual "more" menu
+ *   1. Mode navigation (Chat / Script / Storyboard)
+ *   2. "New chat" button
+ *   3. "Chat history" section header (clock icon)
+ *   4. Conversation list with hover/active states and contextual menu
  *
  * On mobile the same shell is reused inside a slide-over drawer.
  */
@@ -26,6 +26,8 @@ export interface SidebarConversation {
     mode: AuteurMode;
     updatedAt: number;
     isAnonymous: boolean;
+    pinnedAt: number | null;
+    archivedAt: number | null;
 }
 
 interface AuteurSidebarProps {
@@ -37,8 +39,9 @@ interface AuteurSidebarProps {
     activeId: string | null;
     onSelect: (id: string) => void;
     onNewChat: () => void;
-    onDelete?: (id: string) => void;
+    onDelete?: (id: string, confirmed?: boolean) => void;
     onRename?: (id: string) => void;
+    confirmingDeleteId?: string | null;
     collapsed?: boolean;
     onToggleCollapse?: () => void;
     mobileOpen?: boolean;
@@ -57,6 +60,7 @@ export function AuteurSidebar({
     onNewChat,
     onDelete,
     onRename,
+    confirmingDeleteId,
     collapsed = false,
     onToggleCollapse,
     mobileOpen,
@@ -88,7 +92,7 @@ export function AuteurSidebar({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2.5"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden
@@ -111,7 +115,7 @@ export function AuteurSidebar({
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
-                                strokeWidth="2"
+                                strokeWidth="1.75"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 aria-hidden
@@ -137,7 +141,7 @@ export function AuteurSidebar({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden
@@ -205,25 +209,20 @@ export function AuteurSidebar({
 
             {menu && (onDelete || onRename) && (
                 <ConversationMenu
+                    id={menu.id}
                     top={menu.top}
                     left={menu.left}
                     onClose={() => setMenu(null)}
+                    confirmingDeleteId={confirmingDeleteId}
                     onRename={
                         onRename
                             ? () => {
                                   onRename(menu.id);
                                   setMenu(null);
-                              }
+                                }
                             : undefined
                     }
-                    onDelete={
-                        onDelete
-                            ? () => {
-                                  onDelete(menu.id);
-                                  setMenu(null);
-                              }
-                            : undefined
-                    }
+                    onDelete={onDelete}
                 />
             )}
         </aside>
@@ -299,18 +298,24 @@ function SidebarRow({
 }
 
 function ConversationMenu({
+    id,
     top,
     left,
     onClose,
+    confirmingDeleteId,
     onRename,
     onDelete,
 }: {
+    id: string;
     top: number;
     left: number;
     onClose: () => void;
+    confirmingDeleteId?: string | null;
     onRename?: () => void;
-    onDelete?: () => void;
+    onDelete?: (id: string, confirmed?: boolean) => void;
 }) {
+    const isConfirming = confirmingDeleteId === id;
+
     return (
         <>
             <div
@@ -336,7 +341,7 @@ function ConversationMenu({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden
@@ -351,8 +356,15 @@ function ConversationMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className={`${styles.contextMenuItem} ${styles.contextMenuItemDanger}`}
-                        onClick={onDelete}
+                        className={isConfirming ? `${styles.contextMenuItem} ${styles.contextMenuItemDanger}` : styles.contextMenuItem}
+                        onClick={() => {
+                            if (isConfirming) {
+                                onClose();
+                                onDelete(id, true);
+                            } else {
+                                onDelete(id, false);
+                            }
+                        }}
                     >
                         <svg
                             width="14"
@@ -360,7 +372,7 @@ function ConversationMenu({
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth="2"
+                            strokeWidth="1.75"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden
@@ -369,7 +381,7 @@ function ConversationMenu({
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
                             <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         </svg>
-                        Delete
+                        {isConfirming ? "Confirm delete?" : "Delete"}
                     </button>
                 )}
             </div>
