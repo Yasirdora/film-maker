@@ -64,7 +64,6 @@ export function PromptShowcase({
     const trackRef = useRef<HTMLDivElement | null>(null);
     const stepWidthRef = useRef(0);
     const isAnimatingRef = useRef(false);
-    const pausedRef = useRef(false);
     const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
 
     const registerVideo = useCallback(
@@ -81,6 +80,15 @@ export function PromptShowcase({
     const [order, setOrder] = useState(() => slides.map((_, i) => i));
     const [activeIndex, setActiveIndex] = useState(0);
 
+    // Mirrors activeIndex for synchronous reads inside goNext/goPrev —
+    // we need to know the next slide's id BEFORE React commits the
+    // state update, so we can rewind the incoming video before the
+    // slide animation begins.
+    const activeIndexRef = useRef(0);
+    useEffect(() => {
+        activeIndexRef.current = activeIndex;
+    }, [activeIndex]);
+
     const advanceActive = useCallback(
         (delta: 1 | -1) => {
             setActiveIndex(
@@ -89,6 +97,22 @@ export function PromptShowcase({
         },
         [slides.length],
     );
+
+    // Called at the END of a slide transition, once the outgoing card
+    // is fully off-screen. Rewinds every non-active video so that the
+    // next time any of them rotates back into view it starts at frame 0.
+    // Safe here because only the active card is in the viewport — any
+    // currentTime = 0 jump on other cards is invisible.
+    const rewindInactiveVideos = useCallback((activeId: string | undefined) => {
+        videoRefs.current.forEach((video, id) => {
+            if (id === activeId) return;
+            try {
+                video.currentTime = 0;
+            } catch {
+                /* some browsers throw before metadata loads — ignore */
+            }
+        });
+    }, []);
 
     const measureStep = useCallback(() => {
         const track = trackRef.current;
@@ -176,6 +200,7 @@ export function PromptShowcase({
         if (!track || isAnimatingRef.current || slides.length < 2) return;
         isAnimatingRef.current = true;
 
+        const nextIndex = (activeIndexRef.current + 1) % slides.length;
         advanceActive(1);
 
         // The first card is the one sliding off the left edge — fade it out.
@@ -193,14 +218,19 @@ export function PromptShowcase({
             void trackRef.current.offsetHeight;
         }
         if (outgoing) outgoing.style.opacity = "1";
+        // Outgoing card is now at the tail, fully off-screen. Rewind
+        // every inactive video so next rotations start at frame 0.
+        rewindInactiveVideos(slides[nextIndex]?.id);
         isAnimatingRef.current = false;
-    }, [advanceActive, runSlide, slides.length]);
+    }, [advanceActive, rewindInactiveVideos, runSlide, slides]);
 
     const goPrev = useCallback(async () => {
         const track = trackRef.current;
         if (!track || isAnimatingRef.current || slides.length < 2) return;
         isAnimatingRef.current = true;
 
+        const prevIndex =
+            (activeIndexRef.current - 1 + slides.length) % slides.length;
         advanceActive(-1);
 
         // Pre-shift tail to head, offset track invisibly, then animate back.
@@ -217,8 +247,11 @@ export function PromptShowcase({
         if (incoming) incoming.style.opacity = "0";
         await runSlide(-stepWidthRef.current, 0, incoming, "in");
 
+        // Old active is now the second child, off-screen to the right.
+        // Rewind every inactive video so they're ready for next rotations.
+        rewindInactiveVideos(slides[prevIndex]?.id);
         isAnimatingRef.current = false;
-    }, [advanceActive, runSlide, slides.length]);
+    }, [advanceActive, rewindInactiveVideos, runSlide, slides]);
 
     // Auto-advance (pauses while the pointer is over the component or
     // the tab is hidden, so the motion never steals focus from copy
@@ -229,7 +262,7 @@ export function PromptShowcase({
 
         const schedule = () => {
             timer = window.setTimeout(() => {
-                if (!pausedRef.current && !document.hidden) goNext();
+                if (!document.hidden) goNext();
                 schedule();
             }, autoplayInterval);
         };
@@ -242,7 +275,10 @@ export function PromptShowcase({
 
     // Only the active slide's video plays. Non-active videos pause
     // but keep their playhead so the outgoing clip doesn't snap to
-    // frame 0 while it's still visible during the slide.
+    // frame 0 while it's still visible during the slide. The rewind
+    // happens AFTER each transition completes (rewindInactiveVideos
+    // in goNext/goPrev), once the outgoing card is fully off-screen —
+    // so next time any card rotates back into view it's at frame 0.
     useEffect(() => {
         const activeId = slides[activeIndex]?.id;
         videoRefs.current.forEach((video, id) => {
@@ -263,15 +299,7 @@ export function PromptShowcase({
     );
 
     return (
-        <div
-            className={styles.showcase}
-            onMouseEnter={() => {
-                pausedRef.current = true;
-            }}
-            onMouseLeave={() => {
-                pausedRef.current = false;
-            }}
-        >
+        <div className={styles.showcase}>
             <div className={styles.showcaseViewport}>
                 <div className={styles.showcaseTrackWrapper}>
                     <div ref={trackRef} className={styles.showcaseTrack}>
@@ -299,32 +327,10 @@ export function PromptShowcase({
             </div>
 
             <div className={styles.showcaseUi}>
-                <div
-                    className={styles.showcaseTextStage}
-                    aria-live="polite"
-                    aria-atomic="true"
-                >
-                    {slides.map((slide, i) => (
-                        <p
-                            key={slide.id}
-                            className={[
-                                styles.showcaseTextLayer,
-                                i === activeIndex &&
-                                    styles.showcaseTextLayerActive,
-                            ]
-                                .filter(Boolean)
-                                .join(" ")}
-                            aria-hidden={i !== activeIndex}
-                        >
-                            <span className={styles.showcaseLabel}>
-                                {slide.label}
-                            </span>{" "}
-                            <span className={styles.showcasePrompt}>
-                                {slide.prompt}
-                            </span>
-                        </p>
-                    ))}
-                </div>
+                {/* Prompt text intentionally hidden for now — label +
+                    prompt copy will return once final wording is set.
+                    The slides[].label / .prompt fields are still read
+                    here so they stay in the component contract. */}
 
                 <div className={styles.showcaseNav}>
                     <button

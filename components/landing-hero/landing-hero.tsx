@@ -35,6 +35,7 @@ import { AppBrandMark } from "@/components/app-brand-mark";
 import { AnnouncementBanner } from "./announcement-banner";
 import { ClapperboardLoader } from "./clapperboard-loader";
 import { EditorToolbar } from "./editor-toolbar";
+import { FeatureVideo } from "./feature-video";
 import { HeroBackground } from "./hero-background";
 import { HeroContent } from "./hero-content";
 import { HeroPrompt } from "./hero-prompt";
@@ -73,45 +74,46 @@ const COPY = {
     footerYear: new Date().getFullYear(),
 } as const;
 
-const HERO_VIDEO_SRC = "/assets/bg.mp4";
+// WebM (VP9) is ~50% smaller than the H.264 MP4 — modern browsers fetch
+// it; older Safari versions fall back to the MP4. Browsers fetch only
+// the first source whose `type` they can decode.
+const HERO_VIDEO_SOURCES = [
+    { src: "/assets/bg.webm", type: "video/webm; codecs=vp9" },
+    { src: "/assets/bg.mp4", type: "video/mp4" },
+] as const;
 
 // Showcase reel. Swap in production renders as they land — the
 // carousel reads this list verbatim and adapts to any length ≥ 2.
 const SHOWCASE_SLIDES: readonly ShowcaseSlide[] = [
     {
-        id: "ex01",
-        videoSrc: "/assets/ex01.mp4",
-        label: "Opening frame.",
-        prompt:
-            "A cinematic opening shot with rich color and deliberate motion — tune this prompt to match the clip.",
-    },
-    {
-        id: "neon-rainfall",
-        videoSrc: "/assets/bg.mp4",
+        id: "slide-01",
+        videoSrc: "/assets/01.mp4",
         label: "Neon rainfall.",
-        prompt:
-            "A lone courier sprints through flooded Shinjuku alleys at 3 a.m., reflected neon smearing across the wet asphalt — 35 mm, shallow depth of field, handheld.",
+        prompt: "Courier through rainy Shinjuku, 35 mm handheld.",
     },
     {
-        id: "sunrise-atelier",
-        videoSrc: "/assets/signin-hero.mp4",
+        id: "slide-02",
+        videoSrc: "/assets/02.mp4",
         label: "Sunrise atelier.",
-        prompt:
-            "Soft morning light breaks through a Parisian studio window as a tailor pins fabric to a mannequin. Warm grain, golden-hour bloom, patient dolly-in.",
+        prompt: "Tailor at a Parisian window, golden-hour dolly-in.",
     },
     {
-        id: "archive-room",
-        videoSrc: "/assets/bg.mp4",
+        id: "slide-03",
+        videoSrc: "/assets/03.mp4",
         label: "The archive room.",
-        prompt:
-            "A historian pulls a century-old film canister from a dusty shelf; motes drift through a single shaft of light. Muted teals and ochres, slow orbit.",
+        prompt: "Historian, dusty film canister, single shaft of light.",
     },
     {
-        id: "last-takeoff",
-        videoSrc: "/assets/signin-hero.mp4",
+        id: "slide-04",
+        videoSrc: "/assets/04.mp4",
         label: "Last takeoff.",
-        prompt:
-            "An astronaut straps in as the cabin trembles; the camera holds on their eyes, then cuts to engines igniting across a dawn tarmac. Anamorphic, cinematic contrast.",
+        prompt: "Astronaut at ignition, anamorphic dawn tarmac.",
+    },
+    {
+        id: "slide-05",
+        videoSrc: "/assets/05.mp4",
+        label: "Quiet coast.",
+        prompt: "Lighthouse keeper at dawn, pastel sea, long lens.",
     },
 ];
 
@@ -156,7 +158,7 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
             >
 
                 <section className={styles.hero}>
-                    <HeroBackground videoSrc={HERO_VIDEO_SRC} />
+                    <HeroBackground sources={HERO_VIDEO_SOURCES} />
 
                     <AnnouncementBanner
                         headline={COPY.announcementHeadline}
@@ -209,7 +211,7 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                     reveal={reveal}
                 />
 
-                <PromptShowcase slides={SHOWCASE_SLIDES} autoplayInterval={6000} />
+                <PromptShowcase slides={SHOWCASE_SLIDES} autoplayInterval={7500} />
 
                 <section className={styles.showcaseOutro}>
                     <h2 className={styles.showcaseOutroHeadline}>
@@ -221,6 +223,11 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                         </span>
                     </h2>
                 </section>
+
+                <FeatureVideo
+                    src="/assets/Mercedes.mp4"
+                    label="Mercedes showcase film"
+                />
             </main>
         </>
     );
