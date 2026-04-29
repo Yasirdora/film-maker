@@ -233,8 +233,8 @@
     position: relative;
     width: calc(100% - clamp(16px, 3vw, 48px));
     max-width: 1800px;
-    margin: 80px auto clamp(8px, 2vw, 24px);
-    min-height: calc(100svh - 128px);
+    margin: clamp(8px, 1.5vw, 16px) auto clamp(8px, 2vw, 24px);
+    min-height: calc(100svh - var(--header-height, 64px) - 32px);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -1077,7 +1077,7 @@
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 clamp(24px, 4vw, 48px) clamp(64px, 9vw, 128px);
+    padding: 48px;
 }
 
 .featureVideoFrame {
@@ -1304,7 +1304,7 @@
 .showcaseNavButton {
     width: 40px;
     height: 40px;
-    border-radius: 9999px;
+    border-radius: 12px;
     background: rgb(255 255 255 / 0.04);
     border: 1px solid rgb(255 255 255 / 0.08);
     color: #fff;

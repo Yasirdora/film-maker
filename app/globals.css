@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+/* ─── Landing-blocks layer ────────────────────────────────────────────────
+ * Ported verbatim from the google-one-next project (sections that live
+ * below the hero on /). Layered so the original cascade still wins
+ * inside its own classes, with `theme-overrides` resolving last.
+ */
+@layer bds.base, bds.component, mws.base, mws.component, base, component, template,
+  theme-overrides;
+
+@import "../styles/landing-blocks/base.css";
+@import "../styles/landing-blocks/components.css";
+@import "../styles/landing-blocks/spatial-carousel.css";
+@import "../styles/landing-blocks/theme.css";
+
+/* ─── AppNav scroll-hide ──────────────────────────────────────────────────
+ * Verbatim port of google-one-next's Header behavior: when the pill
+ * StickyNav (`.jumplinks.sticky:active`) is pinned AND the user is
+ * scrolling down past 10px, the top nav slides up off-screen.
+ * Re-appears the moment scroll direction reverses past 5px.
+ */
+@media (min-width: 850px) {
+    body:has(.jumplinks) #app-nav-root {
+        transform: translateY(0);
+        transition: transform 0.5s ease;
+    }
+    body:has(.jumplinks.sticky\:active)
+        #app-nav-root.y\:scrolled.dir\:down {
+        transform: translateY(-100%);
+    }
+}
+
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 
 @theme {

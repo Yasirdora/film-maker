@@ -30,8 +30,6 @@
 import Link from "next/link";
 import { Newsreader } from "next/font/google";
 
-import { AppBrandMark } from "@/components/app-brand-mark";
-
 import { AnnouncementBanner } from "./announcement-banner";
 import { ClapperboardLoader } from "./clapperboard-loader";
 import { EditorToolbar } from "./editor-toolbar";
@@ -44,6 +42,14 @@ import { PromptShowcase, type ShowcaseSlide } from "./prompt-showcase";
 import { ScrollIndicator } from "./scroll-indicator";
 import { TaglineSection } from "./tagline-section";
 import { useLoaderPhase, useRevealOnScroll } from "./hooks";
+
+import StickyNav from "@/components/landing-blocks/sections/StickyNav";
+import NextGenAISection from "@/components/landing-blocks/sections/NextGenAISection";
+import ProductivitySection from "@/components/landing-blocks/sections/ProductivitySection";
+import AutomationSection from "@/components/landing-blocks/sections/AutomationSection";
+import BenefitsSection from "@/components/landing-blocks/sections/BenefitsSection";
+import AppDownload from "@/components/landing-blocks/sections/AppDownload";
+import Spacer from "@/components/landing-blocks/shared/Spacer";
 
 import styles from "./landing-hero.module.css";
 
@@ -87,31 +93,31 @@ const HERO_VIDEO_SOURCES = [
 const SHOWCASE_SLIDES: readonly ShowcaseSlide[] = [
     {
         id: "slide-01",
-        videoSrc: "/assets/01.mp4",
+        videoSrc: "/assets/showcase/01.mp4",
         label: "Neon rainfall.",
         prompt: "Courier through rainy Shinjuku, 35 mm handheld.",
     },
     {
         id: "slide-02",
-        videoSrc: "/assets/02.mp4",
+        videoSrc: "/assets/showcase/02.mp4",
         label: "Sunrise atelier.",
         prompt: "Tailor at a Parisian window, golden-hour dolly-in.",
     },
     {
         id: "slide-03",
-        videoSrc: "/assets/03.mp4",
+        videoSrc: "/assets/showcase/03.mp4",
         label: "The archive room.",
         prompt: "Historian, dusty film canister, single shaft of light.",
     },
     {
         id: "slide-04",
-        videoSrc: "/assets/04.mp4",
+        videoSrc: "/assets/showcase/04.mp4",
         label: "Last takeoff.",
         prompt: "Astronaut at ignition, anamorphic dawn tarmac.",
     },
     {
         id: "slide-05",
-        videoSrc: "/assets/05.mp4",
+        videoSrc: "/assets/showcase/05.mp4",
         label: "Quiet coast.",
         prompt: "Lighthouse keeper at dawn, pastel sea, long lens.",
     },
@@ -141,14 +147,6 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
     return (
         <>
             <ClapperboardLoader phase={loaderPhase} />
-
-            <div
-                className={`${styles.brandMark} ${
-                    loaderDone ? styles.brandMarkVisible : styles.brandMarkHidden
-                }`}
-            >
-                <AppBrandMark href="/" size="sm" />
-            </div>
 
             <main
                 className={`${newsreader.variable} ${styles.page} ${
@@ -213,7 +211,10 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
 
                 <PromptShowcase slides={SHOWCASE_SLIDES} autoplayInterval={7500} />
 
-                <section className={styles.showcaseOutro}>
+                <section
+                    id="sticky-nav-headline"
+                    className={styles.showcaseOutro}
+                >
                     <h2 className={styles.showcaseOutroHeadline}>
                         <span className={styles.showcaseOutroHeadlineLead}>
                             {COPY.showcaseOutroLead}
@@ -224,10 +225,20 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                     </h2>
                 </section>
 
+                <StickyNav />
+
                 <FeatureVideo
                     src="/assets/Mercedes.mp4"
                     label="Mercedes showcase film"
                 />
+
+                <NextGenAISection />
+                <ProductivitySection />
+                <AutomationSection />
+                <BenefitsSection />
+                <Spacer size="R14" />
+                <AppDownload />
+                <Spacer size="R14" />
             </main>
         </>
     );

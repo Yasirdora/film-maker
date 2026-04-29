@@ -7,13 +7,13 @@
  * components/landing-hero/.
  */
 
-import { AppNav } from "@/components/app-nav";
+import { LandingHeader } from "@/components/landing-header";
 import { LandingHero } from "@/components/landing-hero/landing-hero";
 
 export default function HomePage() {
     return (
         <>
-            <AppNav />
+            <LandingHeader />
             <LandingHero
                 turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? ""}
             />

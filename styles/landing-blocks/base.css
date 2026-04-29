@@ -1,0 +1,125 @@
+/* Slimmed for Film-maker: kept only the grid-system tokens, container
+ * class, and the unstyled-list utility. Tailwind preflight handles
+ * box-sizing/img/svg resets, and next/font owns the font stack — so
+ * the original base.css globals would clobber the rest of the app.
+ */
+
+@layer bds.component {
+  .container {
+    padding-inline: clamp(16px, 4vw, 64px);
+    margin-inline: auto;
+  }
+}
+
+/* Kill Tailwind v4's built-in `.container` utility max-widths — they
+ * collide with our google-one-next tile wrapper class of the same
+ * name. Outside any layer so it always wins. */
+.container {
+  max-width: none !important;
+}
+
+/* Lock tile asset images/videos to fill their column's height — when
+ * the text column gets tall (long title), the asset stretches via
+ * object-fit: cover instead of leaving empty whitespace beside the text.
+ * Covers the plain image case (BenefitsSection) and the auteur-floating
+ * stage case (AutomationSection's writer video). */
+.tile5050-asset {
+  height: 100%;
+}
+.tile5050-asset img,
+.tile5050-asset picture,
+.tile5050-asset .auteur-float-stage {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+}
+.tile5050-asset .auteur-float-stage {
+  aspect-ratio: auto;
+}
+
+@layer bds.base {
+  @media (max-width: 599.98px) {
+    :root {
+      --grid-columns: 4;
+      --grid-gap: 24px;
+      --grid-padding: max(24px, 50% - 250px);
+      --grid-max-width: 500px;
+      --grid-column-width: calc((min(100% - 48px, 500px) - 72px) / 4);
+    }
+  }
+  @media (min-width: 600px) and (max-width: 849.98px) {
+    :root {
+      --grid-columns: 6;
+      --grid-gap: 24px;
+      --grid-padding: max(48px, 50% - 300px);
+      --grid-max-width: 600px;
+      --grid-column-width: calc(((min(100% - 96px, 600px)) - 120px) / 6);
+    }
+  }
+  @media (min-width: 850px) and (max-width: 1439.98px) {
+    :root {
+      --grid-columns: 12;
+      --grid-gap: 40px;
+      --grid-padding: max(70px, 50% - 650px);
+      --grid-max-width: 1300px;
+      --grid-column-width: calc(((min(100% - 140px, 1300px)) - 440px) / 12);
+    }
+  }
+  @media (min-width: 1440px) and (max-width: 2459.98px) {
+    :root {
+      --grid-columns: 12;
+      --grid-gap: 40px;
+      --grid-padding: max(80px, 50% - 640px);
+      --grid-max-width: 1280px;
+      --grid-column-width: calc(((min(100% - 160px, 1280px)) - 440px) / 12);
+    }
+  }
+  @media (min-width: 2460px) {
+    :root {
+      --grid-columns: 12;
+      --grid-gap: 40px;
+      --grid-padding: max(80px, 50% - 640px);
+      --grid-max-width: 1280px;
+      --grid-column-width: calc(((min(100% - 160px, 1280px)) - 440px) / 12);
+    }
+  }
+}
+
+@layer mws.base {
+  ol.unstyled,
+  ul.unstyled {
+    list-style: none;
+    margin-left: 0;
+    padding-left: 0;
+  }
+}
+
+@layer base {
+  .weight-regular {
+    font-weight: 400;
+  }
+}
+
+/* Centering is handled entirely by `--grid-padding: max(80px, 50% - 640px)`
+ * (defined per-breakpoint above) — the same mechanism google-one-next
+ * uses. At wide viewports the padding scales up to keep the inner
+ * content at ~1280px; at narrow viewports the padding shrinks to 70/80px.
+ *
+ * Earlier iterations added an explicit `max-width: 1280px` on
+ * `.container-outer .modules` to "force" centering, but that broke
+ * the math: with modules capped, the `50%` inside grid-padding resolved
+ * against the cap (640px) instead of the viewport, collapsing the
+ * padding to 80px and shrinking the tile content to 1120px instead of
+ * 1280. Visibly off-balance at 1279px / 1023px (just below the cap).
+ * Trust the original mechanism — no cap needed.
+ */
+
+/* components.css/theme.css reference --font-family-default etc. Point them at
+ * Film-maker's existing next/font Google Sans variable so the landing
+ * blocks inherit the app's font stack. */
+:root {
+  --font-family-default: var(--font-google-sans), Arial, Helvetica, sans-serif;
+  --font-family-display: var(--font-google-sans), Arial, Helvetica, sans-serif;
+  --font-family-headline: var(--font-google-sans), Arial, Helvetica, sans-serif;
+  --font-family-text: var(--font-google-sans), Arial, Helvetica, sans-serif;
+}

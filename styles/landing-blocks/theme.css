@@ -1,0 +1,973 @@
+/* =====================================================================
+ * Theme layer — light/dark.
+ *
+ * Source of truth:
+ *   <html data-theme="light|dark">  (set by no-flash script + React)
+ *
+ * Strategy:
+ *   • [data-theme="dark"] body  — mirrors scraped `body.theme:dark`
+ *     (sets --theme-bg-color, --theme-text-color for the body surface).
+ *   • [data-theme="light"] <selector> — explicitly overrides every
+ *     per-component `-dark` / `-theme-dark` / `-variant-dark` /
+ *     `-bg-black` modifier rule from components.css, reverting it to
+ *     the scraped system's light palette (obtained by reading the
+ *     matching non-dark rules in components.css).
+ *
+ * This file is the single place to adjust palette per surface.
+ * ===================================================================== */
+
+@layer theme-overrides {
+  /* ---------- color-scheme ----------
+   * Mirrors the data-theme attribute so form controls, scrollbars, and
+   * other UA chrome adopt the right palette without an inline style on
+   * <html>. */
+  :root,
+  [data-theme="dark"] {
+    color-scheme: dark;
+  }
+  [data-theme="light"] {
+    color-scheme: light;
+  }
+
+  /* ---------- Unified button system ----------
+   * All pressable CTAs (Button component variants + custom card CTAs)
+   * share one rounded-square radius. Pills are reserved for badges /
+   * tags; circles for icon-only buttons (theme toggle). */
+  :root {
+    --btn-radius: 12px;
+  }
+  .button-high-emphasis-variant-high-emphasis,
+  .button-tonal-variant-tonal {
+    border-radius: var(--btn-radius);
+  }
+  .jumplinks-cta.button-high-emphasis-variant-high-emphasis {
+    border-radius: 9999px;
+  }
+
+  /* ---------- Header brand icon (clapperboard) ----------
+   * Inherits currentColor from header text, so it adapts to theme. */
+  .header-logo-wordmark {
+    height: 40px;
+    width: auto;
+    display: block;
+    color: currentColor;
+  }
+
+  /* ---------- Hero wordmark (FilmmakerLogo) ----------
+   * FilmmakerLogo uses a linearGradient with two stops defined by
+   * --logo-stop-1 / --logo-stop-2 CSS vars so it can flip per theme. */
+  .hero-logo-wordmark {
+    width: 420px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  @media (min-width: 600px) {
+    .hero-logo-wordmark {
+      width: 600px;
+    }
+  }
+  @media (min-width: 850px) {
+    .hero-logo-wordmark {
+      width: 820px;
+    }
+  }
+  @media (min-width: 1440px) {
+    .hero-logo-wordmark {
+      width: 960px;
+    }
+  }
+  [data-theme="dark"] .hero-logo-wordmark,
+  [data-theme="dark"] .app-download-logo-wordmark {
+    --logo-stop-1: #ffffff;
+    --logo-stop-2: rgba(255, 255, 255, 0.65);
+  }
+  [data-theme="light"] .hero-logo-wordmark,
+  [data-theme="light"] .app-download-logo-wordmark {
+    --logo-stop-1: #202124;
+    --logo-stop-2: rgba(32, 33, 36, 0.65);
+  }
+
+  .app-download-logo-wordmark {
+    width: 220px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 16px auto 0;
+  }
+  @media (min-width: 600px) {
+    .app-download-logo-wordmark {
+      width: 300px;
+    }
+  }
+  @media (min-width: 850px) {
+    .app-download-logo-wordmark {
+      width: 380px;
+    }
+  }
+  @media (min-width: 1440px) {
+    .app-download-logo-wordmark {
+      width: 440px;
+    }
+  }
+
+  /* ---------- Theme toggle button ---------- */
+
+  .theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    color: inherit;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .theme-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+  .theme-toggle-btn:focus-visible {
+    outline: 2px solid #8ab4f8;
+    outline-offset: 2px;
+  }
+  [data-theme="light"] .theme-toggle-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  [data-theme="light"] .theme-toggle-btn:focus-visible {
+    outline-color: #1a73e8;
+  }
+
+  /* ---------- Body (mirror scraped `body.theme:dark` at line 805) ---------- */
+
+  [data-theme="dark"] body {
+    --theme-bg-color: #000000;
+    --theme-text-color: #ffffff;
+  }
+
+  /* Keyed on data-theme only — explicit even though scraped light defaults
+   * already apply, so a glance at this file shows both themes. */
+  [data-theme="light"] body {
+    --theme-bg-color: #ffffff;
+    --theme-text-color: #202124;
+  }
+
+  /* ---------- Hero plan cards ---------- */
+
+  [data-theme="light"] .plans-dark .plan-card {
+    --card-bg: #f4f3f0;
+  }
+  [data-theme="light"] .plans-dark .plan-card-content {
+    color: #202124;
+  }
+  [data-theme="light"] .plans-dark ._planFeatureBody_trd8b_231 b {
+    color: #202124;
+  }
+  [data-theme="light"] .plans-dark .plan-disclaimer a {
+    color: #1967d2;
+  }
+  [data-theme="light"] .plans-dark .plan-disclaimer a:hover,
+  [data-theme="light"] .plans-dark .plan-disclaimer a:focus-visible {
+    color: #174ea6;
+  }
+  [data-theme="light"] .plans-dark .plan-disclaimer a:active {
+    color: #185abc;
+  }
+
+  /* ---------- Compare plans table ----------
+   * Scraped dark rule sets --bg-color-default to a blue-tinted gradient
+   * over black for the whole card. The left portion (heading column)
+   * should stay pure black — only the data columns should show the
+   * blue tint. Rewrite the gradient so it's solid black up to
+   * header-column-width, then the blue tint to the right edge.
+   *
+   * !important needed because the scraped `.plans-table` block is
+   * unlayered (components.css:2223) and unlayered normals beat all
+   * @layer rules in CSS Cascade Layers.
+   *
+   * Also extend the first-column cells flush to the card's left edge
+   * on desktop (scraped CSS already does this on mobile) so the black
+   * fill reaches all the way to the rounded corner. */
+
+  [data-theme="dark"] .plans-table.plans-table-dark {
+    --bg-color-heading-column: #191919 !important;
+    --bg-color-default: linear-gradient(
+        to right,
+        #191919 0,
+        #191919 var(--header-column-width),
+        #232323 var(--header-column-width),
+        #232323 100%
+      ),
+      #232323 !important;
+  }
+
+  @media (min-width: 850px) {
+    .plans-table .table tr > *:first-child {
+      margin-inline-start: calc(-1 * var(--table-padding, 40px)) !important;
+      padding-inline-start: var(--table-padding, 40px) !important;
+    }
+  }
+
+  /* Mirror the dark override: neutral-gray heading column + a subtle
+   * blue wash across the data columns. Consistent visual language
+   * across themes instead of the scraped sand palette. */
+  [data-theme="light"] .plans-table.plans-table-dark {
+    --bg-color-heading-column: #f1f3f4 !important;
+    --bg-color-default: linear-gradient(
+        to right,
+        #f1f3f4 0,
+        #f1f3f4 var(--header-column-width),
+        rgba(52, 107, 241, 0.08) var(--header-column-width),
+        rgba(79, 160, 255, 0.08) 100%
+      ),
+      #ffffff !important;
+    --text-color-primary: #3c4043 !important;
+    --text-color-secondary: #5f6368 !important;
+    --text-color-price: #202124 !important;
+    --text-color-heading: #202124 !important;
+    --border-color: #dadce0 !important;
+    --icon-available-bg: #1e8e3e !important;
+    --icon-available-color: #ffffff !important;
+    --icon-unavailable-color: #80868b !important;
+    --view-more-color: #1a73e8 !important;
+    --view-more-color-hover: #174ea6 !important;
+    --view-more-color-active: #185abc !important;
+    --scroll-guide-arrow-color: #5f6368 !important;
+    --scroll-guide-label-color: #202124 !important;
+  }
+  [data-theme="light"] .plans-table.plans-table-dark:dir(rtl) {
+    --bg-color-default: linear-gradient(
+        to left,
+        #f1f3f4 0,
+        #f1f3f4 var(--header-column-width),
+        rgba(52, 107, 241, 0.08) var(--header-column-width),
+        rgba(79, 160, 255, 0.08) 100%
+      ),
+      #ffffff !important;
+  }
+
+  /* At >=1440px, .plans-table-ai sets --header-column-width to a minmax()
+   * value (valid for grid-template-columns but not as a gradient stop).
+   * Since custom-property substitution makes the whole background invalid
+   * when the stop is not a <length-percentage>, fall back to a % stop
+   * that tracks the grid column ratio (~29% at this breakpoint: header
+   * minmax(300px, 1.25fr) over 3 data minmax(108px, 1fr) → 1.25/4.25).
+   * Alpha and colors match the <1440px rule so the table tone is
+   * consistent across breakpoints. */
+  @media (min-width: 1440px) {
+    [data-theme="dark"] .plans-table.plans-table-dark.plans-table-ai {
+      --bg-color-default: linear-gradient(
+          to right,
+          #191919 0,
+          #191919 29%,
+          #232323 29%,
+          #232323 100%
+        ),
+        #232323 !important;
+    }
+    [data-theme="light"] .plans-table.plans-table-dark.plans-table-ai {
+      --bg-color-default: linear-gradient(
+          to right,
+          #f1f3f4 0,
+          #f1f3f4 29%,
+          rgba(52, 107, 241, 0.08) 29%,
+          rgba(79, 160, 255, 0.08) 100%
+        ),
+        #ffffff !important;
+    }
+    [data-theme="dark"] .plans-table.plans-table-dark.plans-table-ai:dir(rtl) {
+      --bg-color-default: linear-gradient(
+          to left,
+          #191919 0,
+          #191919 29%,
+          #232323 29%,
+          #232323 100%
+        ),
+        #232323 !important;
+    }
+    [data-theme="light"] .plans-table.plans-table-dark.plans-table-ai:dir(rtl) {
+      --bg-color-default: linear-gradient(
+          to left,
+          #f1f3f4 0,
+          #f1f3f4 29%,
+          rgba(52, 107, 241, 0.08) 29%,
+          rgba(79, 160, 255, 0.08) 100%
+        ),
+        #ffffff !important;
+    }
+  }
+
+  /* ---------- Headline dark ---------- */
+
+  [data-theme="light"] .headline-dark {
+    --title-text-color: #202124;
+    --body-text-color: #5f6368;
+  }
+
+  /* ---------- Section-level emphasis headlines (gradient family) ----------
+   * The .headline-gradient-* classes hardcode white-with-opacity for the
+   * muted base and pure white for the <b> accent, overriding the CSS
+   * variables that .headline-dark sets. In light mode, mirror the same
+   * weight + opacity contrast against a dark base instead. */
+  [data-theme="light"] .headline-gradient-ai .headline-title,
+  [data-theme="light"] .headline-gradient-ai-animated .headline-title,
+  [data-theme="light"] .headline-gradient-apps .headline-title,
+  [data-theme="light"] .headline-gradient-notebook .headline-title {
+    color: rgba(32, 33, 36, 0.6);
+  }
+  [data-theme="light"] .headline-gradient-ai .headline-title b,
+  [data-theme="light"] .headline-gradient-ai-animated .headline-title b,
+  [data-theme="light"] .headline-gradient-apps .headline-title b,
+  [data-theme="light"] .headline-gradient-notebook .headline-title b {
+    color: #202124;
+  }
+
+  /* ---------- Copy-group dark ---------- */
+
+  [data-theme="light"] .copy-group-dark,
+  [data-theme="light"] .copy-group-dark .copy-group-title,
+  [data-theme="light"] .copy-group-dark .copy-group-body,
+  [data-theme="light"] .copy-group-dark .copy-group-disclaimer,
+  [data-theme="light"] .copy-group-dark .copy-group-eyebrow {
+    color: #202124;
+  }
+  [data-theme="light"] .copy-group-dark .copy-group-body {
+    color: #5f6368;
+  }
+  [data-theme="light"] .copy-group-dark.copy-group-blue-links .copy-group-body a:not([class]) {
+    color: #1967d2;
+  }
+  [data-theme="light"] .copy-group-dark.copy-group-blue-links .copy-group-body a:not([class]):hover,
+  [data-theme="light"] .copy-group-dark.copy-group-blue-links .copy-group-body a:not([class]):focus-visible {
+    color: #174ea6;
+  }
+  [data-theme="light"] .copy-group-dark.copy-group-blue-links .copy-group-body a:not([class]):active {
+    color: #185abc;
+  }
+
+  /* ---------- Eyebrow dark (invert to light defaults) ---------- */
+
+  [data-theme="light"] .eyebrow-dark.eyebrow-outline {
+    --eyebrow-border-color: #dadce0;
+    --eyebrow-text-color: #202124;
+  }
+  [data-theme="light"] .eyebrow-dark.eyebrow-filled {
+    --eyebrow-bg-color: #dadce0;
+    --eyebrow-text-color: #202124;
+  }
+
+  /* ---------- FAQ dark ---------- */
+
+  [data-theme="light"] .faq-dark .faq-wrap [data-slot="accordion-expand-all-button"],
+  [data-theme="light"] .faq-dark .faq [data-slot="accordion-item-trigger"] {
+    color: #202124;
+  }
+  [data-theme="light"] .faq-dark .faq [data-slot="accordion-item-trigger"] {
+    border-top: 1px solid #dadce0;
+  }
+  [data-theme="light"] .faq-dark .faq [data-slot="accordion-item-content"],
+  [data-theme="light"] .faq-dark .faq [data-slot="accordion-item-content"] a {
+    color: #3c4043;
+  }
+  [data-theme="light"] .faq-dark .faq-item-wrap:last-of-type {
+    border-bottom: 1px solid #dadce0;
+  }
+  [data-theme="light"] .faq-dark.faq-blue-links .faq [data-slot="accordion-item-content"] a:not([class]) {
+    color: #1967d2;
+  }
+  [data-theme="light"] .faq-dark.faq-blue-links .faq [data-slot="accordion-item-content"] a:not([class]):hover,
+  [data-theme="light"] .faq-dark.faq-blue-links .faq [data-slot="accordion-item-content"] a:not([class]):focus-visible {
+    color: #174ea6;
+  }
+  [data-theme="light"] .faq-dark.faq-blue-links .faq [data-slot="accordion-item-content"] a:not([class]):active {
+    color: #185abc;
+  }
+
+  /* ---------- Tiles ---------- */
+
+  [data-theme="light"] .reversible-tile.reversible-tile-bg-black {
+    --tile-bg: #f4f3f0;
+  }
+  [data-theme="light"] .tile5050.tile5050-bg-black {
+    --tile-bg: #f4f3f0;
+    --tile-text-color: #202124;
+  }
+  [data-theme="light"] .tile2up.tile2up-bg-black {
+    --tile-bg: #f4f3f0;
+    --tile-text-color: #202124;
+  }
+  [data-theme="light"] .tile5050-dark .tile5050-content-body,
+  [data-theme="light"] .tile2up-dark .tile2up-content-body {
+    color: #5f6368;
+  }
+
+  /* Tile-level <b> emphasis in gradient tiles is hardcoded to near-white
+   * (components.css:2599) for the dark surface. Flip to dark-on-light. */
+  [data-theme="light"] .tile5050-gradient-ai .tile5050-content-title b,
+  [data-theme="light"] .tile5050-gradient-notebook .tile5050-content-title b {
+    color: #202124;
+  }
+
+  /* Studio mockup tile — the dark scrim behind the headline (added so
+   * the headline stays legible when the mockup slides over it on
+   * narrow desktops, components.css:3887) reads as a dirty smudge on a
+   * light surface. !important is required because that rule is unlayered
+   * and unlayered normals beat all @layer rules — same reason the plans
+   * table overrides above use !important. The cream tile bg + dark text
+   * give the headline enough contrast in light mode without a scrim. */
+  [data-theme="light"] .studio-mock-tile-overlay .tile5050-content::before {
+    display: none !important;
+  }
+
+  /* ---------- Ask Auteur link below the FAQ ---------- */
+
+  [data-theme="light"] .faq-ask-auteur a {
+    color: #1967d2;
+  }
+  [data-theme="light"] .faq-ask-auteur a:hover,
+  [data-theme="light"] .faq-ask-auteur a:focus-visible {
+    color: #174ea6;
+  }
+
+  /* ---------- Footer ---------- */
+
+  [data-theme="light"] .footer-root.footer-variant-dark {
+    --footer-bg-color: #f8f9fa;
+    --footer-link-color: #5f6368;
+    --footer-link-color-hover: #202124;
+  }
+  [data-theme="light"] .footer-theme-dark {
+    --footer-bg-color: #f8f9fa;
+    --footnote-highlight-bg-color: #e8eaed;
+    color: #202124;
+  }
+  [data-theme="light"] .footer-theme-dark .footnote a {
+    color: #1967d2;
+  }
+  [data-theme="light"] .footer-theme-dark .footnote a:focus-visible,
+  [data-theme="light"] .footer-theme-dark .footnote a:hover {
+    color: #174ea6;
+  }
+  [data-theme="light"] .footer-theme-dark .footnote a:active {
+    color: #185abc;
+  }
+
+  /* ---------- Header ---------- */
+
+  [data-theme="light"] .header-theme-dark {
+    --header-background: #ffffff;
+    color: #202124;
+  }
+  [data-theme="light"] .header-theme-dark .header-burger-burger button,
+  [data-theme="light"] .header-theme-dark .header-circle-button {
+    color: #5f6368;
+  }
+  [data-theme="light"] .header-theme-dark .logo-product,
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-link-mobileMenuLink {
+    color: #202124;
+  }
+  [data-theme="light"] .header-theme-dark .header-link-link {
+    color: #3c4043;
+  }
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-mobileMenu {
+    background: #ffffff;
+  }
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-header-mobileMenuHeader {
+    border-color: #dadce0;
+  }
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-link-mobileMenuLink:hover,
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-link-mobileMenuLink:focus-visible {
+    background: #f1f3f4;
+  }
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-link-mobileMenuLink:active {
+    background: #e8eaed;
+  }
+  [data-theme="light"] .header-theme-dark .header-mobile-menu-link-mobileMenuLink[class*="active"] {
+    background-color: #e8eaed;
+  }
+
+  /* ---------- Sticky nav (jumplinks) ----------
+   * The scraped design renders the desktop nav as a dark floating pill
+   * (.jumplinks-layout bg #3c4043, white links). In light mode we want
+   * a light pill so it doesn't clash with the white page surface. */
+
+  [data-theme="light"] .jumplinks-layout {
+    background-color: #f1f3f4;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
+  }
+  [data-theme="light"] .jumplinks-link {
+    color: #3c4043;
+  }
+  [data-theme="light"] .jumplinks-link:hover {
+    color: #202124;
+  }
+  [data-theme="light"] .jumplinks-desktop.sticky\:active .jumplinks-link.link\:active {
+    background: #202124;
+    color: #fff !important;
+  }
+
+  /* Mobile jumplinks (bottom-docked) + menu */
+  [data-theme="light"] .jumplinks-mobile {
+    color: #202124;
+  }
+  [data-theme="light"] .jumplinks-menu-trigger {
+    background: #f1f3f4;
+    color: #202124;
+  }
+  [data-theme="light"] .jumplinks-menu {
+    background: #ffffff;
+    color: #202124;
+    border: 1px solid #dadce0;
+  }
+  [data-theme="light"] .jumplinks-menu-link {
+    color: #202124;
+  }
+  [data-theme="light"] .jumplinks-menu-link:hover {
+    background: #f1f3f4;
+  }
+
+  /* ---------- Section / container backgrounds ---------- */
+
+  [data-theme="light"] .container-outer-dark {
+    background-color: transparent;
+  }
+  [data-theme="light"] .section-grey {
+    background-color: #f8f9fa;
+  }
+
+  /* ---------- Spatial carousel ----------
+   * Surface goes transparent so the carousel picks up the page background
+   * from the theme. The default shadow is tuned for a black backdrop
+   * (0.8 alpha) and reads as a heavy halo on a light page — softened here. */
+  [data-theme="light"] .sc-wrap {
+    background: transparent;
+  }
+  [data-theme="light"] .sc-card {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.08),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* ---------- Hero "Try Solo" pill ---------- */
+
+  .plans-solo-pill {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .plans-solo-pill-btn {
+    border-radius: 9999px !important;
+    padding: 10px 22px !important;
+    font-weight: 500;
+  }
+
+  /* ---------- NEW badge on plan card eyebrow ----------
+   * Positions the NEW pill centered on the top edge of the card,
+   * overlapping the gradient border for the classic "tab" look. */
+  .plan-card[data-featured="true"] {
+    overflow: visible;
+  }
+  .plan-card-eyebrow {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    margin-bottom: 0;
+    background: #dbe7ff !important;
+    color: #1a56f0 !important;
+    border: none !important;
+    box-shadow: 0 0 0 1px rgba(26, 86, 240, 0.15);
+  }
+  [data-theme="dark"] .plan-card-eyebrow {
+    background: #dbe7ff !important;
+    color: #1a56f0 !important;
+  }
+  .plan-card {
+    position: relative;
+    overflow: visible;
+  }
+
+  /* ---------- Lift dark plan card surface above page background ----------
+   * The hero uses a blue-tinted gradient over #000, so a pure-black card
+   * actually reads *darker* than the surrounding surface. Lift to #18191d
+   * so the cards clearly sit on top. */
+  [data-theme="dark"] .plans-dark .plan-card {
+    --card-bg: #18191d !important;
+  }
+
+  /* ---------- Muted pastel blue title gradient (dark theme) ----------
+   * Override the saturated scraped gradient with a softer blue
+   * palette so titles sit calmly on the dark card surface. */
+  [data-theme="dark"] .plans-dark .plan-card-title {
+    background: linear-gradient(77deg, #aecbfa 0%, #8ab4f8 50%, #c4d7ff 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+  }
+
+  /* ==================================================================
+   * Minimal plan card — left-aligned, plain title, big credits number,
+   * one-line features summary, full-width light CTA.
+   * ================================================================== */
+
+  .plans-min {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 850px) {
+    .plans-min {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+  }
+
+  .plan-card-min {
+    display: flex;
+    flex-direction: column;
+    padding: 32px 28px;
+    border-radius: 20px;
+    text-align: left;
+    background: #f4f3f0;
+    color: #202124;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .plan-card-min-title {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  .plan-card-min-subtitle {
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 10px 0 0;
+    color: rgba(32, 33, 36, 0.7);
+  }
+
+  .plan-card-min-credits {
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 36px;
+  }
+
+  .plan-card-min-price {
+    font-size: 16px;
+    margin-top: 8px;
+    color: rgba(32, 33, 36, 0.75);
+  }
+
+  .plan-card-min-features {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 14px 0 0;
+    color: rgba(32, 33, 36, 0.7);
+  }
+
+  .plan-card-min-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: var(--btn-radius);
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    /* Default (non-featured): outlined/secondary. */
+    background: transparent;
+    color: inherit;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease,
+      transform 0.08s ease;
+  }
+  .plan-card-min-cta:hover {
+    background: rgba(0, 0, 0, 0.04);
+    border-color: rgba(0, 0, 0, 0.35);
+  }
+  .plan-card-min-cta:active {
+    transform: scale(0.99);
+  }
+  /* Featured card (Creator): solid white CTA. */
+  .plan-card-min[data-featured="true"] .plan-card-min-cta {
+    background: #ffffff;
+    color: #202124;
+    border-color: transparent;
+  }
+  .plan-card-min[data-featured="true"] .plan-card-min-cta:hover {
+    background: #ededea;
+  }
+  /* Push CTA to bottom of card regardless of content height */
+  .plan-card-min-features {
+    margin-bottom: 28px;
+  }
+
+  /* Dark theme — flip surface to near-black, text to white */
+  [data-theme="dark"] .plan-card-min {
+    background: #18191d;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+  [data-theme="dark"] .plan-card-min-subtitle,
+  [data-theme="dark"] .plan-card-min-price,
+  [data-theme="dark"] .plan-card-min-features {
+    color: rgba(255, 255, 255, 0.68);
+  }
+  /* Dark theme — default outline uses white-alpha border, featured flips to solid. */
+  [data-theme="dark"] .plan-card-min-cta {
+    background: transparent;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  [data-theme="dark"] .plan-card-min-cta:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+  [data-theme="dark"] .plan-card-min[data-featured="true"] .plan-card-min-cta {
+    background: #ffffff;
+    color: #202124;
+    border-color: transparent;
+  }
+  [data-theme="dark"] .plan-card-min[data-featured="true"] .plan-card-min-cta:hover {
+    background: #ededea;
+  }
+
+  /* ---------- Expand drawer + "View plan features +" button ---------- */
+
+  .plan-card-min-drawer {
+    --drawer-height: 0px;
+    overflow: hidden;
+    height: var(--drawer-height);
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .plan-card-min-drawer-content {
+    padding-top: 20px;
+  }
+
+  .plan-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+  }
+  .plan-checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .plan-checklist-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    margin-top: 2px;
+    opacity: 0.85;
+  }
+  .plan-checklist-label {
+    flex: 1;
+  }
+
+  .plan-card-min-expand {
+    margin-top: 16px;
+    padding: 10px 0 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    font-size: 14px;
+    font-family: inherit;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+  }
+  .plan-card-min-expand:hover,
+  .plan-card-min-expand:focus-visible {
+    opacity: 1;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  [data-theme="dark"] .plan-card-min-expand {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+
+  /* ---------- Hero subtitle under the gradient italic headline ---------- */
+
+  .hero-sub {
+    font-size: 17px;
+    line-height: 1.5;
+    margin: 20px 0 0;
+    opacity: 0.75;
+    max-width: 640px;
+  }
+
+  /* ==================================================================
+   * Solo spotlight — big serif italic headline + wide Solo free-tier
+   * card. Sits below the paid plan grid.
+   * ================================================================== */
+
+  .solo-spotlight {
+    max-width: 960px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .solo-spotlight-headline {
+    font-size: clamp(44px, 6.4vw, 84px);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .solo-spotlight-gradient {
+    font-family: var(--font-serif-display), "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-weight: 500;
+    background: linear-gradient(95deg, #5b7bff 0%, #b06fe8 38%, #e85a70 72%, #ec9440 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    padding-inline: 4px;
+  }
+
+  .solo-spotlight-sub {
+    font-size: 17px;
+    line-height: 1.5;
+    margin: 28px 0 0;
+    opacity: 0.75;
+  }
+
+  /* Solo card — wide single card (not the 3-col grid). */
+  .solo-card {
+    text-align: left;
+    margin-top: 56px;
+    padding: 36px 36px 32px;
+    border-radius: 22px;
+    background: #18191d;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+  }
+  [data-theme="light"] .solo-card {
+    background: #f4f3f0;
+    border-color: rgba(0, 0, 0, 0.06);
+    color: #202124;
+  }
+
+  .solo-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+  .solo-card-title {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .solo-card-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    font-size: 14px;
+    font-weight: 500;
+    background: rgba(138, 180, 248, 0.14);
+    color: #8ab4f8;
+  }
+  [data-theme="light"] .solo-card-badge {
+    background: rgba(26, 115, 232, 0.1);
+    color: #1a73e8;
+  }
+
+  .solo-card-desc {
+    font-size: 15px;
+    line-height: 1.55;
+    margin: 18px 0 0;
+    max-width: 640px;
+    opacity: 0.72;
+  }
+
+  .solo-card-credits {
+    font-size: 44px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-top: 48px;
+  }
+  .solo-card-credits sup {
+    font-size: 0.45em;
+    font-weight: 500;
+    vertical-align: super;
+    margin-left: 2px;
+  }
+
+  .solo-card-subline {
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 10px 0 0;
+    opacity: 0.72;
+  }
+
+  .solo-card-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-top: 32px;
+    padding: 18px 24px;
+    border-radius: var(--btn-radius);
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    background: #ededea;
+    color: #202124;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.15s ease,
+      transform 0.08s ease;
+  }
+  .solo-card-cta:hover {
+    background: #ffffff;
+  }
+  .solo-card-cta:active {
+    transform: scale(0.99);
+  }
+  [data-theme="light"] .solo-card-cta {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+  [data-theme="light"] .solo-card-cta:hover {
+    background: #f6f5f2;
+  }
+
+  .solo-spotlight-footnote {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 22px 0 0;
+    opacity: 0.55;
+  }
+}

@@ -51,7 +51,7 @@ export default function RootLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="en" className={googleSans.variable}>
+        <html lang="en" className={googleSans.variable} data-theme="dark">
             <body className="min-h-dvh">
                 {children}
                 <Toaster position="top-center" theme="dark" richColors closeButton />

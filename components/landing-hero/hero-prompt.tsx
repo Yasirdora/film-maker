@@ -27,11 +27,14 @@ interface HeroPromptProps {
     placeholder?: string;
     /** Mode selected by default. Defaults to the first mode in HERO_MODES. */
     defaultModeId?: HeroModeId;
+    /** Extra class merged onto the wrapper — lets callers override skin (background, border, shadow). */
+    wrapperClassName?: string;
 }
 
 export function HeroPrompt({
     placeholder = "Ask Auteur anything about your creative vision...",
     defaultModeId = HERO_MODES[0].id,
+    wrapperClassName,
 }: HeroPromptProps) {
     const router = useRouter();
 
@@ -50,7 +53,7 @@ export function HeroPrompt({
     }, [value, modeId, router]);
 
     return (
-        <div className={styles.searchWrapper}>
+        <div className={`${styles.searchWrapper}${wrapperClassName ? ` ${wrapperClassName}` : ""}`}>
             <div className={styles.searchRow}>
                 <div className={styles.searchInputGroup}>
                     <input

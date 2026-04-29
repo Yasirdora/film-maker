@@ -61,10 +61,12 @@ export function PromptShowcase({
     slides,
     autoplayInterval = 6000,
 }: PromptShowcaseProps) {
+    const containerRef = useRef<HTMLDivElement | null>(null);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const stepWidthRef = useRef(0);
     const isAnimatingRef = useRef(false);
     const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
+    const [isInView, setIsInView] = useState(false);
 
     const registerVideo = useCallback(
         (id: string) => (node: HTMLVideoElement | null) => {
@@ -253,11 +255,25 @@ export function PromptShowcase({
         isAnimatingRef.current = false;
     }, [advanceActive, rewindInactiveVideos, runSlide, slides]);
 
-    // Auto-advance (pauses while the pointer is over the component or
-    // the tab is hidden, so the motion never steals focus from copy
-    // the reader is actually looking at).
+    // Pause playback + autoplay rotation while the showcase is offscreen.
+    // Mirrors the play/pause pattern in FeatureVideo so we don't burn
+    // decode cycles or rotate slides the user can't see.
     useEffect(() => {
-        if (!autoplayInterval || slides.length < 2) return;
+        const node = containerRef.current;
+        if (!node) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => setIsInView(entry.isIntersecting),
+            { threshold: 0.35 },
+        );
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, []);
+
+    // Auto-advance (pauses while the tab is hidden or the showcase is
+    // offscreen, so the motion never steals focus from copy the reader
+    // is actually looking at).
+    useEffect(() => {
+        if (!autoplayInterval || slides.length < 2 || !isInView) return;
         let timer: number | undefined;
 
         const schedule = () => {
@@ -271,7 +287,7 @@ export function PromptShowcase({
         return () => {
             if (timer) window.clearTimeout(timer);
         };
-    }, [autoplayInterval, goNext, slides.length]);
+    }, [autoplayInterval, goNext, slides.length, isInView]);
 
     // Only the active slide's video plays. Non-active videos pause
     // but keep their playhead so the outgoing clip doesn't snap to
@@ -282,7 +298,7 @@ export function PromptShowcase({
     useEffect(() => {
         const activeId = slides[activeIndex]?.id;
         videoRefs.current.forEach((video, id) => {
-            if (id === activeId) {
+            if (id === activeId && isInView) {
                 const playResult = video.play();
                 if (playResult && typeof playResult.catch === "function") {
                     playResult.catch(() => {});
@@ -291,7 +307,7 @@ export function PromptShowcase({
                 video.pause();
             }
         });
-    }, [activeIndex, slides]);
+    }, [activeIndex, slides, isInView]);
 
     const rows = useMemo(
         () => order.map((slotIndex) => slides[slotIndex]),
@@ -299,7 +315,7 @@ export function PromptShowcase({
     );
 
     return (
-        <div className={styles.showcase}>
+        <div ref={containerRef} className={styles.showcase}>
             <div className={styles.showcaseViewport}>
                 <div className={styles.showcaseTrackWrapper}>
                     <div ref={trackRef} className={styles.showcaseTrack}>

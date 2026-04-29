@@ -110,10 +110,9 @@ export default async function PricingPage() {
                         role="status"
                         className="mx-auto mb-8 max-w-2xl rounded-2xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 text-center text-sm text-amber-200/90"
                     >
-                        Film-maker is in its public testing phase — only the
-                        free Solo tier is active right now. Paid tier pricing
-                        is still being finalized; the plans below are previewed
-                        for transparency and will unlock once pricing is set.
+                        Film-maker&rsquo;s Artist Intelligence is currently in
+                        its beta phase. For the public, only the Solo tier is
+                        available free of charge.
                     </div>
                 )}
 

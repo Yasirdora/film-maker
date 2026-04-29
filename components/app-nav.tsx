@@ -22,6 +22,7 @@ import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
 import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
+import { NavScrollState } from "./nav-scroll-state";
 import { AuteurIcon } from "./icons/auteur-icon";
 
 import styles from "./app-nav.module.css";
@@ -53,7 +54,10 @@ export async function AppNav({ hideAuteurIcon = false }: { hideAuteurIcon?: bool
                 aria-hidden="true"
             />
 
+            <NavScrollState />
+
             <nav
+                id="app-nav-root"
                 className="fixed bottom-0 left-0 right-0 z-50 flex h-[calc(66px+env(safe-area-inset-bottom,0px))] shrink-0 items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-auto sm:left-auto sm:top-0 sm:right-0 sm:h-auto sm:w-auto sm:justify-end sm:gap-1.5 sm:px-6 sm:pt-4 sm:pb-4"
                 aria-label="Main Navigation"
             >
