@@ -23,12 +23,7 @@ import { NavProfileMenu } from "./nav-profile-menu";
 import { NavScrollState } from "./nav-scroll-state";
 
 const NAV_LINKS = [
-    {
-        label: "Artistic Intelligence",
-        href: "/",
-        active: true,
-    },
-    { label: "Plans", href: "/pricing", active: false },
+    { label: "Artistic Intelligence", href: "/pricing", active: true },
 ] as const;
 
 export async function LandingHeader() {
@@ -51,6 +46,7 @@ export async function LandingHeader() {
             credits={totalCredits}
             planName={planLabel}
             isFreePlan={onFreePlan}
+            variant="avatar"
         />
     ) : (
         <Link

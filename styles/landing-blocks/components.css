@@ -2555,13 +2555,17 @@ tr.tableFeatureRow:has(+ .tablePrimaryCategoryRow) > * {
     bottom: 96px;
     z-index: 2;
   }
-  /* Override the HeroPrompt wrapper skin when used inside the auteur tile —
-     the floating prompt sits over a video, so the hero's glass card with
-     blur and shadow reads as a heavy white-ish backdrop. Strip it back. */
-  .auteur-float-prompt .auteur-float-prompt-bar {
+  /* Strip the HeroPrompt's glass-card visual when used inside the auteur
+     tile — the floating prompt sits over a video and the heavy white-
+     ish backdrop reads wrong. The visual now lives on the <input>
+     itself (see landing-hero.module.css), and the backdrop-filter on
+     the wrapper's ::before pseudo. Disable both. */
+  .auteur-float-prompt .auteur-float-prompt-bar input {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
+  }
+  .auteur-float-prompt .auteur-float-prompt-bar::before {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

@@ -30,7 +30,7 @@ import {
     SOLO_DAILY_CREDIT_LIMIT,
     SOLO_MONTHLY_VIDEO_LIMIT,
     MONTHLY_TOPUP_USD_CENTS_CEILING,
-    SUBSCRIPTION_PLANS,
+    SOLO_PLAN,
 } from "./constants";
 import { generateUid } from "./utils";
 
@@ -112,17 +112,6 @@ export async function getBalance(userId: string): Promise<CreditBalance> {
     };
 }
 
-// ─── Idempotency helper ─────────────────────────────────────────────────────
-
-async function wasAlreadyProcessed(idempotencyKey: string): Promise<boolean> {
-    const db = await getDb();
-    const row = await db
-        .prepare("SELECT 1 FROM credit_transaction WHERE stripe_session_id = ? LIMIT 1")
-        .bind(idempotencyKey)
-        .first();
-    return row !== null;
-}
-
 // ─── Grants ─────────────────────────────────────────────────────────────────
 
 /**
@@ -157,34 +146,38 @@ export async function grantSubscriptionCredits(params: {
         throw new Error(`Unknown plan: ${planId}`);
     }
 
-    // Idempotency: if we've already processed this key, no-op.
-    if (await wasAlreadyProcessed(idempotencyKey)) return;
-
     const db = await getDb();
     const now = Date.now();
 
     // Atomic batch: balance update + audit row in one round-trip.
-    // If either fails, both roll back. If the INSERT fails on the UNIQUE
-    // constraint (race with a concurrent worker), the UPDATE rolls back
-    // and the next invocation short-circuits via wasAlreadyProcessed.
-    await db.batch([
-        db
-            .prepare(
-                `UPDATE user_profile
-                    SET subscription_credits = ?,
-                        plan = ?,
-                        updated_at = ?
-                  WHERE user_id = ?`,
-            )
-            .bind(plan.credits, planId, now, userId),
-        db
-            .prepare(
-                `INSERT INTO credit_transaction
-                 (user_id, amount, type, description, pool, stripe_session_id, created_at)
-                 VALUES (?, ?, 'subscription_grant', ?, 'subscription', ?, ?)`,
-            )
-            .bind(userId, plan.credits, description, idempotencyKey, now),
-    ]);
+    // Idempotency is enforced by the UNIQUE constraint on stripe_session_id:
+    // if this key was already processed (e.g. a webhook replay), the INSERT
+    // will throw a UNIQUE constraint error and both statements roll back.
+    // We catch that error and return early as a no-op — no separate pre-read
+    // needed, which eliminates the TOCTOU window between check and write.
+    try {
+        await db.batch([
+            db
+                .prepare(
+                    `UPDATE user_profile
+                        SET subscription_credits = ?,
+                            plan = ?,
+                            updated_at = ?
+                      WHERE user_id = ?`,
+                )
+                .bind(plan.credits, planId, now, userId),
+            db
+                .prepare(
+                    `INSERT INTO credit_transaction
+                     (user_id, amount, type, description, pool, stripe_session_id, created_at)
+                     VALUES (?, ?, 'subscription_grant', ?, 'subscription', ?, ?)`,
+                )
+                .bind(userId, plan.credits, description, idempotencyKey, now),
+        ]);
+    } catch (err) {
+        if (String(err).includes("UNIQUE")) return; // already processed — idempotent
+        throw err;
+    }
 }
 
 // ─── Purchased credit grants ───────────────────────────────────────────────
@@ -208,28 +201,34 @@ export async function grantPurchasedCredits(params: {
         throw new Error("Credit grant amount must be positive");
     }
 
-    if (await wasAlreadyProcessed(idempotencyKey)) return;
-
     const db = await getDb();
     const now = Date.now();
 
-    await db.batch([
-        db
-            .prepare(
-                `UPDATE user_profile
-                    SET purchased_credits = purchased_credits + ?,
-                        updated_at = ?
-                  WHERE user_id = ?`,
-            )
-            .bind(credits, now, userId),
-        db
-            .prepare(
-                `INSERT INTO credit_transaction
-                 (user_id, amount, type, description, pool, stripe_session_id, created_at)
-                 VALUES (?, ?, 'purchase', ?, 'purchased', ?, ?)`,
-            )
-            .bind(userId, credits, description, idempotencyKey, now),
-    ]);
+    // UNIQUE constraint on stripe_session_id is the idempotency gate.
+    // Catching the error here removes the TOCTOU window that existed when
+    // wasAlreadyProcessed was a separate pre-read.
+    try {
+        await db.batch([
+            db
+                .prepare(
+                    `UPDATE user_profile
+                        SET purchased_credits = purchased_credits + ?,
+                            updated_at = ?
+                      WHERE user_id = ?`,
+                )
+                .bind(credits, now, userId),
+            db
+                .prepare(
+                    `INSERT INTO credit_transaction
+                     (user_id, amount, type, description, pool, stripe_session_id, created_at)
+                     VALUES (?, ?, 'purchase', ?, 'purchased', ?, ?)`,
+                )
+                .bind(userId, credits, description, idempotencyKey, now),
+        ]);
+    } catch (err) {
+        if (String(err).includes("UNIQUE")) return; // already processed — idempotent
+        throw err;
+    }
 }
 
 // ─── Downgrade ──────────────────────────────────────────────────────────────
@@ -248,33 +247,38 @@ export async function downgradeToSolo(params: {
 }): Promise<void> {
     const { userId, idempotencyKey } = params;
 
-    if (await wasAlreadyProcessed(idempotencyKey)) return;
-
     const db = await getDb();
     const now = Date.now();
 
-    await db.batch([
-        db
-            .prepare(
-                `UPDATE user_profile
-                    SET subscription_credits = 0,
-                        plan = 'solo',
-                        daily_credits_used = 0,
-                        last_daily_reset = 0,
-                        monthly_videos_used = 0,
-                        monthly_video_reset_at = 0,
-                        updated_at = ?
-                  WHERE user_id = ?`,
-            )
-            .bind(now, userId),
-        db
-            .prepare(
-                `INSERT INTO credit_transaction
-                 (user_id, amount, type, description, pool, stripe_session_id, created_at)
-                 VALUES (?, 0, 'downgrade', 'Downgraded to Solo plan', 'subscription', ?, ?)`,
-            )
-            .bind(userId, idempotencyKey, now),
-    ]);
+    // UNIQUE constraint on stripe_session_id is the idempotency gate —
+    // no pre-read needed, which eliminates the TOCTOU race.
+    try {
+        await db.batch([
+            db
+                .prepare(
+                    `UPDATE user_profile
+                        SET subscription_credits = 0,
+                            plan = 'solo',
+                            daily_credits_used = 0,
+                            last_daily_reset = 0,
+                            monthly_videos_used = 0,
+                            monthly_video_reset_at = 0,
+                            updated_at = ?
+                      WHERE user_id = ?`,
+                )
+                .bind(now, userId),
+            db
+                .prepare(
+                    `INSERT INTO credit_transaction
+                     (user_id, amount, type, description, pool, stripe_session_id, created_at)
+                     VALUES (?, 0, 'downgrade', 'Downgraded to Solo plan', 'subscription', ?, ?)`,
+                )
+                .bind(userId, idempotencyKey, now),
+        ]);
+    } catch (err) {
+        if (String(err).includes("UNIQUE")) return; // already processed — idempotent
+        throw err;
+    }
 }
 
 // ─── Recent transactions ───────────────────────────────────────────────────
@@ -482,7 +486,13 @@ export async function deductCredits(params: {
     const nextVideosUsed = isVideo ? videosUsed + 1 : videosUsed;
 
     // Atomic batch: deduct balance + log the transaction.
-    await db.batch([
+    //
+    // Optimistic locking: the UPDATE's WHERE clause re-checks that each pool
+    // still has the credits we're about to deduct. If a concurrent request
+    // already spent them, meta.changes will be 0 and we throw rather than
+    // silently over-draft. The pre-read above is for limit checks and pool
+    // splitting only — the database is the authoritative arbiter.
+    const [updateResult] = await db.batch([
         db
             .prepare(
                 `UPDATE user_profile
@@ -493,7 +503,9 @@ export async function deductCredits(params: {
                         monthly_videos_used = ?,
                         monthly_video_reset_at = ?,
                         updated_at = ?
-                  WHERE user_id = ?`,
+                  WHERE user_id = ?
+                    AND subscription_credits >= ?
+                    AND purchased_credits     >= ?`,
             )
             .bind(
                 fromSubscription,
@@ -504,6 +516,8 @@ export async function deductCredits(params: {
                 monthStart,
                 now,
                 userId,
+                fromSubscription,  // optimistic lock: re-check sub balance
+                fromPurchased,     // optimistic lock: re-check purch balance
             ),
         db
             .prepare(
@@ -524,6 +538,15 @@ export async function deductCredits(params: {
                 now,
             ),
     ]);
+
+    // If the UPDATE matched zero rows, a concurrent request spent the credits
+    // between our read and our write. Treat this as insufficient credits.
+    if ((updateResult.meta?.changes ?? 0) === 0) {
+        throw new InsufficientCreditsError(
+            `This costs ${cost} credits but they were spent by a concurrent request. ` +
+            `Please check your balance and try again.`,
+        );
+    }
 
     return { fromSubscription, fromPurchased };
 }
@@ -581,16 +604,20 @@ export async function deductChatCredits(params: {
     const fromSubscription = Math.min(subCredits, cost);
     const fromPurchased = extraEnabled ? cost - fromSubscription : 0;
 
-    await db.batch([
+    // Optimistic lock: re-check pool balances in the WHERE clause so a
+    // concurrent request that already spent the credits causes changes=0.
+    const [updateResult] = await db.batch([
         db
             .prepare(
                 `UPDATE user_profile
                     SET subscription_credits = subscription_credits - ?,
                         purchased_credits = purchased_credits - ?,
                         updated_at = ?
-                  WHERE user_id = ?`,
+                  WHERE user_id = ?
+                    AND subscription_credits >= ?
+                    AND purchased_credits     >= ?`,
             )
-            .bind(fromSubscription, fromPurchased, now, userId),
+            .bind(fromSubscription, fromPurchased, now, userId, fromSubscription, fromPurchased),
         db
             .prepare(
                 `INSERT INTO credit_transaction
@@ -609,6 +636,13 @@ export async function deductChatCredits(params: {
                 now,
             ),
     ]);
+
+    if ((updateResult.meta?.changes ?? 0) === 0) {
+        throw new InsufficientCreditsError(
+            `This reply costs ${cost} credit${cost === 1 ? "" : "s"} but they were spent by a concurrent request. ` +
+            `Please check your balance and try again.`,
+        );
+    }
 
     return { fromSubscription, fromPurchased };
 }
@@ -706,8 +740,6 @@ export async function refundCredits(params: {
 
 // ─── Self-healing profile provision ─────────────────────────────────────────
 
-const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
-
 /**
  * Creates a user_profile row on-demand when `getBalance()` discovers
  * the signup hook failed. Uses INSERT OR IGNORE so a concurrent call
@@ -739,8 +771,12 @@ async function provisionProfileOnDemand(userId: string): Promise<void> {
  * for credit top-ups. The counter resets at the start of each
  * calendar month (UTC).
  *
- * Returns the remaining allowance in cents. If zero or negative,
- * the user cannot purchase more credits this month.
+ * Returns the remaining allowance in cents. If zero, the user cannot
+ * purchase more credits this month.
+ *
+ * Pure read — no writes. The actual counter reset is performed atomically
+ * inside {@link recordTopupSpend} to avoid a TOCTOU race between checking
+ * the allowance and recording the spend.
  */
 export async function getMonthlyTopupAllowance(
     userId: string,
@@ -758,35 +794,26 @@ export async function getMonthlyTopupAllowance(
         return { usedCents: 0, remainingCents: MONTHLY_TOPUP_USD_CENTS_CEILING };
     }
 
-    // Check if the counter needs resetting (new calendar month UTC).
-    const now = Date.now();
-    const currentMonthStart = getMonthStartMs();
+    // If reset_at is in a previous month, the counter is logically 0 — it
+    // will be zeroed out atomically when the next spend is recorded.
+    const effectiveUsed =
+        row.monthly_topup_reset_at < getMonthStartMs()
+            ? 0
+            : row.monthly_topup_usd_cents_used;
 
-    if (row.monthly_topup_reset_at < currentMonthStart) {
-        // New month — reset the counter.
-        await db
-            .prepare(
-                `UPDATE user_profile
-                    SET monthly_topup_usd_cents_used = 0,
-                        monthly_topup_reset_at = ?,
-                        updated_at = ?
-                  WHERE user_id = ?`,
-            )
-            .bind(now, now, userId)
-            .run();
-        return { usedCents: 0, remainingCents: MONTHLY_TOPUP_USD_CENTS_CEILING };
-    }
-
-    const used = row.monthly_topup_usd_cents_used;
     return {
-        usedCents: used,
-        remainingCents: Math.max(0, MONTHLY_TOPUP_USD_CENTS_CEILING - used),
+        usedCents: effectiveUsed,
+        remainingCents: Math.max(0, MONTHLY_TOPUP_USD_CENTS_CEILING - effectiveUsed),
     };
 }
 
 /**
  * Records a topup purchase against the monthly ceiling.
  * Called from the Stripe webhook after a successful checkout.
+ *
+ * Atomically handles month rollover: if `monthly_topup_reset_at` is from
+ * a previous month, the counter is reset to `amountCents` (not added to
+ * the stale balance). This prevents last month's spend from carrying over.
  */
 export async function recordTopupSpend(
     userId: string,
@@ -794,11 +821,15 @@ export async function recordTopupSpend(
 ): Promise<void> {
     const db = await getDb();
     const now = Date.now();
+    const monthStart = getMonthStartMs();
 
     await db
         .prepare(
             `UPDATE user_profile
-                SET monthly_topup_usd_cents_used = monthly_topup_usd_cents_used + ?,
+                SET monthly_topup_usd_cents_used = CASE
+                        WHEN monthly_topup_reset_at < ? THEN ?
+                        ELSE monthly_topup_usd_cents_used + ?
+                    END,
                     monthly_topup_reset_at = CASE
                         WHEN monthly_topup_reset_at < ? THEN ?
                         ELSE monthly_topup_reset_at
@@ -806,7 +837,12 @@ export async function recordTopupSpend(
                     updated_at = ?
               WHERE user_id = ?`,
         )
-        .bind(amountCents, getMonthStartMs(), now, now, userId)
+        .bind(
+            monthStart, amountCents,     // reset case: start fresh with new spend
+            amountCents,                 // same-month case: add to existing
+            monthStart, now,             // reset_at rollover
+            now, userId,
+        )
         .run();
 }
 

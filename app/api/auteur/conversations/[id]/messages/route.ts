@@ -28,6 +28,7 @@
 
 import { z } from "zod";
 
+import { base64ToBytes, arrayBufferToBase64 } from "@/lib/base64";
 import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
 import {
@@ -38,7 +39,7 @@ import {
     type DeductionResult,
 } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
-import { getR2 } from "@/lib/db";
+import { getDb, getR2 } from "@/lib/db";
 import {
     AnonQuotaExceededError,
     ConversationAccessError,
@@ -64,7 +65,6 @@ import {
     type ChatHistoryItem,
 } from "@/lib/gemini-chat";
 import { getImageUrl } from "@/lib/image-url";
-import { getProject } from "@/lib/projects";
 import { logAudit } from "@/lib/audit";
 
 // ─── Validation ─────────────────────────────────────────────────────────────
@@ -578,37 +578,28 @@ function mimeToExtension(mime: string): string {
     }
 }
 
-function base64ToBytes(base64: string): Uint8Array {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-}
+// base64ToBytes is imported from @/lib/base64.
 
 async function buildProjectContext(params: {
     projectId: number | null;
     userId: string | null;
 }): Promise<string | null> {
     if (!params.projectId || !params.userId) return null;
-    // The conversation is scoped to this user (access-checked above), so
-    // fetching by (uid, userId) is safe. We look up the project by numeric
-    // id first because that's what the conversation stores.
-    const { getDb } = await import("@/lib/db");
+    // Single query — read name and description directly. The previous code did
+    // a SELECT here and then called getProject() (a second SELECT) solely to
+    // access name/description, which were already in the first result.
     const db = await getDb();
     const row = await db
         .prepare(
-            `SELECT uid, name, description FROM project
+            `SELECT name, description FROM project
               WHERE id = ? AND user_id = ? LIMIT 1`,
         )
         .bind(params.projectId, params.userId)
-        .first<{ uid: string; name: string; description: string | null }>();
+        .first<{ name: string; description: string | null }>();
     if (!row) return null;
 
-    const project = await getProject(row.uid, params.userId);
-    if (!project) return null;
-
-    const lines = [`Project: "${project.name}"`];
-    if (project.description) lines.push(`Description: ${project.description}`);
+    const lines = [`Project: "${row.name}"`];
+    if (row.description) lines.push(`Description: ${row.description}`);
     return lines.join("\n");
 }
 
@@ -672,14 +663,4 @@ async function buildHistoryForModel(params: {
     return items;
 }
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode(
-            ...bytes.subarray(i, i + chunkSize),
-        );
-    }
-    return btoa(binary);
-}
+// arrayBufferToBase64 is imported from @/lib/base64.

@@ -32,6 +32,7 @@ import {
     type ComposerSettingsState,
     type Model,
 } from "./composer-settings";
+import { RESOLUTION_MULTIPLIERS, type Resolution } from "@/lib/constants";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -40,10 +41,6 @@ const LANDSCAPE_PORTRAIT_PAIRS: Record<string, string> = {
     "3:2": "2:3", "2:3": "3:2",
     "4:3": "3:4", "3:4": "4:3",
     "1:1": "1:1",
-};
-
-const RESOLUTION_MULTIPLIERS: Record<string, number> = {
-    "1K": 1, "2K": 2, "4K": 4,
 };
 
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -228,7 +225,7 @@ export const GenerationComposer = forwardRef<
     const creditCost = isVideo
         ? (selectedModel?.creditBase ?? 5) * settings.sampleCount
         : (selectedModel?.creditBase ?? 1) *
-          (RESOLUTION_MULTIPLIERS[resolution] ?? 1) *
+          (RESOLUTION_MULTIPLIERS[resolution as Resolution] ?? 1) *
           settings.sampleCount;
 
     const canGenerate =

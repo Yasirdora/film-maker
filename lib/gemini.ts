@@ -20,6 +20,7 @@
 
 import { GoogleGenAI, PersonGeneration } from "@google/genai";
 import { getPhotoModel, getVideoModel } from "./constants";
+import { base64ToBytes } from "./base64";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -41,19 +42,17 @@ let apiKeys: string[] | null = null;
 let clients: GoogleGenAI[] | null = null;
 let clientIndex = 0;
 
-/** Returns a raw API key (for authenticated downloads). */
-function getApiKey(): string {
-    if (apiKeys && apiKeys.length > 0) return apiKeys[0];
-    // Force initialization.
-    getClient();
-    return apiKeys![0];
-}
-
-function getClient(): GoogleGenAI {
-    if (clients) {
-        const client = clients[clientIndex % clients.length];
+/**
+ * Returns a { client, apiKey } pair from the round-robin pool.
+ * Always use this so the API key used for a request matches the key
+ * used to authenticate any follow-up downloads (e.g. Veo video URIs
+ * are scoped to the project that generated them).
+ */
+function getClientAndKey(): { client: GoogleGenAI; apiKey: string } {
+    if (clients && apiKeys) {
+        const idx = clientIndex % clients.length;
         clientIndex++;
-        return client;
+        return { client: clients[idx], apiKey: apiKeys[idx] };
     }
 
     // Support comma-separated keys (GOOGLE_GEMINI_API_KEYS) for multi-project
@@ -76,9 +75,9 @@ function getClient(): GoogleGenAI {
     apiKeys = keys;
 
     clients = keys.map(
-        (apiKey) =>
+        (key) =>
             new GoogleGenAI({
-                apiKey,
+                apiKey: key,
                 httpOptions: {
                     timeout: GENERATION_TIMEOUT_MS,
                     retryOptions: { attempts: MAX_RETRIES + 1 },
@@ -86,9 +85,13 @@ function getClient(): GoogleGenAI {
             }),
     );
 
-    const client = clients[0];
     clientIndex = 1;
-    return client;
+    return { client: clients[0], apiKey: keys[0] };
+}
+
+/** Convenience wrapper for callers that only need the SDK client. */
+function getClient(): GoogleGenAI {
+    return getClientAndKey().client;
 }
 
 // ─── Error type ─────────────────────────────────────────────────────────────
@@ -332,12 +335,8 @@ function decodeBase64Image(
     base64: string,
     mimeType: string,
 ): GenerateImageResult {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return { imageData: bytes.buffer, mimeType };
+    const bytes = base64ToBytes(base64);
+    return { imageData: bytes.buffer as ArrayBuffer, mimeType };
 }
 
 function classifyError(err: unknown): GenerationError {
@@ -371,8 +370,16 @@ function classifyError(err: unknown): GenerationError {
 // Video generation (Veo)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Maximum time to wait for a Veo video to finish generating. */
-const VIDEO_POLL_TIMEOUT_MS = 300_000; // 5 minutes
+/**
+ * Maximum time to wait for a Veo video to finish generating.
+ *
+ * Cloudflare Workers on the default plan have a ~30 s wall-clock limit;
+ * Workers set to "unbound" billing go up to 15 minutes. 90 s is a safe
+ * ceiling that works on most Cloudflare plans and keeps the response
+ * acceptable. If a video takes longer than this, the route throws a
+ * timeout error and the client should display a "try again" message.
+ */
+const VIDEO_POLL_TIMEOUT_MS = 90_000; // 90 seconds
 const VIDEO_POLL_INTERVAL_MS = 10_000; // 10 seconds
 
 export interface GenerateVideoParams {
@@ -425,7 +432,7 @@ async function generateSingleVideo(
         );
     }
 
-    const ai = getClient();
+    const { client: ai, apiKey } = getClientAndKey();
     const duration = Math.min(
         Math.max(params.durationSeconds ?? 8, model.minDuration),
         model.maxDuration,
@@ -492,9 +499,13 @@ async function generateSingleVideo(
         );
     }
 
-    // Download the video from the returned URI.
-    // The URI requires the API key as a query parameter for auth.
-    const apiKey = getApiKey();
+    // Download the video from the returned URI using the same API key that
+    // submitted the generation job. Google's Veo download endpoint scopes
+    // the URI to the originating project/key, so using a different key from
+    // the round-robin pool returns 403.
+    // NOTE: this endpoint only accepts auth via ?key= query param — the
+    // x-goog-api-key header returns 403. The key never reaches a browser
+    // (server-side fetch only).
     const separator = videoUri.includes("?") ? "&" : "?";
     const downloadUrl = `${videoUri}${separator}key=${apiKey}`;
 

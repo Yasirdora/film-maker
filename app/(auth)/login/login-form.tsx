@@ -38,6 +38,27 @@ function sanitizeCallback(raw: string | null): string {
     return raw;
 }
 
+/**
+ * Maps a Better Auth OTP send error to a human-readable message.
+ * The raw error.message is often a terse HTTP phrase ("Too Many Requests")
+ * or an internal code that means nothing to a user.
+ */
+function friendlyOtpSendError(error: { status?: number; message?: string }): string {
+    if (error.status === 429) {
+        return "Too many attempts. Please wait a moment and try again.";
+    }
+    if (error.status != null && error.status >= 500) {
+        return "Something went wrong on our end. Please try again shortly.";
+    }
+    // Fall back to the raw message only if it's clearly user-facing text,
+    // otherwise use a generic fallback.
+    const msg = error.message ?? "";
+    if (msg.length > 0 && msg.length < 120 && !/^\d{3}$/.test(msg)) {
+        return msg;
+    }
+    return "Couldn't send the code. Try again.";
+}
+
 interface LoginFormProps {
     emailEnabled: boolean;
     turnstileSiteKey: string;
@@ -97,19 +118,16 @@ export function LoginForm({ emailEnabled, turnstileSiteKey }: LoginFormProps) {
             if (error) {
                 setStatus({
                     kind: "error",
-                    message: error.message ?? "Couldn't send the code. Try again.",
+                    message: friendlyOtpSendError(error),
                 });
                 return;
             }
             setCode("");
             setStatus({ kind: "code-entry", email: trimmed });
-        } catch (err) {
+        } catch {
             setStatus({
                 kind: "error",
-                message:
-                    err instanceof Error
-                        ? err.message
-                        : "Couldn't send the code. Try again.",
+                message: "Couldn't send the code. Try again.",
             });
         }
     }
@@ -158,14 +176,26 @@ export function LoginForm({ emailEnabled, turnstileSiteKey }: LoginFormProps) {
         const targetEmail = status.email;
         setStatus({ kind: "submitting-email" });
         try {
-            await authClient.emailOtp.sendVerificationOtp({
+            const { error } = await authClient.emailOtp.sendVerificationOtp({
                 email: targetEmail,
                 type: "sign-in",
             });
+            if (error) {
+                setStatus({
+                    kind: "code-entry",
+                    email: targetEmail,
+                    error: friendlyOtpSendError(error),
+                });
+                return;
+            }
             setCode("");
             setStatus({ kind: "code-entry", email: targetEmail });
         } catch {
-            setStatus({ kind: "code-entry", email: targetEmail });
+            setStatus({
+                kind: "code-entry",
+                email: targetEmail,
+                error: "Couldn't resend the code. Try again.",
+            });
         }
     }
 

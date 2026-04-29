@@ -118,7 +118,18 @@ function ProfileMenuContent({
 
 // ─── Main component ─────────────────────────────────────────────────────────
 
-interface NavProfileMenuProps extends ProfileMenuProps {}
+interface NavProfileMenuProps extends ProfileMenuProps {
+    /**
+     * Layout mode.
+     *
+     *   "responsive" (default) — bottom-tab-bar trigger + full-screen
+     *   overlay below 640px, avatar + dropdown above. Used by `AppNav`.
+     *
+     *   "avatar" — avatar trigger + dropdown at every breakpoint. Used
+     *   by the landing-page header where there's no bottom tab bar.
+     */
+    variant?: "responsive" | "avatar";
+}
 
 export function NavProfileMenu({
     name,
@@ -126,6 +137,7 @@ export function NavProfileMenu({
     credits,
     planName,
     isFreePlan,
+    variant = "responsive",
 }: NavProfileMenuProps) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -134,16 +146,21 @@ export function NavProfileMenu({
 
     const initial = (name || email)[0]?.toUpperCase() ?? "?";
 
-    // Close desktop dropdown on outside click or Escape.
-    // The outside-click listener is desktop-only — on mobile the menu
-    // renders as a full-screen overlay that owns its own dismissal (tap
-    // the Profile tab again to close), so firing this globally would
-    // collapse the overlay on any interaction inside it.
+    // Close dropdown on outside click or Escape.
+    // In "responsive" mode below 640px the menu renders as a full-screen
+    // overlay that owns its own dismissal (tap the Profile tab to close),
+    // so the outside-click listener is skipped there. In "avatar" mode
+    // the dropdown is the active surface at every breakpoint.
     useEffect(() => {
         if (!open) return;
+        const isResponsiveVariant = variant === "responsive";
         function handleClick(e: MouseEvent) {
-            // Skip when the desktop dropdown isn't the active surface.
-            if (!window.matchMedia("(min-width: 640px)").matches) return;
+            if (
+                isResponsiveVariant &&
+                !window.matchMedia("(min-width: 640px)").matches
+            ) {
+                return;
+            }
             if (
                 desktopRef.current &&
                 !desktopRef.current.contains(e.target as Node)
@@ -160,7 +177,7 @@ export function NavProfileMenu({
             document.removeEventListener("mousedown", handleClick);
             document.removeEventListener("keydown", handleEsc);
         };
-    }, [open]);
+    }, [open, variant]);
 
     async function handleSignOut() {
         setSigningOut(true);
@@ -175,53 +192,67 @@ export function NavProfileMenu({
 
     const close = () => setOpen(false);
 
+    const isResponsive = variant === "responsive";
+
     return (
         <>
-            {/* ─── Mobile: tab bar trigger ─────────────────────────── */}
-            <button
-                type="button"
-                onClick={() => setOpen(!open)}
-                className="flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden"
-                aria-expanded={open}
-                aria-label="Profile menu"
-            >
-                {open ? (
-                    <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#1c1c1e]">
-                        <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="#9ca3af"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                        >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                    </div>
-                ) : (
-                    <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08]">
-                        <span className="text-[15px] font-semibold text-[#9ca3af] leading-none">
-                            {initial}
+            {/* ─── Bottom-tab-bar trigger + full-screen overlay (responsive only) ─── */}
+            {isResponsive && (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => setOpen(!open)}
+                        className="flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden"
+                        aria-expanded={open}
+                        aria-label="Profile menu"
+                    >
+                        {open ? (
+                            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#1c1c1e]">
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="#9ca3af"
+                                    strokeWidth="2.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <line x1="18" y1="6" x2="6" y2="18" />
+                                    <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                            </div>
+                        ) : (
+                            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08]">
+                                <span className="text-[15px] font-semibold text-[#9ca3af] leading-none">
+                                    {initial}
+                                </span>
+                            </div>
+                        )}
+                        <span className={`text-[11px] font-medium transition-colors ${open ? "text-[#52525b]" : "text-[#e5e7eb]"}`}>
+                            Profile
                         </span>
-                    </div>
-                )}
-                <span className={`text-[11px] font-medium transition-colors ${open ? "text-[#52525b]" : "text-[#e5e7eb]"}`}>
-                    Profile
-                </span>
-            </button>
+                    </button>
 
-            {/* ─── Mobile: full-screen overlay ─────────────────────── */}
-            {open && (
-                <div className="fixed inset-x-0 bottom-[66px] top-0 z-40 overflow-y-auto bg-[#0f0f11] p-4 pb-[env(safe-area-inset-bottom,16px)] sm:hidden">
-                    <ProfileMenuContent initial={initial} name={name} email={email} credits={credits} planName={planName} isFreePlan={isFreePlan} onNavigate={close} onSignOut={handleSignOut} signingOut={signingOut} />
-                </div>
+                    {open && (
+                        <div className="fixed inset-x-0 bottom-[66px] top-0 z-40 overflow-y-auto bg-[#0f0f11] p-4 pb-[env(safe-area-inset-bottom,16px)] sm:hidden">
+                            <ProfileMenuContent initial={initial} name={name} email={email} credits={credits} planName={planName} isFreePlan={isFreePlan} onNavigate={close} onSignOut={handleSignOut} signingOut={signingOut} />
+                        </div>
+                    )}
+                </>
             )}
 
-            {/* ─── Desktop: avatar trigger ─────────────────────────── */}
-            <div ref={desktopRef} className="relative hidden sm:block">
+            {/* ─── Avatar trigger + dropdown ─────────────────────────
+                In "responsive" mode the desktop block is gated behind
+                `sm:` (paired with the tab-bar trigger above). In
+                "avatar" mode it's the only trigger and shows at every
+                breakpoint. */}
+            <div
+                ref={desktopRef}
+                className={
+                    isResponsive ? "relative hidden sm:block" : "relative"
+                }
+            >
                 <button
                     type="button"
                     onClick={() => setOpen(!open)}
@@ -232,7 +263,6 @@ export function NavProfileMenu({
                     {initial}
                 </button>
 
-                {/* Desktop dropdown */}
                 {open && (
                     <div className="absolute right-0 top-[calc(100%+8px)] w-[320px] rounded-2xl border border-white/[0.08] bg-[#1a1a1c]/95 p-2 shadow-xl backdrop-blur-2xl">
                         <ProfileMenuContent initial={initial} name={name} email={email} credits={credits} planName={planName} isFreePlan={isFreePlan} onNavigate={close} onSignOut={handleSignOut} signingOut={signingOut} />

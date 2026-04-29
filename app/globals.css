@@ -13,6 +13,18 @@
 @import "../styles/landing-blocks/spatial-carousel.css";
 @import "../styles/landing-blocks/theme.css";
 
+/* ─── Landing header — desktop layout at every breakpoint ─────────────────
+ * The ported google-one-next CSS hides `.header-links` and `.header-cta`
+ * below 850px (mobile relied on a burger menu). We don't ship a burger
+ * anymore, so keep both visible — same row, same spacing — at every
+ * breakpoint. The single nav link fits comfortably alongside the right
+ * slot on mobile.
+ */
+.header-links.header-links-links,
+.header-cta.header-cta-cta {
+    display: flex !important;
+}
+
 /* ─── AppNav scroll-hide ──────────────────────────────────────────────────
  * Verbatim port of google-one-next's Header behavior: when the pill
  * StickyNav (`.jumplinks.sticky:active`) is pinned AND the user is

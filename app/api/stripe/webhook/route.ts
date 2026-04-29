@@ -210,7 +210,9 @@ async function handleSubscriptionCheckout(
         description: `${plan.name} plan — monthly credits`,
     });
 
-    await recordTopupSpend(userId, plan.priceUsdCents);
+    // NOTE: recordTopupSpend is intentionally NOT called here. The monthly
+    // topup ceiling tracks one-time credit pack purchases only. Subscription
+    // charges are billed by Stripe separately and must not count against it.
 
     await logAudit({
         userId,
@@ -279,10 +281,19 @@ async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     }
 
     // Resolve plan from the first invoice line's price id.
-    // `pricing.price_details.price` can be either a string id or an
-    // expanded Price object depending on invoice retrieval options.
+    // Stripe's API shape has evolved across versions:
+    //   • API 2024+  — pricing.price_details.price (object or string)
+    //   • API ~2023  — price (expanded Price object or id string)
+    //   • Older      — plan.id (Stripe Plan object, deprecated but still present)
+    // We try each in order so the webhook handles events from any API version
+    // and remains forward-compatible if Stripe adds newer fields.
     const lineItem = invoice.lines.data[0];
-    const rawPrice = lineItem?.pricing?.price_details?.price;
+    const rawPrice =
+        lineItem?.pricing?.price_details?.price ??
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (lineItem as any)?.price ??
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (lineItem as any)?.plan;
     const priceId = typeof rawPrice === "string" ? rawPrice : rawPrice?.id;
     if (!priceId) {
         throw new Error(`invoice.paid: no price on invoice ${invoice.id}`);

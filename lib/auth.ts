@@ -25,10 +25,8 @@ import { getDb, getR2 } from "./db";
 import { authSchema } from "./auth-schema";
 import { sendVerificationEmail } from "./email";
 import { generateUid } from "./utils";
-import { SESSION_MAX_AGE_SECONDS, SUBSCRIPTION_PLANS } from "./constants";
+import { SESSION_MAX_AGE_SECONDS, SOLO_PLAN } from "./constants";
 import { logAudit } from "./audit";
-
-const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 
 function getAppUrl(): string {
     return (

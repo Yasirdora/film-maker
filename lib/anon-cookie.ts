@@ -18,14 +18,29 @@ import { generateUid } from "./utils";
 const COOKIE_NAME = "fm_anon_id";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365; // 1 year
 
-export function readAnonIdFromCookie(request: Request): string | null {
-    const cookieHeader = request.headers.get("cookie");
+/**
+ * Core cookie parser — extracts the anon id from a raw cookie header string.
+ * All other cookie-reading helpers delegate here so the parsing logic lives
+ * in exactly one place.
+ *
+ * Used by server components that receive the cookie header directly (e.g.
+ * from `cookies().toString()` in a page) as well as by
+ * {@link readAnonIdFromCookie} which reads from a full Request object.
+ */
+export function getAnonIdFromCookieHeader(
+    cookieHeader: string | null,
+): string | null {
     if (!cookieHeader) return null;
     for (const part of cookieHeader.split(";")) {
         const [rawName, ...rest] = part.trim().split("=");
         if (rawName === COOKIE_NAME) return rest.join("=") || null;
     }
     return null;
+}
+
+/** Convenience wrapper — reads the anon id from a full Request object. */
+export function readAnonIdFromCookie(request: Request): string | null {
+    return getAnonIdFromCookieHeader(request.headers.get("cookie"));
 }
 
 /**
@@ -51,21 +66,4 @@ export function ensureAnonId(
         ...(isHttps ? ["Secure"] : []),
     ];
     return { anonId, setCookie: attributes.join("; ") };
-}
-
-/**
- * Client-readable getter used by server components that need to render
- * the current anon id into a page (e.g. to display remaining quota).
- * Returns null if the cookie is missing — the caller should fall back
- * to the default anonymous state.
- */
-export function getAnonIdFromCookieHeader(
-    cookieHeader: string | null,
-): string | null {
-    if (!cookieHeader) return null;
-    for (const part of cookieHeader.split(";")) {
-        const [rawName, ...rest] = part.trim().split("=");
-        if (rawName === COOKIE_NAME) return rest.join("=") || null;
-    }
-    return null;
 }

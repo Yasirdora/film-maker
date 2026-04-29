@@ -10,15 +10,26 @@
  * domain is misconfigured, images can still be served through here.
  * Objects are immutable (generated images never change), so we set
  * aggressive cache headers.
+ *
+ * Auth: requires a valid session. Without auth, any R2 key could be
+ * fetched by an unauthenticated caller — this route must not be a
+ * public object store proxy.
  */
 
 import { NextResponse } from "next/server";
 import { getR2 } from "@/lib/db";
+import { getSession } from "@/lib/auth-server";
 
 export async function GET(
-    _request: Request,
+    request: Request,
     { params }: { params: Promise<{ key: string[] }> },
 ): Promise<Response> {
+    // ─── Auth ────────────────────────────────────────────────────────────────
+    const session = await getSession();
+    if (!session?.user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { key } = await params;
     const objectKey = key.join("/");
 
@@ -44,8 +55,9 @@ export async function GET(
             (object as unknown as { httpMetadata?: { contentType?: string } })
                 .httpMetadata?.contentType ?? "image/png",
         );
-        // Generated images are immutable — cache aggressively.
-        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+        // Generated images are immutable but user-owned — use private caching
+        // so CDN/proxy layers don't serve one user's images to another.
+        headers.set("Cache-Control", "private, max-age=31536000, immutable");
 
         return new Response(object.body as ReadableStream, { headers });
     } catch (err) {

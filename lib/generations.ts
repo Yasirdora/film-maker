@@ -401,17 +401,38 @@ export async function recoverStaleGenerations(
         await failGeneration(gen.id, "Generation timed out. Please try again.");
 
         if (gen.credit_cost > 0) {
-            // Refund to subscription pool by default — we don't know the
-            // original pool split at this point, but subscription-first is
-            // the safe default since it's the pool that expires.
+            // Look up the original pool from the credit_transaction so we
+            // refund to the right place. Without this, a user who spent
+            // purchased (permanent) credits would get their refund into the
+            // subscription (expiring) pool — effectively losing money.
+            //
+            // Limitation: when pool is "subscription+purchased" we don't
+            // have the per-pool split stored (credit_transaction stores only
+            // the total). We conservatively refund everything to subscription
+            // in that case; a full fix requires storing from_subscription /
+            // from_purchased as separate columns (future schema migration).
+            const txRow = await db
+                .prepare(
+                    `SELECT pool FROM credit_transaction
+                      WHERE generation_id = ? AND user_id = ?
+                      ORDER BY id DESC
+                      LIMIT 1`,
+                )
+                .bind(gen.id, userId)
+                .first<{ pool: string | null }>();
+
+            const pool = txRow?.pool ?? "subscription";
+
+            const deduction =
+                pool === "purchased"
+                    ? { fromSubscription: 0, fromPurchased: gen.credit_cost }
+                    : { fromSubscription: gen.credit_cost, fromPurchased: 0 };
+
             await refundCredits({
                 userId,
                 cost: gen.credit_cost,
                 generationId: gen.id,
-                deduction: {
-                    fromSubscription: gen.credit_cost,
-                    fromPurchased: 0,
-                },
+                deduction,
                 kind: gen.kind === "video" ? "video" : "image",
             });
         }
@@ -440,6 +461,15 @@ export async function recoverStaleGenerations(
  * This grouping makes it straightforward to enumerate, migrate, or
  * delete all assets for a user or project via R2 prefix listing.
  */
+/** Maps a MIME type substring to a file extension. Ordered most-common-first. */
+const MIME_TO_EXT: Array<[fragment: string, ext: string]> = [
+    ["jpeg", "jpg"],
+    ["jpg",  "jpg"],
+    ["webp", "webp"],
+    ["mp4",  "mp4"],
+    ["png",  "png"],
+];
+
 export function buildR2Key(
     userUid: string,
     projectUid: string,
@@ -447,12 +477,8 @@ export function buildR2Key(
     generationUid: string,
     mimeType: string,
 ): string {
-    const ext = mimeType.includes("webp")
-        ? "webp"
-        : mimeType.includes("jpeg") || mimeType.includes("jpg")
-            ? "jpg"
-            : mimeType.includes("mp4")
-                ? "mp4"
-                : "png";
+    const ext =
+        MIME_TO_EXT.find(([fragment]) => mimeType.includes(fragment))?.[1] ??
+        "png";
     return `generation/${userUid}/${projectUid}/${contentType}/${generationUid}.${ext}`;
 }

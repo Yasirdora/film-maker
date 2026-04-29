@@ -484,18 +484,41 @@ export async function claimAnonymousConversations(params: {
 
 // ─── Message CRUD ───────────────────────────────────────────────────────────
 
+/**
+ * Default cap on the number of messages returned. Sending an unbounded
+ * conversation to Gemini risks hitting its context-window token limit and
+ * causes request failures for long threads. 100 messages is a safe upper
+ * bound that covers virtually all real conversations while staying well
+ * within the 1M-token context window.
+ */
+const DEFAULT_MESSAGE_LIMIT = 100;
+
+/**
+ * Returns the most recent `limit` messages for a conversation in
+ * chronological order (oldest first, so the LLM sees the natural
+ * dialogue sequence). Uses a subquery to efficiently select the LAST N
+ * messages rather than the first N.
+ */
 export async function listMessages(
     conversationId: string,
+    limit = DEFAULT_MESSAGE_LIMIT,
 ): Promise<MessageRow[]> {
     const db = await getDb();
+    // Inner query gets the most recent `limit` rows (newest first);
+    // outer query re-orders them chronologically for the LLM.
     const { results } = await db
         .prepare(
             `SELECT id, conversation_id, role, content, status, image_r2_keys, created_at
-               FROM auteur_message
-              WHERE conversation_id = ?
-              ORDER BY created_at ASC, id ASC`,
+               FROM (
+                   SELECT id, conversation_id, role, content, status, image_r2_keys, created_at
+                     FROM auteur_message
+                    WHERE conversation_id = ?
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT ?
+               )
+               ORDER BY created_at ASC, id ASC`,
         )
-        .bind(conversationId)
+        .bind(conversationId, limit)
         .all<RawMessage>();
 
     return results.map(mapMessage);
@@ -646,9 +669,13 @@ export async function getAnonQuota(anonId: string): Promise<AnonQuotaStatus> {
 
 /**
  * Atomically increments the anon quota counter. Throws
- * {@link AnonQuotaExceededError} when the counter would exceed
- * {@link ANON_FREE_RESPONSES}. Uses an UPSERT so the row appears on
- * first use.
+ * {@link AnonQuotaExceededError} when the counter has already reached
+ * {@link ANON_FREE_RESPONSES}.
+ *
+ * The entire check-and-increment is a single SQL statement: the UPSERT's
+ * DO UPDATE clause only fires when `responses_used < ANON_FREE_RESPONSES`.
+ * If it doesn't fire (changes === 0), the quota is exhausted. This closes
+ * the TOCTOU window that would exist with a separate SELECT + UPDATE pair.
  */
 export async function consumeAnonQuota(params: {
     anonId: string;
@@ -657,37 +684,42 @@ export async function consumeAnonQuota(params: {
     const db = await getDb();
     const now = Date.now();
 
-    const existing = await db
-        .prepare(
-            `SELECT responses_used FROM auteur_anon_quota WHERE anon_id = ?`,
-        )
-        .bind(params.anonId)
-        .first<{ responses_used: number }>();
-
-    const used = existing?.responses_used ?? 0;
-    if (used >= ANON_FREE_RESPONSES) {
-        throw new AnonQuotaExceededError(
-            `You've used your ${ANON_FREE_RESPONSES} free Auteur replies. Sign in to continue.`,
-        );
-    }
-
-    const next = used + 1;
-
-    await db
+    // Attempt to insert (first use) or conditionally increment (repeat use).
+    // The WHERE on DO UPDATE prevents the increment when already at the limit,
+    // causing meta.changes to be 0 on both the INSERT (conflict) and UPDATE
+    // (WHERE false) paths — which we interpret as quota exceeded.
+    const result = await db
         .prepare(
             `INSERT INTO auteur_anon_quota
              (anon_id, responses_used, first_ip, created_at, updated_at)
              VALUES (?, 1, ?, ?, ?)
              ON CONFLICT(anon_id) DO UPDATE SET
                  responses_used = auteur_anon_quota.responses_used + 1,
-                 updated_at     = excluded.updated_at`,
+                 updated_at     = excluded.updated_at
+             WHERE auteur_anon_quota.responses_used < ?`,
         )
-        .bind(params.anonId, params.ip, now, now)
+        .bind(params.anonId, params.ip, now, now, ANON_FREE_RESPONSES)
         .run();
 
+    if ((result.meta?.changes ?? 0) === 0) {
+        throw new AnonQuotaExceededError(
+            `You've used your ${ANON_FREE_RESPONSES} free Auteur replies. Sign in to continue.`,
+        );
+    }
+
+    // Read back the authoritative value so the response is accurate even
+    // under concurrent requests.
+    const row = await db
+        .prepare(
+            `SELECT responses_used FROM auteur_anon_quota WHERE anon_id = ?`,
+        )
+        .bind(params.anonId)
+        .first<{ responses_used: number }>();
+
+    const used = row?.responses_used ?? 1;
     return {
-        used: next,
-        remaining: Math.max(0, ANON_FREE_RESPONSES - next),
+        used,
+        remaining: Math.max(0, ANON_FREE_RESPONSES - used),
         limit: ANON_FREE_RESPONSES,
     };
 }

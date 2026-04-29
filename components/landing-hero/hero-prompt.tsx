@@ -1,18 +1,22 @@
 "use client";
 
 /**
- * Prompt bar used as the hero's primary call-to-action. A single text
- * input, a mode selector (the dropdown on the right), and a submit
- * button that navigates to the active mode's destination with the
- * prompt encoded as `?q=…`.
+ * Prompt bar used as the hero's primary call-to-action and reused inside
+ * the auteur landing tile.
+ *
+ * Structure note — the visible "textfield" IS the <input> element. All
+ * the visual styling (border, background, shadow, height) lives on the
+ * input itself, mirroring the announcement form which works correctly
+ * on iOS. The mode dropdown and submit button float over the input's
+ * right padding via absolute positioning — they're siblings of the
+ * input, not ancestors, and not in a flex layout with it. This keeps
+ * the input free of any of the filtered/transformed ancestors that
+ * trigger iOS Safari's caret-outside-field bug on first tap.
  *
  * Composition:
  *
  *   <HeroPrompt>
  *     └── <ModeMenu>          (local, not exported — only used here)
- *
- * Keeping the mode menu inside this file avoids an extra module for a
- * ~40-line subcomponent that has no consumer outside the prompt bar.
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -52,76 +56,75 @@ export function HeroPrompt({
         router.push(mode.href(trimmed));
     }, [value, modeId, router]);
 
+    const wrapperClass = wrapperClassName
+        ? `${styles.searchWrapper} ${wrapperClassName}`
+        : styles.searchWrapper;
+
     return (
-        <div className={`${styles.searchWrapper}${wrapperClassName ? ` ${wrapperClassName}` : ""}`}>
-            <div className={styles.searchRow}>
-                <div className={styles.searchInputGroup}>
-                    <input
-                        type="text"
-                        className={styles.searchInput}
-                        placeholder={placeholder}
-                        autoComplete="off"
-                        value={value}
-                        onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleSubmit();
-                            }
-                        }}
-                        aria-label="Creative prompt"
-                    />
-                </div>
+        <form
+            className={wrapperClass}
+            onSubmit={(e) => {
+                e.preventDefault();
+                handleSubmit();
+            }}
+        >
+            <input
+                type="text"
+                className={styles.searchInput}
+                placeholder={placeholder}
+                autoComplete="off"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                aria-label="Creative prompt"
+            />
 
-                <div className={styles.searchActions}>
-                    <ModeMenu
-                        anchorRef={menuAnchorRef}
-                        activeModeId={modeId}
-                        open={menuOpen}
-                        onToggle={() => {
-                            // Dismiss the virtual keyboard before opening
-                            // the mode menu — on mobile the menu renders
-                            // as a fixed bottom-sheet and would otherwise
-                            // be hidden behind an open keyboard.
-                            if (
-                                typeof document !== "undefined" &&
-                                document.activeElement instanceof HTMLElement
-                            ) {
-                                document.activeElement.blur();
-                            }
-                            setMenuOpen((v) => !v);
-                        }}
-                        onSelect={(id) => {
-                            setModeId(id);
-                            setMenuOpen(false);
-                        }}
-                    />
+            <div className={styles.searchActions}>
+                <ModeMenu
+                    anchorRef={menuAnchorRef}
+                    activeModeId={modeId}
+                    open={menuOpen}
+                    onToggle={() => {
+                        // Dismiss the virtual keyboard before opening the
+                        // mode menu — on mobile the menu renders as a
+                        // fixed bottom-sheet and would otherwise be
+                        // hidden behind an open keyboard.
+                        if (
+                            typeof document !== "undefined" &&
+                            document.activeElement instanceof HTMLElement
+                        ) {
+                            document.activeElement.blur();
+                        }
+                        setMenuOpen((v) => !v);
+                    }}
+                    onSelect={(id) => {
+                        setModeId(id);
+                        setMenuOpen(false);
+                    }}
+                />
 
-                    <button
-                        type="button"
-                        className={styles.submitButton}
-                        onClick={handleSubmit}
-                        disabled={!value.trim()}
-                        aria-label="Submit prompt"
+                <button
+                    type="submit"
+                    className={styles.submitButton}
+                    disabled={!value.trim()}
+                    aria-label="Submit prompt"
+                >
+                    <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
                     >
-                        <svg
-                            width="22"
-                            height="22"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                        >
-                            <line x1="5" y1="12" x2="19" y2="12" />
-                            <polyline points="12 5 19 12 12 19" />
-                        </svg>
-                    </button>
-                </div>
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                        <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                </button>
             </div>
-        </div>
+        </form>
     );
 }
 

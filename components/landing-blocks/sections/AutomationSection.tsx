@@ -1,8 +1,7 @@
 import Spacer from "../shared/Spacer";
 import SectionHeadline from "../shared/SectionHeadline";
 import ReversibleTile from "../shared/ReversibleTile";
-import { AuteurIcon } from "../../icons/auteur-icon";
-import { HeroPrompt } from "@/components/landing-hero/hero-prompt";
+import { AuteurWriterStage } from "./auteur-writer-stage";
 
 export default function AutomationSection() {
   return (
@@ -42,27 +41,7 @@ export default function AutomationSection() {
                       </h3>
                     </div>
                     <div className="tile5050-asset type:ImageAsset">
-                      <div className="auteur-float-stage">
-                        <video
-                          className="auteur-float-video"
-                          src="/assets/Ysrdora.webm"
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          preload="auto"
-                          aria-label="Writer working on a couch with a tablet and notebook."
-                        />
-                        <div className="auteur-float-icon" aria-hidden="true">
-                          <AuteurIcon size={48} />
-                        </div>
-                        <div className="auteur-float-prompt">
-                          <HeroPrompt
-                            placeholder="Draft a treatment with Auteur"
-                            wrapperClassName="auteur-float-prompt-bar"
-                          />
-                        </div>
-                      </div>
+                      <AuteurWriterStage />
                     </div>
                   </div>
                 </div>

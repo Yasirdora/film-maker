@@ -4,13 +4,26 @@
 
 // ─── Origin validation (CSRF defense) ───────────────────────────────────────
 
-const TRUSTED_ORIGINS = new Set([
+const PRODUCTION_ORIGINS = new Set([
     "https://film-maker.net",
     "https://www.film-maker.net",
+]);
+
+/**
+ * Origins allowed only in local development (NODE_ENV !== "production").
+ * Keeping localhost out of the production allowlist prevents an attacker
+ * who can run code on the server from forging a same-origin request.
+ */
+const DEVELOPMENT_ORIGINS = new Set([
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
 ]);
+
+const TRUSTED_ORIGINS: ReadonlySet<string> =
+    process.env.NODE_ENV !== "production"
+        ? new Set([...PRODUCTION_ORIGINS, ...DEVELOPMENT_ORIGINS])
+        : PRODUCTION_ORIGINS;
 
 /**
  * Validates that a mutating request (POST, PUT, DELETE) originates from

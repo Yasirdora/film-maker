@@ -16,6 +16,7 @@ import { Newsreader } from "next/font/google";
 
 import {
     SUBSCRIPTION_PLANS,
+    SOLO_PLAN,
     PAID_PLANS_ENABLED,
     type SubscriptionPlan,
 } from "@/lib/constants";
@@ -41,7 +42,6 @@ export const metadata: Metadata = {
         "Start free with Solo, or upgrade for more credits, higher resolution, and no daily limits.",
 };
 
-const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
 const PAID_PLANS = SUBSCRIPTION_PLANS.filter((p) => !p.isFree);
 
 export default async function PricingPage() {

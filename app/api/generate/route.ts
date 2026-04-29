@@ -39,7 +39,7 @@ import { z } from "zod";
 
 import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
-import { getR2 } from "@/lib/db";
+import { getDb, getR2 } from "@/lib/db";
 import {
     getBalance,
     deductCredits,
@@ -312,7 +312,6 @@ export async function POST(request: Request): Promise<Response> {
 
     // ─── Upload to R2 ─────────────────────────────────────────────────
 
-    const { getDb } = await import("@/lib/db");
     const db = await getDb();
     const profile = await db
         .prepare("SELECT uid FROM user_profile WHERE user_id = ? LIMIT 1")

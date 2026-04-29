@@ -26,7 +26,7 @@ const NAV_LINKS: NavLink[] = [
     isBrand: true,
   },
   { href: "#nextgen-ai", label: "Studio", ariaLabel: "Go to section: Studio" },
-  { href: "#productivity", label: "Generation", ariaLabel: "Go to section: Generation" },
+  { href: "#generation", label: "Generation", ariaLabel: "Go to section: Generation" },
   {
     href: "#auteur",
     label: "Auteur",

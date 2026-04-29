@@ -10,17 +10,17 @@
   .sc-controls {
     display: flex;
     gap: 12px;
-    margin-top: 32px;
   }
 
   .sc-ctrl {
-    width: 44px;
-    height: 44px;
-    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: var(--btn-radius, 12px);
     background: #181818;
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #fff;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;

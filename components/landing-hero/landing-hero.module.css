@@ -608,71 +608,86 @@
 
 /* ── Search / prompt bar ───────────────────────────────────────────────── */
 
+/* The wrapper is pure layout — no border, no background, no filter.
+   Anything visual lives on the input itself (mirroring the announcement
+   form, which works correctly on iOS). The wrapper only needs to be a
+   positioning context for the absolutely-placed action buttons. */
 .searchWrapper {
     position: relative;
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
     z-index: 50;
-    background: var(--lp-glass-bg);
-    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
-    backdrop-filter: var(--lp-glass-blur) saturate(150%);
-    border: 1px solid var(--lp-glass-border);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    padding: 0 8px;
-    box-shadow: var(--lp-search-shadow);
-    transition: all 0.4s var(--lp-ease);
 }
 
-.searchWrapper:focus-within {
+/* Backdrop blur lives on a sibling pseudo behind the input — never an
+   ancestor — because filtered ancestors are a documented iOS Safari
+   trigger for the caret-outside-field bug. */
+.searchWrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: 12px;
+    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    pointer-events: none;
+}
+
+.searchInput {
+    /* Mirrors the announcement input pattern: fixed height, horizontal
+       padding only, all visual styling on the input itself, no
+       `-webkit-appearance: none`, no `line-height`. */
+    display: block;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 56px;
+    box-sizing: border-box;
+    /* Right padding leaves room for the action cluster (mode + submit). */
+    padding: 0 96px 0 18px;
+    background: var(--lp-glass-bg);
+    border: 1px solid var(--lp-glass-border);
+    border-radius: 12px;
+    box-shadow: var(--lp-search-shadow);
+    color: var(--lp-input-text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    outline: 0;
+    transition: border-color 0.4s var(--lp-ease),
+        box-shadow 0.4s var(--lp-ease),
+        background 0.4s var(--lp-ease);
+}
+
+.searchInput:focus {
     border-color: var(--lp-search-focus-border);
     box-shadow: var(--lp-search-focus-shadow);
     background: var(--lp-search-focus-bg);
 }
 
-.searchRow {
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.searchInputGroup {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    min-width: 0;
-}
-
-.searchInput {
-    flex: 1;
-    background: transparent;
-    border: 0;
-    outline: 0;
-    color: var(--lp-input-text);
-    font-family: inherit;
-    font-size: 15px;
-    font-weight: 500;
-    width: 100%;
-    height: 3.5rem;
-    padding: 0 0.5rem;
-}
-
 .searchInput::placeholder {
     color: var(--lp-placeholder);
-    font-weight: 400;
+    font-weight: 500;
+    opacity: 1;
 }
 
-.searchWrapper:focus-within .searchInput::placeholder {
+.searchInput:focus::placeholder {
     color: var(--lp-placeholder-focus);
 }
 
+/* Action cluster (mode dropdown + submit) floats over the input's
+   right padding so the visible card is the input itself, not a flex
+   container around it. */
 .searchActions {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    z-index: 2;
     display: flex;
     align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
+    gap: 4px;
 }
 
 /* ── Mode menu ─────────────────────────────────────────────────────────── */
@@ -1394,18 +1409,15 @@
 @media (max-width: 768px) {
     .searchWrapper {
         max-width: 100%;
+        gap: 4px;
     }
     .searchInput {
         /* 16px floor prevents iOS Safari from auto-zooming on focus. */
         font-size: 16px;
-        min-width: 0;
     }
     .announcementInput {
         /* Same iOS auto-zoom guard — 13px on desktop zooms on tap. */
         font-size: 16px;
-    }
-    .searchActions {
-        gap: 4px;
     }
     .modeButton {
         padding: 6px 8px;

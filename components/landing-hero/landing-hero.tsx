@@ -45,7 +45,7 @@ import { useLoaderPhase, useRevealOnScroll } from "./hooks";
 
 import StickyNav from "@/components/landing-blocks/sections/StickyNav";
 import NextGenAISection from "@/components/landing-blocks/sections/NextGenAISection";
-import ProductivitySection from "@/components/landing-blocks/sections/ProductivitySection";
+import GenerationSection from "@/components/landing-blocks/sections/GenerationSection";
 import AutomationSection from "@/components/landing-blocks/sections/AutomationSection";
 import BenefitsSection from "@/components/landing-blocks/sections/BenefitsSection";
 import AppDownload from "@/components/landing-blocks/sections/AppDownload";
@@ -209,7 +209,7 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                     reveal={reveal}
                 />
 
-                <PromptShowcase slides={SHOWCASE_SLIDES} autoplayInterval={7500} />
+                <PromptShowcase slides={SHOWCASE_SLIDES} />
 
                 <section
                     id="sticky-nav-headline"
@@ -233,7 +233,7 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
                 />
 
                 <NextGenAISection />
-                <ProductivitySection />
+                <GenerationSection />
                 <AutomationSection />
                 <BenefitsSection />
                 <Spacer size="R14" />

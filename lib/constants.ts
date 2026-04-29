@@ -162,6 +162,13 @@ export const SUBSCRIPTION_PLANS = [
 export type SubscriptionPlanId = (typeof SUBSCRIPTION_PLANS)[number]["id"];
 export type SubscriptionPlan = (typeof SUBSCRIPTION_PLANS)[number];
 
+/**
+ * The free Solo plan definition — single source of truth used by auth
+ * (user provisioning) and credits (on-demand profile creation).
+ * Import this instead of re-deriving it with .find() at each use site.
+ */
+export const SOLO_PLAN = SUBSCRIPTION_PLANS.find((p) => p.id === "solo")!;
+
 /** Returns the plan definition for the given id, or undefined. */
 export function getPlan(id: string): SubscriptionPlan | undefined {
     return SUBSCRIPTION_PLANS.find((p) => p.id === id);
@@ -224,7 +231,7 @@ export const PHOTO_MODELS = [
         name: "Nano Banana Pro",
         description: "Google's flagship image model. Best for cinematic stills.",
         geminiModelId: "imagen-4.0-generate-001",
-        creditBase: 2,
+        creditBase: 1,
     },
     {
         id: "nano-banana",

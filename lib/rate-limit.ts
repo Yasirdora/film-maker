@@ -19,6 +19,22 @@
 
 import { getDb } from "./db";
 
+// ─── Global cleanup constants ───────────────────────────────────────────────
+
+/**
+ * Entries older than this are safe to delete regardless of which endpoint
+ * created them. Set to the maximum of all endpoint window sizes so we
+ * never prematurely clean up entries that are still within a longer window.
+ * If a new endpoint is added with a window > HOUR_MS, this must be updated.
+ */
+const MAX_RATE_LIMIT_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours (2× the max window)
+
+/**
+ * Maximum rows removed per cleanup sweep. Prevents a single DELETE from
+ * blocking D1 for a long time if the table has grown large.
+ */
+const CLEANUP_BATCH_SIZE = 500;
+
 // ─── Per-user generation rate limit ────────────────────────────────────────
 
 /** Maximum generations per user per hour. */
@@ -97,11 +113,23 @@ export async function checkIpRateLimit(
         .bind(ip, config.endpoint, Date.now())
         .run();
 
-    // Lazy cleanup: ~10% of calls, delete entries older than the window.
+    // Lazy cleanup: ~10% of calls, delete stale entries.
+    // We use MAX_RATE_LIMIT_AGE_MS (not the current endpoint's window) as
+    // the cutoff so we never purge rows that are still within a longer-window
+    // endpoint's active period. LIMIT prevents a single DELETE from blocking
+    // D1 when the table has grown large.
     if (Math.random() < 0.1) {
+        const globalCutoff = Date.now() - MAX_RATE_LIMIT_AGE_MS;
         await db
-            .prepare("DELETE FROM ip_rate_limit WHERE created_at < ?")
-            .bind(cutoff)
+            .prepare(
+                `DELETE FROM ip_rate_limit
+                  WHERE rowid IN (
+                      SELECT rowid FROM ip_rate_limit
+                       WHERE created_at < ?
+                       LIMIT ?
+                  )`,
+            )
+            .bind(globalCutoff, CLEANUP_BATCH_SIZE)
             .run();
     }
 

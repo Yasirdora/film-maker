@@ -43,8 +43,6 @@ export interface ShowcaseSlide {
 
 interface PromptShowcaseProps {
     slides: readonly ShowcaseSlide[];
-    /** ms between auto-advances. Set 0 to disable auto-play. */
-    autoplayInterval?: number;
 }
 
 // ─── Animation constants ──────────────────────────────────────────────────
@@ -55,12 +53,15 @@ interface PromptShowcaseProps {
 const DURATION_MS = 1000;
 const EASING = "cubic-bezier(0.65, 0, 0.35, 1)";
 
+/** Slides this far from the active slot get `preload="auto"`. Slides
+ *  beyond that get `preload="none"` so they don't pull megabytes of
+ *  video data on initial page load. The active card's neighbors
+ *  upgrade to "auto" the moment they slide into the radius. */
+const PRELOAD_NEIGHBOR_RADIUS = 1;
+
 // ─── Component ────────────────────────────────────────────────────────────
 
-export function PromptShowcase({
-    slides,
-    autoplayInterval = 6000,
-}: PromptShowcaseProps) {
+export function PromptShowcase({ slides }: PromptShowcaseProps) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const trackRef = useRef<HTMLDivElement | null>(null);
     const stepWidthRef = useRef(0);
@@ -269,36 +270,20 @@ export function PromptShowcase({
         return () => observer.disconnect();
     }, []);
 
-    // Auto-advance (pauses while the tab is hidden or the showcase is
-    // offscreen, so the motion never steals focus from copy the reader
-    // is actually looking at).
-    useEffect(() => {
-        if (!autoplayInterval || slides.length < 2 || !isInView) return;
-        let timer: number | undefined;
-
-        const schedule = () => {
-            timer = window.setTimeout(() => {
-                if (!document.hidden) goNext();
-                schedule();
-            }, autoplayInterval);
-        };
-        schedule();
-
-        return () => {
-            if (timer) window.clearTimeout(timer);
-        };
-    }, [autoplayInterval, goNext, slides.length, isInView]);
-
     // Only the active slide's video plays. Non-active videos pause
     // but keep their playhead so the outgoing clip doesn't snap to
     // frame 0 while it's still visible during the slide. The rewind
     // happens AFTER each transition completes (rewindInactiveVideos
     // in goNext/goPrev), once the outgoing card is fully off-screen —
     // so next time any card rotates back into view it's at frame 0.
+    // When the active video finishes playing it advances to the next slide.
     useEffect(() => {
         const activeId = slides[activeIndex]?.id;
+        let activeVideo: HTMLVideoElement | undefined;
+
         videoRefs.current.forEach((video, id) => {
             if (id === activeId && isInView) {
+                activeVideo = video;
                 const playResult = video.play();
                 if (playResult && typeof playResult.catch === "function") {
                     playResult.catch(() => {});
@@ -307,19 +292,33 @@ export function PromptShowcase({
                 video.pause();
             }
         });
-    }, [activeIndex, slides, isInView]);
+
+        if (activeVideo && slides.length > 1) {
+            activeVideo.addEventListener("ended", goNext, { once: true });
+        }
+
+        return () => {
+            activeVideo?.removeEventListener("ended", goNext);
+        };
+    }, [activeIndex, slides, isInView, goNext]);
 
     const rows = useMemo(
         () => order.map((slotIndex) => slides[slotIndex]),
         [order, slides],
     );
 
+    // Slot-aware preload: the active slide is at slot 0 in the row,
+    // so we just measure each card's distance from the head of the
+    // visible row. Slides beyond the radius defer their network fetch.
+    const preloadFor = (slotPosition: number): "auto" | "none" =>
+        slotPosition <= PRELOAD_NEIGHBOR_RADIUS ? "auto" : "none";
+
     return (
         <div ref={containerRef} className={styles.showcase}>
             <div className={styles.showcaseViewport}>
                 <div className={styles.showcaseTrackWrapper}>
                     <div ref={trackRef} className={styles.showcaseTrack}>
-                        {rows.map((slide) => (
+                        {rows.map((slide, slotPosition) => (
                             <figure
                                 key={slide.id}
                                 className={styles.showcaseCard}
@@ -331,9 +330,8 @@ export function PromptShowcase({
                                     src={slide.videoSrc}
                                     poster={slide.poster}
                                     muted
-                                    loop
                                     playsInline
-                                    preload="auto"
+                                    preload={preloadFor(slotPosition)}
                                     disablePictureInPicture
                                 />
                             </figure>
