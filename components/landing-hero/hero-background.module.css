@@ -1,0 +1,80 @@
+/* ============================================================================
+   Hero background — autoplaying video + overlay + bottom-left blur.
+   ----------------------------------------------------------------------------
+   Three stacked layers behind the hero copy. The blur is intentionally
+   localized so bright frames don't wash out the headline while the rest
+   of the image stays vivid.
+   ========================================================================= */
+
+.heroVideo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    z-index: 0;
+}
+
+.heroOverlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0.25) 0%,
+        rgb(0 0 0 / 0.6) 100%
+    );
+    pointer-events: none;
+}
+
+/* Localized bottom-left blur — keeps heading legible over bright frames. */
+.heroBlur {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 60%;
+    height: 65%;
+    z-index: 2;
+    pointer-events: none;
+    background: radial-gradient(
+        100% 110% at bottom left,
+        rgb(0 0 0 / 0.5) 0%,
+        rgb(0 0 0 / 0) 70%
+    );
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    -webkit-mask-image: radial-gradient(
+        100% 100% at bottom left,
+        #000 40%,
+        transparent 80%
+    );
+    mask-image: radial-gradient(
+        100% 100% at bottom left,
+        #000 40%,
+        transparent 80%
+    );
+}
+
+@media (max-width: 900px) {
+    .heroBlur {
+        width: 100%;
+        height: 50%;
+        background: radial-gradient(
+            110% 110% at bottom left,
+            rgb(0 0 0 / 0.55) 0%,
+            rgb(0 0 0 / 0) 70%
+        );
+        -webkit-mask-image: radial-gradient(
+            110% 110% at bottom left,
+            #000 35%,
+            transparent 80%
+        );
+        mask-image: radial-gradient(
+            110% 110% at bottom left,
+            #000 35%,
+            transparent 80%
+        );
+    }
+}

@@ -1,0 +1,274 @@
+/* ============================================================================
+   Hero prompt bar — input + mode dropdown + submit button.
+   ----------------------------------------------------------------------------
+   The visible "card" is the <input> element itself; the action cluster
+   (mode + submit) floats over the input's right padding via absolute
+   positioning. This avoids any filtered/transformed ancestor on the
+   input, which is a known iOS Safari trigger for caret-outside-field.
+   ========================================================================= */
+
+/* The wrapper is pure layout — no border, no background, no filter.
+   Anything visual lives on the input itself (mirroring the announcement
+   form, which works correctly on iOS). The wrapper only needs to be a
+   positioning context for the absolutely-placed action buttons. */
+.searchWrapper {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    z-index: 50;
+}
+
+/* Backdrop blur lives on a sibling pseudo behind the input — never an
+   ancestor — because filtered ancestors are a documented iOS Safari
+   trigger for the caret-outside-field bug. */
+.searchWrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: 12px;
+    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    pointer-events: none;
+}
+
+.searchInput {
+    /* Mirrors the announcement input pattern: fixed height, horizontal
+       padding only, all visual styling on the input itself, no
+       `-webkit-appearance: none`, no `line-height`. */
+    display: block;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 56px;
+    box-sizing: border-box;
+    /* Right padding leaves room for the action cluster (mode + submit). */
+    padding: 0 96px 0 18px;
+    background: var(--lp-glass-bg);
+    border: 1px solid var(--lp-glass-border);
+    border-radius: 12px;
+    box-shadow: var(--lp-search-shadow);
+    color: var(--lp-input-text);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    outline: 0;
+    transition: border-color 0.4s var(--lp-ease),
+        box-shadow 0.4s var(--lp-ease),
+        background 0.4s var(--lp-ease);
+}
+
+.searchInput:focus {
+    border-color: var(--lp-search-focus-border);
+    box-shadow: var(--lp-search-focus-shadow);
+    background: var(--lp-search-focus-bg);
+}
+
+.searchInput::placeholder {
+    color: var(--lp-placeholder);
+    font-weight: 500;
+    opacity: 1;
+}
+
+.searchInput:focus::placeholder {
+    color: var(--lp-placeholder-focus);
+}
+
+/* Action cluster (mode dropdown + submit) floats over the input's
+   right padding so the visible card is the input itself, not a flex
+   container around it. */
+.searchActions {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ── Mode menu ──────────────────────────────────────────────────────────── */
+
+.modeWrapper {
+    position: relative;
+}
+
+.modeButton {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: 0;
+    color: var(--lp-input-text);
+    padding: 8px 10px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.3s var(--lp-ease),
+        opacity 0.3s var(--lp-ease),
+        transform 0.3s var(--lp-ease);
+    opacity: 0.8;
+}
+
+.modeButton:hover,
+.modeButtonActive {
+    background: var(--lp-mode-hover-bg);
+    opacity: 1;
+}
+
+.modeButton:active {
+    transform: scale(0.95);
+}
+
+.modeMenu {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    width: 260px;
+    background: var(--lp-mode-menu-bg);
+    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    border: 1px solid var(--lp-glass-border);
+    border-radius: 16px;
+    padding: 8px;
+    box-shadow: var(--lp-glass-shadow);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.96);
+    transform-origin: bottom right;
+    transition:
+        opacity 0.3s var(--lp-ease),
+        visibility 0.3s var(--lp-ease),
+        transform 0.3s var(--lp-ease);
+    z-index: 100;
+}
+
+.modeMenuOpen {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+.modeMenuItem {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+    color: var(--lp-mode-text);
+    text-align: left;
+    background: transparent;
+    border: 0;
+    width: 100%;
+    font-family: inherit;
+}
+
+.modeMenuItem:hover {
+    background: var(--lp-mode-hover-bg);
+    color: var(--lp-text-strong);
+}
+
+.modeMenuItemActive {
+    background: var(--lp-mode-active-bg);
+    color: var(--lp-text-strong);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+.modeMenuItemActive svg {
+    color: var(--lp-accent);
+}
+
+.modeDetails {
+    display: flex;
+    flex-direction: column;
+}
+
+.modeTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: inherit;
+}
+
+.modeDesc {
+    font-size: 12px;
+    color: var(--lp-text-muted);
+    margin-top: 2px;
+}
+
+/* ── Submit button ─────────────────────────────────────────────────────── */
+
+.submitButton {
+    background: var(--lp-accent);
+    color: var(--lp-text-strong);
+    border: 0;
+    padding: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: var(--lp-submit-shadow);
+    transition:
+        background 0.2s ease,
+        box-shadow 0.35s ease,
+        transform 0.15s ease;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+}
+
+.submitButton:hover {
+    background: var(--lp-accent-hover);
+    box-shadow: var(--lp-submit-hover-shadow);
+}
+
+.submitButton:active {
+    transform: scale(0.97);
+    transition: transform 0.08s ease;
+}
+
+.submitButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    .searchWrapper {
+        max-width: 100%;
+        gap: 4px;
+    }
+    .searchInput {
+        /* 16px floor prevents iOS Safari from auto-zooming on focus. */
+        font-size: 16px;
+    }
+    .modeButton {
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 12px;
+        gap: 4px;
+    }
+    .modeWrapper {
+        position: static;
+    }
+    .modeMenu {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        width: auto;
+        transform-origin: bottom center;
+        border-radius: 16px;
+        padding: 6px;
+        z-index: 1000;
+    }
+}

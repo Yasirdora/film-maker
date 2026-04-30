@@ -201,6 +201,7 @@
     --muted: #737373;
     --border: #e5e5e5;
     --destructive: #ef4444;
+    --success: #0a7f2f;
     --focus-ring: rgba(0, 0, 0, 0.25);
 
     /* Auth card — glassmorphic surface */
@@ -212,6 +213,83 @@
     --brand-text-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
     --brand-text-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
     --brand-icon-shadow: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+
+    /* Landing-page tokens — the dark hero kit. Always-dark surfaces,
+     * shared by every component under the landing tree (hero, banner,
+     * prompt bar, mode menu, loader). Lives at :root so siblings of
+     * `.page` (notably the loader overlay) inherit the same values
+     * without re-declaring. */
+    --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --lp-accent: var(--primary);
+    --lp-accent-hover: color-mix(in oklab, var(--primary), white 15%);
+    --lp-bg: #050505;
+    --lp-text: #fff;
+    --lp-text-strong: #fff;
+    --lp-text-muted: rgb(255 255 255 / 0.6);
+    --lp-text-soft: rgb(255 255 255 / 0.7);
+    --lp-subtitle-color: rgb(255 255 255 / 0.85);
+    --lp-subtitle-headline: #fff;
+    --lp-loader-fill: #fff;
+    --lp-glass-bg: rgb(20 20 22 / 0.45);
+    --lp-glass-border: rgb(255 255 255 / 0.08);
+    --lp-glass-blur: blur(40px);
+    --lp-glass-shadow:
+        0 0 0 1px rgb(255 255 255 / 0.03),
+        0 4px 8px rgb(0 0 0 / 0.1),
+        0 16px 40px rgb(0 0 0 / 0.2);
+    --lp-search-shadow:
+        0 2px 4px rgb(0 0 0 / 0.1),
+        0 8px 24px rgb(0 0 0 / 0.15),
+        0 24px 48px rgb(0 0 0 / 0.2),
+        inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --lp-search-focus-shadow:
+        0 0 0 2px rgb(from var(--lp-accent) r g b / 0.16),
+        0 4px 12px rgb(0 0 0 / 0.1),
+        0 24px 48px rgb(0 0 0 / 0.25),
+        inset 0 1px 0 rgb(255 255 255 / 0.06);
+    --lp-search-focus-bg: rgb(15 15 18 / 0.7);
+    --lp-search-focus-border: rgb(from var(--lp-accent) r g b / 0.5);
+    --lp-mode-menu-bg: rgb(20 20 22 / 0.92);
+    --lp-mode-hover-bg: rgb(255 255 255 / 0.05);
+    --lp-mode-active-bg: rgb(from var(--lp-accent) r g b / 0.15);
+    --lp-mode-text: rgb(255 255 255 / 0.6);
+    --lp-input-text: #fff;
+    --lp-placeholder: rgb(255 255 255 / 0.45);
+    --lp-placeholder-focus: rgb(255 255 255 / 0.65);
+    --lp-submit-shadow:
+        0 2px 4px rgb(0 0 0 / 0.1),
+        0 8px 20px rgb(0 0 0 / 0.2);
+    --lp-submit-hover-shadow:
+        0 4px 12px rgb(from var(--lp-accent) r g b / 0.4),
+        0 12px 28px rgb(0 0 0 / 0.15);
+
+    /* Light-themed surfaces inside the dark hero — used by the
+     * announcement banner, which floats above the hero as a near-opaque
+     * white card. The two backgrounds let the banner be glass-y and the
+     * focused input pop to solid white. */
+    --lp-light-glass: rgb(255 255 255 / 0.92);
+    --lp-light-solid: #fff;
+    --lp-light-border: rgb(255 255 255 / 0.3);
+    --lp-light-shadow: 0 4px 20px rgb(0 0 0 / 0.15);
+
+    /* Text + controls on those light surfaces. */
+    --lp-on-light-text: #111;
+    --lp-on-light-text-muted: #222;
+    --lp-on-light-placeholder: #888;
+    --lp-on-light-button: #111;
+    --lp-on-light-button-hover: #333;
+    --lp-on-light-input-bg: rgb(0 0 0 / 0.04);
+    --lp-on-light-input-border: rgb(0 0 0 / 0.08);
+
+    /* Showcase card surface — solid charcoal beneath each video. */
+    --lp-card-bg: #151517;
+
+    /* "Card on page" surface — the hero shell's rounded rectangle, used
+     * as the pre-paint baseline before the background video loads. */
+    --lp-surface: #111;
+
+    /* Tagline accent — italic gradient on the second line. */
+    --lp-tagline-gradient: linear-gradient(90deg, #9b8bd5, #e4899a);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -221,6 +299,7 @@
         --muted: #a3a3a3;
         --border: #262626;
         --destructive: #f87171;
+        --success: #4ade80;
         --focus-ring: rgba(255, 255, 255, 0.25);
 
         --card-bg: rgba(18, 18, 20, 0.65);

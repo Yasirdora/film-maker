@@ -33,9 +33,6 @@ export default function AutomationSection() {
                 <div className="tile-front tile5050 tile5050-asset-right tile5050-bg-black tile5050-dark tile5050-gradient-ai sm-md-asset-top tile5050-sm-md-text-left tile5050-auteur-floating">
                   <div className="tile5050-layout">
                     <div className="tile5050-content copy-group copy-group-dark">
-                      <div className="tile5050-content-eyebrow copy-group-eyebrow eyebrow-tag eyebrow-dark eyebrow-outline eyebrow-size">
-                        Auteur AI
-                      </div>
                       <h3 className="tile5050-content-title copy-group-title headline2 markdown">
                         Write the <b>next scene</b> with Auteur.
                       </h3>
@@ -50,17 +47,15 @@ export default function AutomationSection() {
                 <div className="tile-back tile5050 tile5050-asset-right tile5050-bg-black tile5050-dark tile5050-gradient-ai tile5050-sm-md-asset-hidden tile5050-sm-md-text-left tile5050-valign-center tile5050-auteur-floating">
                   <div className="tile5050-layout">
                     <div className="tile5050-content copy-group copy-group-dark">
-                      <div className="tile5050-content-eyebrow copy-group-eyebrow eyebrow-tag eyebrow-dark eyebrow-outline eyebrow-size">
-                        Auteur AI
-                      </div>
                       <h3 className="tile5050-content-title copy-group-title headline3 markdown">
-                        <b>From treatment to pitch</b>, with Auteur
+                        <b>From blank page to pitch-ready</b>
                       </h3>
                       <div className="tile5050-content-body copy-group-body body-large">
                         <p>
-                          Draft treatments, scenes and shot lists in seconds.
-                          Refine tone, format and genre as you go &ndash; so
-                          what you hand off reads polished, not first-draft.
+                          Create treatments, scenes, and shot lists in
+                          seconds. Refine the tone, format, and genre as you go
+                          to ensure that what you hand off reads polished
+                          rather than first-draft.
                         </p>
                       </div>
                       <div className="tile5050-content-disclaimer copy-group-disclaimer eyebrow-size"></div>

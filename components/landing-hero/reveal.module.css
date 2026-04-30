@@ -1,0 +1,44 @@
+/* ============================================================================
+   Reveal-on-scroll utility classes.
+   ----------------------------------------------------------------------------
+   Paired with `useRevealOnScroll` in ./hooks.ts. A reveal target starts
+   with `.reveal` (offscreen state) and gains `.revealActive` once the
+   IntersectionObserver fires for the first time. Optional delay classes
+   stagger neighboring reveals so they don't all fire at once.
+
+   Lives in its own module because two components (HeroContent and
+   TaglineSection) need the same class names; CSS-Modules mangles class
+   names per-file, so a shared module is the only way to share styles
+   without duplicating rules.
+   ========================================================================= */
+
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition:
+        opacity 1s var(--lp-ease),
+        transform 1s var(--lp-ease);
+}
+
+.revealActive {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.revealDelay100 {
+    transition-delay: 100ms;
+}
+.revealDelay200 {
+    transition-delay: 200ms;
+}
+.revealDelay300 {
+    transition-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}

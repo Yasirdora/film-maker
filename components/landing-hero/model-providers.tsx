@@ -9,6 +9,12 @@
 
 import type { ReactElement, SVGProps } from "react";
 
+import {
+    CLAPPERBOARD_HINGE,
+    CLAPPERBOARD_VIEWBOX,
+    ClapperboardArt,
+} from "@/components/icons/clapperboard-art";
+
 import styles from "./model-providers.module.css";
 
 interface Provider {
@@ -28,30 +34,27 @@ const PROVIDERS: readonly Provider[] = [
     { name: "Ideogram", Icon: IdeogramMark },
 ];
 
-export function ModelProviders() {
-    // Tripled list. Two copies wasn't enough — on wide viewports the
-    // track shifted by one copy's width while the viewport was wider
-    // than one copy, leaving empty space at the seam. Three copies
-    // with a -33.333% shift guarantees the visible area is always
-    // backed by the next copy.
-    const loop = [...PROVIDERS, ...PROVIDERS, ...PROVIDERS];
+// Tripled list for seamless marquee loop. Three copies with a
+// -33.333% translate guarantees the visible area is always backed
+// by the next copy, even on ultra-wide viewports.
+const MARQUEE_LOOP: readonly Provider[] = [
+    ...PROVIDERS,
+    ...PROVIDERS,
+    ...PROVIDERS,
+];
 
+export function ModelProviders() {
     return (
         <div className={styles.viewport}>
             <div className={styles.track}>
-                {loop.map(({ name, Icon }, i) => (
+                {MARQUEE_LOOP.map(({ name, Icon }, i) => (
                     <div
                         key={`${name}-${i}`}
-                        className="flex shrink-0 items-center gap-2"
+                        className={styles.item}
                         aria-hidden={i >= PROVIDERS.length ? "true" : undefined}
                     >
-                        <Icon
-                            aria-hidden="true"
-                            className="size-4.5 shrink-0 text-white/70"
-                        />
-                        <span className="shrink-0 text-base font-normal text-white/70">
-                            {name}
-                        </span>
+                        <Icon aria-hidden="true" className={styles.itemIcon} />
+                        <span className={styles.itemName}>{name}</span>
                     </div>
                 ))}
             </div>
@@ -121,25 +124,15 @@ function FilmMakerMark(props: SVGProps<SVGSVGElement>) {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            fill="currentColor"
-            viewBox="870 420 75 60"
+            viewBox={CLAPPERBOARD_VIEWBOX}
             overflow="visible"
             {...props}
         >
-            <rect
-                x="880.73"
-                y="448.09"
-                width="51.24"
-                height="26.61"
-                rx="1.02"
-                ry="1.02"
-            />
-            <path
-                style={{
-                    transformOrigin: "882.45px 448.09px",
+            <ClapperboardArt
+                topStyle={{
+                    transformOrigin: CLAPPERBOARD_HINGE,
                     transform: "rotate(-15deg)",
                 }}
-                d="M882.45,448.09h47.91c.89,0,1.6-.72,1.6-1.6v-10.15c0-.89-.72-1.6-1.6-1.6h-47.17c-.84,0-1.54.65-1.6,1.49l-.74,10.15c-.07.93.67,1.72,1.6,1.72Z"
             />
         </svg>
     );

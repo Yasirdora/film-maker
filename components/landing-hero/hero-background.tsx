@@ -11,7 +11,7 @@
  * browser's built-in autoplay handles it.
  */
 
-import styles from "./landing-hero.module.css";
+import styles from "./hero-background.module.css";
 
 export interface HeroVideoSource {
     src: string;
@@ -24,14 +24,9 @@ interface HeroBackgroundProps {
     /** One or more `<source>` entries, ordered by preference (smallest /
      *  most modern first). The browser fetches only the first match. */
     sources: readonly HeroVideoSource[];
-    /** Accessible label for the decorative background video. */
-    label?: string;
 }
 
-export function HeroBackground({
-    sources,
-    label = "Cinematic background loop",
-}: HeroBackgroundProps) {
+export function HeroBackground({ sources }: HeroBackgroundProps) {
     return (
         <>
             <video
@@ -41,7 +36,7 @@ export function HeroBackground({
                 loop
                 playsInline
                 preload="metadata"
-                aria-label={label}
+                aria-hidden="true"
             >
                 {sources.map((source) => (
                     <source key={source.src} src={source.src} type={source.type} />

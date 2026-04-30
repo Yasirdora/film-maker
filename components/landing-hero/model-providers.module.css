@@ -50,3 +50,26 @@
         animation: none;
     }
 }
+
+/* ── Provider item ─────────────────────────────────────────────────────── */
+
+.item {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.itemIcon {
+    width: 1.125rem;
+    height: 1.125rem;
+    flex-shrink: 0;
+    color: var(--lp-text-soft);
+}
+
+.itemName {
+    flex-shrink: 0;
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--lp-text-soft);
+}

@@ -21,14 +21,20 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import clsx from "clsx";
 
 import { useClickOutside } from "./hooks";
-import { HERO_MODES, type HeroModeId } from "./modes";
+import {
+    DEFAULT_HERO_MODE,
+    getHeroMode,
+    HERO_MODES,
+    type HeroModeId,
+} from "./modes";
 
-import styles from "./landing-hero.module.css";
+import styles from "./hero-prompt.module.css";
 
 interface HeroPromptProps {
-    placeholder?: string;
+    placeholder: string;
     /** Mode selected by default. Defaults to the first mode in HERO_MODES. */
     defaultModeId?: HeroModeId;
     /** Extra class merged onto the wrapper — lets callers override skin (background, border, shadow). */
@@ -36,8 +42,8 @@ interface HeroPromptProps {
 }
 
 export function HeroPrompt({
-    placeholder = "Ask Auteur anything about your creative vision...",
-    defaultModeId = HERO_MODES[0].id,
+    placeholder,
+    defaultModeId = DEFAULT_HERO_MODE.id,
     wrapperClassName,
 }: HeroPromptProps) {
     const router = useRouter();
@@ -52,17 +58,12 @@ export function HeroPrompt({
     const handleSubmit = useCallback(() => {
         const trimmed = value.trim();
         if (!trimmed) return;
-        const mode = HERO_MODES.find((m) => m.id === modeId) ?? HERO_MODES[0];
-        router.push(mode.href(trimmed));
+        router.push(getHeroMode(modeId).href(trimmed));
     }, [value, modeId, router]);
-
-    const wrapperClass = wrapperClassName
-        ? `${styles.searchWrapper} ${wrapperClassName}`
-        : styles.searchWrapper;
 
     return (
         <form
-            className={wrapperClass}
+            className={clsx(styles.searchWrapper, wrapperClassName)}
             onSubmit={(e) => {
                 e.preventDefault();
                 handleSubmit();
@@ -145,18 +146,18 @@ function ModeMenu({
     onToggle,
     onSelect,
 }: ModeMenuProps) {
-    const activeMode =
-        HERO_MODES.find((m) => m.id === activeModeId) ?? HERO_MODES[0];
+    const activeMode = getHeroMode(activeModeId);
 
     return (
         <div className={styles.modeWrapper} ref={anchorRef}>
             <button
                 type="button"
-                className={`${styles.modeButton}${
-                    open ? ` ${styles.modeButtonActive}` : ""
-                }`}
+                className={clsx(
+                    styles.modeButton,
+                    open && styles.modeButtonActive,
+                )}
                 onClick={onToggle}
-                aria-haspopup="listbox"
+                aria-haspopup="menu"
                 aria-expanded={open}
                 aria-label={`Mode: ${activeMode.label}`}
             >
@@ -164,24 +165,32 @@ function ModeMenu({
             </button>
 
             <div
-                className={`${styles.modeMenu}${
-                    open ? ` ${styles.modeMenuOpen}` : ""
-                }`}
-                role="listbox"
+                className={clsx(
+                    styles.modeMenu,
+                    open && styles.modeMenuOpen,
+                )}
+                role="menu"
                 aria-label="Prompt destination"
             >
                 {HERO_MODES.map((mode) => {
                     const isActive = mode.id === activeModeId;
                     return (
-                        <button
+                        <div
                             key={mode.id}
-                            type="button"
-                            role="option"
-                            aria-selected={isActive}
-                            className={`${styles.modeMenuItem}${
-                                isActive ? ` ${styles.modeMenuItemActive}` : ""
-                            }`}
+                            role="menuitemradio"
+                            aria-checked={isActive}
+                            tabIndex={0}
+                            className={clsx(
+                                styles.modeMenuItem,
+                                isActive && styles.modeMenuItemActive,
+                            )}
                             onClick={() => onSelect(mode.id)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    onSelect(mode.id);
+                                }
+                            }}
                         >
                             <span aria-hidden="true">{mode.icon}</span>
                             <span className={styles.modeDetails}>
@@ -192,7 +201,7 @@ function ModeMenu({
                                     {mode.description}
                                 </span>
                             </span>
-                        </button>
+                        </div>
                     );
                 })}
             </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import styles from "./landing-hero.module.css";
+import styles from "./feature-video.module.css";
 
 interface FeatureVideoProps {
     src: string;
@@ -41,17 +41,16 @@ export function FeatureVideo({ src, label }: FeatureVideoProps) {
     }, []);
 
     const toggleMuted = () => {
-        const video = videoRef.current;
-        if (!video) return;
         const next = !muted;
-        video.muted = next;
-        if (!next) {
-            const playResult = video.play();
+        setMuted(next);
+        // When unmuting, ensure playback resumes (some browsers pause
+        // on unmute if the video wasn't user-initiated).
+        if (!next && videoRef.current) {
+            const playResult = videoRef.current.play();
             if (playResult && typeof playResult.catch === "function") {
                 playResult.catch(() => {});
             }
         }
-        setMuted(next);
     };
 
     return (
@@ -61,7 +60,7 @@ export function FeatureVideo({ src, label }: FeatureVideoProps) {
                     ref={videoRef}
                     className={styles.featureVideoMedia}
                     src={src}
-                    muted
+                    muted={muted}
                     loop
                     playsInline
                     preload="metadata"

@@ -73,6 +73,20 @@ export const HERO_MODES = [
 
 export type HeroModeId = (typeof HERO_MODES)[number]["id"];
 
-export function getHeroMode(id: string): HeroMode | undefined {
-    return HERO_MODES.find((mode) => mode.id === id);
+/** Default mode — used wherever no explicit selection is made yet. The
+ *  inferred type intentionally preserves the literal `id` so callers
+ *  passing `DEFAULT_HERO_MODE.id` to a `HeroModeId`-typed prop type-check. */
+export const DEFAULT_HERO_MODE = HERO_MODES[0];
+
+/**
+ * Look up a hero mode by id. Falls back to `DEFAULT_HERO_MODE` when the
+ * id doesn't match a known mode, so the function is total over both
+ * input and output and call sites never need their own fallback.
+ *
+ * The parameter is typed as `string` so untyped sources (URL params,
+ * external links) resolve safely; well-typed callers passing a
+ * `HeroModeId` always hit the happy path at runtime.
+ */
+export function getHeroMode(id: string): HeroMode {
+    return HERO_MODES.find((mode) => mode.id === id) ?? DEFAULT_HERO_MODE;
 }

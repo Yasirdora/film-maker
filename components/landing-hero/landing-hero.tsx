@@ -1,12 +1,10 @@
-"use client";
-
 /**
- * LandingHero — client root that composes every hero piece.
+ * LandingHero — server component that composes the entire landing tree.
  *
- * Responsibility: own the two pieces of global hero state (loader
- * phase, reveal-on-scroll controller) and stitch the presentational
- * children together. Individual pieces stay dumb; they receive what
- * they need and nothing more.
+ * Only the small `<LandingHeroShell>` wrapper is a client component;
+ * everything passed inside it as `children` is server-rendered (those
+ * children may themselves be client components, but they only get
+ * client-bundled if they declare `"use client"` themselves).
  *
  * Layout
  *   ┌──────────────────────────────────────────────────────────────┐
@@ -22,26 +20,12 @@
  *   │  Tagline section                                             │
  *   └──────────────────────────────────────────────────────────────┘
  *
- * Copy lives at the top of the file in `COPY` so edits don't require
- * diving into the JSX tree. Props are reserved for runtime-only config
- * (e.g. environment keys).
+ * Static copy and data live in ./content.ts — edit there for messaging
+ * changes without touching component logic. Props are reserved for
+ * runtime-only config (e.g. environment keys).
  */
 
 import Link from "next/link";
-import { Newsreader } from "next/font/google";
-
-import { AnnouncementBanner } from "./announcement-banner";
-import { ClapperboardLoader } from "./clapperboard-loader";
-import { EditorToolbar } from "./editor-toolbar";
-import { FeatureVideo } from "./feature-video";
-import { HeroBackground } from "./hero-background";
-import { HeroContent } from "./hero-content";
-import { HeroPrompt } from "./hero-prompt";
-import { ModelProviders } from "./model-providers";
-import { PromptShowcase, type ShowcaseSlide } from "./prompt-showcase";
-import { ScrollIndicator } from "./scroll-indicator";
-import { TaglineSection } from "./tagline-section";
-import { useLoaderPhase, useRevealOnScroll } from "./hooks";
 
 import StickyNav from "@/components/landing-blocks/sections/StickyNav";
 import NextGenAISection from "@/components/landing-blocks/sections/NextGenAISection";
@@ -51,90 +35,41 @@ import BenefitsSection from "@/components/landing-blocks/sections/BenefitsSectio
 import AppDownload from "@/components/landing-blocks/sections/AppDownload";
 import Spacer from "@/components/landing-blocks/shared/Spacer";
 
+import { AnnouncementBanner } from "./announcement-banner";
+import { COPY, HERO_VIDEO_SOURCES, SHOWCASE_SLIDES } from "./content";
+import { EditorToolbar } from "./editor-toolbar";
+import { FeatureVideo } from "./feature-video";
+import { HeroBackground } from "./hero-background";
+import { HeroContent } from "./hero-content";
+import { HeroPrompt } from "./hero-prompt";
+import { LandingHeroShell } from "./landing-hero-shell";
+import { ModelProviders } from "./model-providers";
+import { PromptShowcase } from "./prompt-showcase";
+import { ScrollIndicator } from "./scroll-indicator";
+import { TaglineSection } from "./tagline-section";
+
+import announcementStyles from "./announcement-banner.module.css";
+import taglineStyles from "./tagline-section.module.css";
 import styles from "./landing-hero.module.css";
 
-// ─── Copy ──────────────────────────────────────────────────────────────────
+// ─── JSX copy (depends on styles/components — kept in this file) ──────────
 
-const COPY = {
-    announcementHeadline: "We're still building — join the private beta",
-    announcementBody: (
-        <>
-            Film-maker is in limited testing —{" "}
-            <Link href="/pricing" className={styles.announcementLink}>
-                try Solo today
-            </Link>
-            . Our production tiers are still being fine-tuned, so drop your
-            email and we&apos;ll reach out when your spot opens up.
-        </>
-    ),
-    headline: "without limits.",
-    description:
-        "Artistic Intelligence designed by and for filmmakers.",
-    promptPlaceholder: "Ask Auteur anything about your creative vision...",
-    taglineLead: (
-        <>
-            Great stories <b>start with you.</b>
-        </>
-    ),
-    taglineCta: { href: "/studio", label: "Launch the studio" },
-    showcaseHeadlineLead: "Discover a ",
-    showcaseHeadlineEmphasis: "universe of possibilities.",
-    showcaseOutroLead: "Create with our ",
-    showcaseOutroEmphasis: "Artistic Intelligence.",
-    footerYear: new Date().getFullYear(),
-} as const;
+const ANNOUNCEMENT_BODY = (
+    <>
+        Film-maker is in limited testing —{" "}
+        <Link href="/pricing" className={announcementStyles.announcementLink}>
+            try Solo today
+        </Link>
+        . Our production tiers are still being fine-tuned, so drop your
+        email and we&apos;ll reach out when your spot opens up.
+    </>
+);
 
-// WebM (VP9) is ~50% smaller than the H.264 MP4 — modern browsers fetch
-// it; older Safari versions fall back to the MP4. Browsers fetch only
-// the first source whose `type` they can decode.
-const HERO_VIDEO_SOURCES = [
-    { src: "/assets/bg.webm", type: "video/webm; codecs=vp9" },
-    { src: "/assets/bg.mp4", type: "video/mp4" },
-] as const;
-
-// Showcase reel. Swap in production renders as they land — the
-// carousel reads this list verbatim and adapts to any length ≥ 2.
-const SHOWCASE_SLIDES: readonly ShowcaseSlide[] = [
-    {
-        id: "slide-01",
-        videoSrc: "/assets/showcase/01.mp4",
-        label: "Neon rainfall.",
-        prompt: "Courier through rainy Shinjuku, 35 mm handheld.",
-    },
-    {
-        id: "slide-02",
-        videoSrc: "/assets/showcase/02.mp4",
-        label: "Sunrise atelier.",
-        prompt: "Tailor at a Parisian window, golden-hour dolly-in.",
-    },
-    {
-        id: "slide-03",
-        videoSrc: "/assets/showcase/03.mp4",
-        label: "The archive room.",
-        prompt: "Historian, dusty film canister, single shaft of light.",
-    },
-    {
-        id: "slide-04",
-        videoSrc: "/assets/showcase/04.mp4",
-        label: "Last takeoff.",
-        prompt: "Astronaut at ignition, anamorphic dawn tarmac.",
-    },
-    {
-        id: "slide-05",
-        videoSrc: "/assets/showcase/05.mp4",
-        label: "Quiet coast.",
-        prompt: "Lighthouse keeper at dawn, pastel sea, long lens.",
-    },
-];
-
-// ─── Fonts ─────────────────────────────────────────────────────────────────
-
-const newsreader = Newsreader({
-    subsets: ["latin"],
-    style: ["italic"],
-    variable: "--font-newsreader",
-    display: "swap",
-});
+const TAGLINE_LEAD = (
+    <>
+        Great stories <b>start with you.</b>
+    </>
+);
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
@@ -143,107 +78,91 @@ interface LandingHeroProps {
 }
 
 export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
-    const loaderPhase = useLoaderPhase();
-    const loaderDone =
-        loaderPhase === "finished" || loaderPhase === "skipped";
-    const reveal = useRevealOnScroll(loaderDone);
-
     return (
-        <>
-            <ClapperboardLoader phase={loaderPhase} />
+        <LandingHeroShell>
+            <section className={styles.hero}>
+                <HeroBackground sources={HERO_VIDEO_SOURCES} />
 
-            <main
-                className={`${newsreader.variable} ${styles.page} ${
-                    loaderDone ? styles.pageReady : styles.pageHidden
-                }`}
-                aria-hidden={!loaderDone}
-            >
+                <AnnouncementBanner
+                    headline={COPY.announcementHeadline}
+                    body={ANNOUNCEMENT_BODY}
+                    turnstileSiteKey={turnstileSiteKey}
+                />
 
-                <section className={styles.hero}>
-                    <HeroBackground sources={HERO_VIDEO_SOURCES} />
-
-                    <AnnouncementBanner
-                        headline={COPY.announcementHeadline}
-                        body={COPY.announcementBody}
-                        turnstileSiteKey={turnstileSiteKey}
+                <div className={styles.heroBottom}>
+                    <HeroContent
+                        headline={COPY.headline}
+                        description={COPY.description}
                     />
 
-                    <div className={styles.heroBottom}>
-                        <HeroContent
-                            headline={COPY.headline}
-                            description={COPY.description}
-                            reveal={reveal}
-                        />
-
-                        <div className={styles.heroSearchSide}>
-                            <HeroPrompt placeholder={COPY.promptPlaceholder} />
-                        </div>
+                    <div className={styles.heroSearchSide}>
+                        <HeroPrompt placeholder={COPY.promptPlaceholder} />
                     </div>
+                </div>
 
-                    <EditorToolbar />
-                </section>
+                <EditorToolbar />
+            </section>
 
-                <ModelProviders />
+            <ModelProviders />
 
-                <ScrollIndicator />
+            <ScrollIndicator targetId="tagline" />
 
-                <TaglineSection
-                    lead={COPY.taglineLead}
-                    middleContent={
-                        <div className={styles.showcaseIntro}>
-                            <h2 className={styles.showcaseIntroHeadline}>
-                                <span
-                                    className={
-                                        styles.showcaseIntroHeadlineLead
-                                    }
-                                >
-                                    {COPY.showcaseHeadlineLead}
-                                </span>
-                                <span
-                                    className={
-                                        styles.showcaseIntroHeadlineEmphasis
-                                    }
-                                >
-                                    {COPY.showcaseHeadlineEmphasis}
-                                </span>
-                            </h2>
-                        </div>
-                    }
-                    cta={COPY.taglineCta}
-                    reveal={reveal}
-                />
+            <TaglineSection
+                id="tagline"
+                lead={TAGLINE_LEAD}
+                middleContent={
+                    <div className={taglineStyles.showcaseIntro}>
+                        <h2 className={taglineStyles.showcaseIntroHeadline}>
+                            <span
+                                className={
+                                    taglineStyles.showcaseIntroHeadlineLead
+                                }
+                            >
+                                {COPY.showcaseHeadlineLead}
+                            </span>
+                            <span
+                                className={
+                                    taglineStyles.showcaseIntroHeadlineEmphasis
+                                }
+                            >
+                                {COPY.showcaseHeadlineEmphasis}
+                            </span>
+                        </h2>
+                    </div>
+                }
+                cta={COPY.taglineCta}
+            />
 
-                <PromptShowcase slides={SHOWCASE_SLIDES} />
+            <PromptShowcase slides={SHOWCASE_SLIDES} />
 
-                <section
-                    id="sticky-nav-headline"
-                    className={styles.showcaseOutro}
-                >
-                    <h2 className={styles.showcaseOutroHeadline}>
-                        <span className={styles.showcaseOutroHeadlineLead}>
-                            {COPY.showcaseOutroLead}
-                        </span>
-                        <span className={styles.showcaseOutroHeadlineEmphasis}>
-                            {COPY.showcaseOutroEmphasis}
-                        </span>
-                    </h2>
-                </section>
+            <section
+                id="sticky-nav-headline"
+                className={styles.showcaseOutro}
+            >
+                <h2 className={styles.showcaseOutroHeadline}>
+                    <span className={styles.showcaseOutroHeadlineLead}>
+                        {COPY.showcaseOutroLead}
+                    </span>
+                    <span className={styles.showcaseOutroHeadlineEmphasis}>
+                        {COPY.showcaseOutroEmphasis}
+                    </span>
+                </h2>
+            </section>
 
-                <StickyNav />
+            <StickyNav />
 
-                <FeatureVideo
-                    src="/assets/Mercedes.mp4"
-                    label="Mercedes showcase film"
-                />
+            <FeatureVideo
+                src="/assets/Mercedes.mp4"
+                label="Mercedes showcase film"
+            />
 
-                <NextGenAISection />
-                <GenerationSection />
-                <AutomationSection />
-                <BenefitsSection />
-                <Spacer size="R14" />
-                <AppDownload />
-                <Spacer size="R14" />
-            </main>
-        </>
+            <NextGenAISection />
+            <GenerationSection />
+            <AutomationSection />
+            <BenefitsSection />
+            <Spacer size="R14" />
+            <AppDownload />
+            <Spacer size="R14" />
+        </LandingHeroShell>
     );
 }

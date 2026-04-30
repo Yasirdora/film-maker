@@ -1,0 +1,83 @@
+/* ============================================================================
+   Clapperboard loader overlay.
+   ----------------------------------------------------------------------------
+   Boot-time fullscreen curtain. Pulses while the page settles, then
+   snaps the top arm shut and fades out. The loader sits as a sibling
+   of `.page`, so it inherits the `--lp-*` tokens from `:root`
+   (declared in app/globals.css) — no local re-declaration needed.
+   ========================================================================= */
+
+.loaderOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    background: var(--lp-bg);
+    transition: opacity 0.8s var(--lp-ease), visibility 0.8s;
+}
+
+.loaderOverlaySkipped,
+.loaderOverlayFinished {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loaderOverlaySkipped {
+    transition: none;
+}
+
+.loaderSvg {
+    width: 120px;
+    height: auto;
+    overflow: visible;
+}
+
+.loaderPart {
+    fill: var(--lp-loader-fill);
+}
+
+.loaderWrapper {
+    opacity: 0.3;
+    animation: loaderPulse 2.5s ease-in-out infinite;
+    transition: opacity 0.4s ease;
+}
+
+.loaderOverlayReady .loaderWrapper {
+    animation: none;
+    opacity: 1;
+    transform: scale(1);
+}
+
+.loaderOverlayClapping .loaderTop {
+    animation: loaderClap 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.loaderTop {
+    transform-origin: 882.45px 448.09px;
+    transform: rotate(-15deg);
+}
+
+@keyframes loaderPulse {
+    0%, 100% {
+        opacity: 0.2;
+        transform: scale(0.98);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(1);
+    }
+}
+
+@keyframes loaderClap {
+    0% {
+        transform: rotate(-15deg);
+    }
+    40% {
+        transform: rotate(-45deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}

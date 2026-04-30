@@ -1,0 +1,100 @@
+/* ============================================================================
+   Hero left column: brand mark, headline, description.
+   ----------------------------------------------------------------------------
+   The shared `--title-column-width` token keeps the wordmark SVG and
+   the headline locked to the same horizontal extent across breakpoints.
+   Reveal classes live in ./reveal.module.css; this module only owns
+   the column-specific rules (sizes, layout, the title's bespoke scale
+   reveal).
+   ========================================================================= */
+
+.heroContent {
+    /* Shared column width so the wordmark SVG and the headline below
+       line up to exactly the same edge. Individual elements should
+       use `width: var(--title-column-width)` rather than ad-hoc
+       clamps to stay in lock-step across breakpoints. */
+    --title-column-width: clamp(280px, 42vw, 500px);
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    max-width: 600px;
+    flex: 1;
+    min-width: 0;
+    margin-bottom: clamp(24px, 4vw, 56px);
+    padding-left: clamp(12px, 2vw, 32px);
+}
+
+.title {
+    margin: 0 0 0;
+    line-height: 0.95;
+    color: var(--lp-text-strong);
+    /* Larger reveal: subtle scale instead of translate for big SVG */
+    transform: scale(0.97);
+    transition-duration: 1.2s;
+}
+
+.titleRevealActive {
+    transform: scale(1);
+}
+
+.titleSvg {
+    display: block;
+    width: var(--title-column-width);
+    height: auto;
+    margin: 0;
+    opacity: 0.95;
+}
+
+.headline {
+    display: block;
+    width: var(--title-column-width);
+    color: var(--lp-text-strong);
+    text-align: left;
+    /* Font-size tracks the column width so the rendered glyph run
+       approaches the same visual edge as the wordmark SVG above it.
+       The coefficient (~0.145) was picked so "without limits." fits
+       one line at the clamp's max column width while matching its
+       horizontal extent. Clamped so it stays readable at narrow
+       viewports and doesn't balloon on ultra-wide screens. */
+    font-size: clamp(
+        2rem,
+        calc(var(--title-column-width) * 0.145),
+        5.75rem
+    );
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+    text-shadow: var(--brand-text-shadow);
+}
+
+.description {
+    font-size: clamp(1.1rem, 1.4vw, 1.25rem);
+    line-height: 1.55;
+    color: var(--lp-subtitle-color);
+    max-width: 520px;
+    margin: 0;
+    text-shadow: var(--brand-text-shadow-sm);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .heroContent {
+        max-width: 100%;
+        flex: 0 0 auto;
+        --title-column-width: clamp(240px, 62vw, 400px);
+    }
+}
+
+@media (max-width: 480px) {
+    .heroContent {
+        --title-column-width: min(82vw, 320px);
+    }
+    .description {
+        font-size: 1rem;
+    }
+}

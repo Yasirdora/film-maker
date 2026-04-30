@@ -15,18 +15,38 @@
  */
 
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 
-import { TurnstileWidget } from "@/components/turnstile-widget";
+import {
+    TurnstileWidget,
+    type TurnstileWidgetHandle,
+} from "@/components/turnstile-widget";
 
-import styles from "./landing-hero.module.css";
+import styles from "./announcement-banner.module.css";
 
 type SubmitStatus =
     | { kind: "idle" }
     | { kind: "submitting" }
     | { kind: "success" }
     | { kind: "error"; message: string };
+
+/**
+ * Turnstile gate state.
+ *
+ *   • `disabled` — no site key configured; the form is unprotected and
+ *                  always passes the gate (typical in local dev).
+ *   • `pending`  — site key configured, no token yet.
+ *   • `verified` — Turnstile produced a token; ready to submit.
+ *
+ * The discriminated `kind` keeps the three meanings unambiguous in code
+ * and means we never have to invent a sentinel token to represent
+ * "Turnstile is off."
+ */
+type TurnstileGate =
+    | { kind: "disabled" }
+    | { kind: "pending" }
+    | { kind: "verified"; token: string };
 
 interface AnnouncementBannerProps {
     headline: string;
@@ -40,15 +60,32 @@ export function AnnouncementBanner({
     body,
     turnstileSiteKey,
 }: AnnouncementBannerProps) {
+    const turnstileEnabled = turnstileSiteKey.length > 0;
+    const initialGate: TurnstileGate = turnstileEnabled
+        ? { kind: "pending" }
+        : { kind: "disabled" };
+
     const [isOpen, setIsOpen] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<SubmitStatus>({ kind: "idle" });
-    const [turnstileToken, setTurnstileToken] = useState<string | null>(
-        turnstileSiteKey ? null : "skip",
-    );
+    const [gate, setGate] = useState<TurnstileGate>(initialGate);
+    const turnstileRef = useRef<TurnstileWidgetHandle>(null);
+
+    /** Drop any verified token and ask the widget for a fresh one. */
+    const resetGate = useCallback(() => {
+        if (!turnstileEnabled) return;
+        setGate({ kind: "pending" });
+        turnstileRef.current?.reset();
+    }, [turnstileEnabled]);
+
+    const isSubmitting = status.kind === "submitting";
 
     const handleToggle = useCallback(() => {
+        // Block dismissal while a request is in-flight to avoid a race
+        // between the response handler and the unmounting animation.
+        if (isSubmitting) return;
+
         // In the expanded state the "+" turns into a close: one more
         // click dismisses the banner entirely. This matches the ConveX
         // reference and keeps the affordance count to one.
@@ -57,7 +94,7 @@ export function AnnouncementBanner({
             return;
         }
         setIsExpanded(true);
-    }, [isExpanded]);
+    }, [isExpanded, isSubmitting]);
 
     const handleSubmit = useCallback(
         async (event: React.FormEvent<HTMLFormElement>) => {
@@ -74,9 +111,7 @@ export function AnnouncementBanner({
                     body: JSON.stringify({
                         email: trimmed,
                         turnstileToken:
-                            turnstileToken && turnstileToken !== "skip"
-                                ? turnstileToken
-                                : undefined,
+                            gate.kind === "verified" ? gate.token : undefined,
                     }),
                 });
 
@@ -90,6 +125,8 @@ export function AnnouncementBanner({
                             data?.error ??
                             "Something went wrong. Please try again.",
                     });
+                    // Token was consumed — reset widget for a fresh one.
+                    resetGate();
                     return;
                 }
 
@@ -99,15 +136,18 @@ export function AnnouncementBanner({
                     kind: "error",
                     message: "Network error. Please try again.",
                 });
+                // Network failure may or may not have consumed the token.
+                // Reset defensively so the retry always has a fresh one.
+                resetGate();
             }
         },
-        [email, turnstileToken],
+        [email, gate, resetGate],
     );
 
     const canSubmit =
         status.kind !== "submitting" &&
         email.trim().length > 0 &&
-        turnstileToken !== null;
+        gate.kind !== "pending";
 
     return (
         <div className={styles.announcementWrapper}>
@@ -233,13 +273,19 @@ export function AnnouncementBanner({
                                         </p>
                                     )}
 
-                                    {turnstileSiteKey &&
+                                    {turnstileEnabled &&
                                         status.kind !== "success" && (
                                             <TurnstileWidget
+                                                ref={turnstileRef}
                                                 siteKey={turnstileSiteKey}
-                                                onVerify={setTurnstileToken}
+                                                onVerify={(token) =>
+                                                    setGate({
+                                                        kind: "verified",
+                                                        token,
+                                                    })
+                                                }
                                                 onExpire={() =>
-                                                    setTurnstileToken(null)
+                                                    setGate({ kind: "pending" })
                                                 }
                                             />
                                         )}

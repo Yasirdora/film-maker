@@ -1,0 +1,147 @@
+/* ============================================================================
+   Prompt showcase carousel.
+   ----------------------------------------------------------------------------
+   Auto-advancing video reel beneath the tagline. The track holds the
+   cards in a flex row; advancing translates them by one card-width.
+   GPU compositing is forced via `translateZ(0)` on the track and each
+   card so the slide animation stays off the layout/paint critical path.
+   ========================================================================= */
+
+.showcase {
+    --showcase-container-max: 1200px;
+    --showcase-side-padding: 40px;
+    --showcase-card-gap: 32px;
+    --showcase-radius: 20px;
+    --showcase-ease: var(--lp-ease);
+
+    width: 100%;
+    margin: clamp(40px, 6vw, 72px) 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+@media (min-width: 768px) {
+    .showcase {
+        --showcase-side-padding: 80px;
+        --showcase-card-gap: 40px;
+    }
+}
+
+.showcaseViewport {
+    width: 100%;
+    overflow: hidden;
+}
+
+.showcaseTrackWrapper {
+    padding-left: var(--showcase-side-padding);
+}
+
+.showcaseTrack {
+    display: flex;
+    gap: var(--showcase-card-gap);
+    will-change: transform;
+    /* Lift the track onto its own compositor layer so the slide
+       transform never triggers layout/paint on descendants. */
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+}
+
+.showcaseCard {
+    flex: 0 0 calc(100vw - (var(--showcase-side-padding) * 2));
+    max-width: 1000px;
+    aspect-ratio: 16 / 9;
+    margin: 0;
+    border-radius: var(--showcase-radius);
+    overflow: hidden;
+    background: var(--lp-card-bg);
+    box-shadow:
+        inset 0 1px 1px rgb(255 255 255 / 0.05),
+        0 20px 40px rgb(0 0 0 / 0.4);
+    position: relative;
+    /* Promote each card for GPU compositing — keeps border-radius
+       clipping and video playback from repainting during the slide. */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: paint;
+}
+
+@media (min-width: 768px) {
+    .showcaseCard {
+        flex-basis: 75vw;
+    }
+}
+
+@media (min-width: 1024px) {
+    .showcaseCard {
+        flex-basis: 65vw;
+    }
+}
+
+.showcaseVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    /* Pin the video to its own layer so the track's transform
+       doesn't re-rasterize each frame. */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.showcaseUi {
+    width: 100%;
+    padding: 0 var(--showcase-side-padding);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 40px;
+}
+
+.showcaseNav {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.showcaseNavButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    /* Faint white wash; same family as --lp-mode-hover-bg but a touch
+       lighter so the resting state is barely visible against the page. */
+    background: color-mix(in oklab, var(--lp-text-strong) 4%, transparent);
+    border: 1px solid var(--lp-glass-border);
+    color: var(--lp-text-strong);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition:
+        background 250ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 250ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 250ms cubic-bezier(0.22, 1, 0.36, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+
+.showcaseNavButton svg {
+    width: 16px;
+    height: 16px;
+}
+
+.showcaseNavButton:hover {
+    background: var(--lp-mode-hover-bg);
+    /* Brighter variant of --lp-glass-border for the hover stroke. */
+    border-color: color-mix(in oklab, var(--lp-text-strong) 18%, transparent);
+    transform: scale(1.04);
+}
+
+.showcaseNavButton:active {
+    transform: scale(0.96);
+}
+
+.showcaseNavButton:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px var(--lp-bg),
+        0 0 0 4px var(--lp-text-strong);
+}

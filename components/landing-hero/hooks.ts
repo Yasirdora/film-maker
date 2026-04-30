@@ -44,7 +44,16 @@ export function useLoaderPhase(): LoaderPhase {
     const [phase, setPhase] = useState<LoaderPhase>("pulse");
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        // Respect user motion preference — skip the intro entirely so
+        // the page is immediately interactive without any animation.
+        const reducedMotion = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+        ).matches;
+
+        if (reducedMotion) {
+            setPhase("skipped");
+            return;
+        }
 
         let alreadySeen = false;
         try {
@@ -101,7 +110,7 @@ export function useLoaderPhase(): LoaderPhase {
 
 // ─── use-reveal-on-scroll ──────────────────────────────────────────────────
 
-interface RevealController {
+export interface RevealController {
     /** Returns true once the named element has entered the viewport. */
     has: (key: string) => boolean;
     /** Ref callback to register an element under a given key. */
@@ -116,15 +125,30 @@ interface RevealController {
  *
  * Each element observed is automatically unobserved after its first
  * intersection, so the observer's workload stays bounded.
+ *
+ * Lifecycle contract:
+ *   • Elements registered while unarmed are tracked and observed
+ *     in bulk the moment `armed` becomes true.
+ *   • Elements registered AFTER the observer is armed are observed
+ *     immediately — late mounts (tabs, conditional sections, route
+ *     transitions) are first-class.
+ *   • Unmounting unobserves the element so the observer never holds
+ *     references to detached DOM nodes.
  */
 export function useRevealOnScroll(armed: boolean): RevealController {
-    const [revealed, setRevealed] = useState<Set<string>>(new Set());
+    const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
     const elements = useRef<Map<string, HTMLElement>>(new Map());
+    const observerRef = useRef<IntersectionObserver | null>(null);
 
     const register = useCallback(
         (key: string) => (el: HTMLElement | null) => {
+            const previous = elements.current.get(key);
+            if (previous && previous !== el) {
+                observerRef.current?.unobserve(previous);
+            }
             if (el) {
                 elements.current.set(key, el);
+                observerRef.current?.observe(el);
             } else {
                 elements.current.delete(key);
             }
@@ -153,16 +177,16 @@ export function useRevealOnScroll(armed: boolean): RevealController {
             },
             { threshold: 0.1 },
         );
+        observerRef.current = observer;
 
-        // Defer one frame so React has flushed all ref callbacks from
-        // the render that armed the observer.
-        const raf = requestAnimationFrame(() => {
-            elements.current.forEach((el) => observer.observe(el));
-        });
+        // Pick up everything that registered while we were unarmed.
+        // Ref callbacks fire during commit, before useEffect, so the
+        // map already holds every reveal target rendered so far.
+        elements.current.forEach((el) => observer.observe(el));
 
         return () => {
-            cancelAnimationFrame(raf);
             observer.disconnect();
+            observerRef.current = null;
         };
     }, [armed]);
 
@@ -178,9 +202,15 @@ export function useRevealOnScroll(armed: boolean): RevealController {
 // ─── use-click-outside ─────────────────────────────────────────────────────
 
 /**
- * Calls `onOutside` when a click lands anywhere outside the referenced
- * element. Listens in the capture phase so it runs before other click
- * handlers that might otherwise stop propagation.
+ * Dismisses a popover/menu layer when:
+ *   1. A click lands outside the referenced element.
+ *   2. The Escape key is pressed.
+ *   3. Focus moves outside the referenced element (via Tab or
+ *      programmatic focus shift).
+ *
+ * All three vectors are expected in WCAG-compliant dismissible overlays.
+ * The `enabled` gate lets callers cheaply disable the listeners when
+ * the menu is closed.
  */
 export function useClickOutside<T extends HTMLElement>(
     ref: RefObject<T | null>,
@@ -190,7 +220,7 @@ export function useClickOutside<T extends HTMLElement>(
     useEffect(() => {
         if (!enabled) return;
 
-        const handle = (event: MouseEvent) => {
+        const handlePointer = (event: MouseEvent) => {
             const target = event.target as Node | null;
             if (!target) return;
             if (ref.current && !ref.current.contains(target)) {
@@ -198,7 +228,30 @@ export function useClickOutside<T extends HTMLElement>(
             }
         };
 
-        document.addEventListener("mousedown", handle);
-        return () => document.removeEventListener("mousedown", handle);
+        const handleKeydown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                onOutside();
+            }
+        };
+
+        const handleFocusOut = (event: FocusEvent) => {
+            // relatedTarget is the element receiving focus. If it's
+            // outside (or null — e.g. focus left the document), dismiss.
+            const next = event.relatedTarget as Node | null;
+            if (ref.current && !ref.current.contains(next)) {
+                onOutside();
+            }
+        };
+
+        document.addEventListener("mousedown", handlePointer);
+        document.addEventListener("keydown", handleKeydown);
+        ref.current?.addEventListener("focusout", handleFocusOut);
+
+        const el = ref.current;
+        return () => {
+            document.removeEventListener("mousedown", handlePointer);
+            document.removeEventListener("keydown", handleKeydown);
+            el?.removeEventListener("focusout", handleFocusOut);
+        };
     }, [ref, enabled, onOutside]);
 }
