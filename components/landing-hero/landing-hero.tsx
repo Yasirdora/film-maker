@@ -71,7 +71,11 @@ const COPY = {
     description:
         "Artistic Intelligence designed by and for filmmakers.",
     promptPlaceholder: "Ask Auteur anything about your creative vision...",
-    taglineLead: "Great stories start with you.",
+    taglineLead: (
+        <>
+            Great stories <b>start with you.</b>
+        </>
+    ),
     taglineCta: { href: "/studio", label: "Launch the studio" },
     showcaseHeadlineLead: "Discover a ",
     showcaseHeadlineEmphasis: "universe of possibilities.",

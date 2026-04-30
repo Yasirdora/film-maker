@@ -50,6 +50,9 @@
     height: 40px;
     width: auto;
     display: block;
+    /* Clapper's top arm rotates beyond the SVG viewBox during the clap
+     * animation; SVG defaults to overflow:hidden and would clip it. */
+    overflow: visible;
     color: currentColor;
   }
 

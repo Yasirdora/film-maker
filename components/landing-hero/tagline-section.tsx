@@ -21,7 +21,7 @@ interface TaglineCta {
 }
 
 interface TaglineSectionProps {
-    lead: string;
+    lead: React.ReactNode;
     /** Optional italic accent + trail copy rendered below the lead. */
     accent?: string;
     trail?: string;

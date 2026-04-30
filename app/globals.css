@@ -25,6 +25,12 @@
     display: flex !important;
 }
 
+/* Landing header logo sits a touch lower than its row baseline so the
+ * clapper doesn't look top-heavy against the centered nav links + CTA. */
+#app-nav-root .header-logo-anchor {
+    margin-top: 4px;
+}
+
 /* ─── AppNav scroll-hide ──────────────────────────────────────────────────
  * Verbatim port of google-one-next's Header behavior: when the pill
  * StickyNav (`.jumplinks.sticky:active`) is pinned AND the user is

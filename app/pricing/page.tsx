@@ -17,6 +17,7 @@ import { Newsreader } from "next/font/google";
 import {
     SUBSCRIPTION_PLANS,
     SOLO_PLAN,
+    SOLO_MONTHLY_VIDEO_LIMIT,
     PAID_PLANS_ENABLED,
     type SubscriptionPlan,
 } from "@/lib/constants";
@@ -70,7 +71,7 @@ export default async function PricingPage() {
             />
 
             <section className="mx-auto max-w-5xl px-6 pt-12 pb-12 text-center sm:pt-20">
-                <h1 className="text-balance text-[clamp(2.5rem,6.5vw,5.25rem)] font-semibold leading-[1.1] tracking-tight">
+                <h1 className="text-balance text-[clamp(2rem,5vw,4rem)] font-semibold leading-[1.1] tracking-tight">
                     Start a production with
                 </h1>
                 <h1
@@ -92,7 +93,7 @@ export default async function PricingPage() {
                 </p>
             </section>
 
-            <section className="mx-auto max-w-3xl px-6">
+            <section className="mx-auto max-w-4xl px-6">
                 <SoloCard
                     plan={SOLO_PLAN}
                     isCurrent={currentPlan === "solo"}
@@ -150,54 +151,61 @@ function SoloCard({ plan, isCurrent, isAuthenticated }: SoloCardProps) {
     const href = isAuthenticated ? "/studio" : "/login?from=/studio";
 
     return (
-        <div className="rounded-3xl border border-neutral-800 bg-neutral-900/60 p-8 backdrop-blur-sm sm:p-10">
-            <div className="flex items-start justify-between gap-4">
-                <h3 className="text-xl font-semibold">{plan.name}</h3>
-                <span className="rounded-md bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-300">
-                    Free forever
-                </span>
-            </div>
+        <div>
+        <div className="rounded-[18px] border border-neutral-800 bg-neutral-900/80 px-6 py-5 backdrop-blur-sm">
 
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-neutral-400">
-                Perfect for students and solo creators finding their visual
-                language. Start experiencing Artistic Intelligence.
-            </p>
+            {/* Mobile: stacked · Desktop: single row */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
 
-            <div className="mt-10">
-                <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-semibold tracking-tight sm:text-7xl">
+                {/* Plan name */}
+                <p className="shrink-0 text-2xl font-semibold text-neutral-50 sm:border-r sm:border-neutral-800 sm:pr-6">
+                    {plan.name}
+                </p>
+
+                {/* Credits */}
+                <div className="flex shrink-0 items-end gap-2">
+                    <span className="text-[2.6rem] font-semibold leading-none tracking-tight text-neutral-50">
                         {plan.credits}
                     </span>
-                    <span className="text-2xl font-semibold text-neutral-300 sm:text-3xl">
-                        credits
-                    </span>
-                    <span className="text-xl font-semibold text-neutral-500 sm:text-2xl">
-                        *
-                    </span>
+                    <div className="mb-0.5">
+                        <p className="text-sm font-medium leading-none text-neutral-300">credits</p>
+                        <p className="mt-1 text-xs leading-none text-neutral-500">/ month</p>
+                    </div>
                 </div>
-                <p className="mt-2 text-sm text-neutral-400">
-                    Generate images &amp; video &middot; Up to 6 projects
-                </p>
-            </div>
 
-            <div className="mt-8">
+                {/* Tagline + features */}
+                <div className="flex-1">
+                    <p className="text-sm font-medium text-neutral-200">
+                        Start for free. No card needed.
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                        {plan.dailyLimit}&nbsp;images/day
+                        &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                        {SOLO_MONTHLY_VIDEO_LIMIT}&nbsp;video/month
+                        &nbsp;&nbsp;&middot;&nbsp;&nbsp;
+                        {plan.maxProjects}&nbsp;projects
+                    </p>
+                </div>
+
+                {/* CTA — full width on mobile */}
                 {isCurrent ? (
-                    <div className="flex h-12 items-center justify-center rounded-xl bg-neutral-800 text-sm font-medium text-neutral-400">
+                    <div className="flex items-center justify-center rounded-[10px] bg-neutral-800 px-5 py-3 text-xs font-medium text-neutral-400 sm:w-auto">
                         Current plan
                     </div>
                 ) : (
                     <Link
                         href={href}
-                        className="flex h-12 items-center justify-center rounded-xl bg-white px-6 text-base font-semibold text-black transition-colors hover:bg-neutral-200 active:scale-95"
+                        className="flex items-center justify-center rounded-[10px] bg-white px-5 py-3 text-xs font-semibold text-black transition-colors hover:bg-neutral-200 active:scale-95 sm:w-auto"
                     >
-                        Start Creating &mdash; Free
+                        Start Creating — Free
                     </Link>
                 )}
-            </div>
 
-            <p className="mt-6 text-center text-xs text-neutral-500">
-                *Daily limits apply &mdash; helping us keep Solo accessible to everyone.
-            </p>
+            </div>
+        </div>
+        <p className="mt-3 text-center text-xs text-neutral-600">
+            *Daily limits apply &mdash; helping us keep Solo accessible to everyone.
+        </p>
         </div>
     );
 }
@@ -220,12 +228,6 @@ function PlanCard({
     const isFeatured = "featured" in plan && plan.featured === true;
     const isCurrent = currentPlan === plan.id;
 
-    // The monthly credit count is already shown as the big number,
-    // so drop it from the inline feature list to avoid duplication.
-    const inlineFeatures = plan.features.filter(
-        (f) => !/^\d+[,\d]*\s*credits/i.test(f),
-    );
-
     return (
         <div
             className={cn(
@@ -236,43 +238,41 @@ function PlanCard({
                 "sm:last:col-span-2 lg:last:col-span-1",
             )}
         >
-            {/* Main content — flex-1 so the button below stays anchored
-                right after this block, regardless of the expanded state. */}
             <div className="flex-1">
                 <h3 className="text-xl font-semibold text-neutral-50">
                     {plan.name}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-neutral-400">
+                <p className="mt-2 text-sm leading-relaxed text-neutral-500">
                     {plan.description}
                 </p>
 
+                {/* Credits — the hero metric. Price is secondary and only
+                    shown once paid plans are live to avoid "Pricing TBA"
+                    noise during the testing phase. */}
                 <div className="mt-8">
-                    <div className="flex items-baseline gap-2 text-neutral-50">
-                        <span className="text-4xl font-semibold tracking-tight sm:text-6xl">
+                    <div className="flex items-end gap-3 text-neutral-50">
+                        <span className="text-6xl font-semibold tracking-tight sm:text-7xl">
                             {plan.credits.toLocaleString()}
                         </span>
-                        <span className="text-xl font-semibold text-neutral-300 sm:text-2xl">
-                            credits
-                        </span>
-                    </div>
-                    {plan.interval && (
-                        <p className="mt-2 text-sm text-neutral-400">
-                            {paidPlansEnabled ? (
-                                `${plan.priceLabel}/mo`
-                            ) : (
-                                <span className="font-medium text-neutral-300">
-                                    Pricing TBA
-                                </span>
+                        <div className="mb-1.5">
+                            <p className="text-base font-medium text-neutral-300 leading-none">
+                                credits
+                            </p>
+                            {plan.interval && (
+                                <p className="mt-1 text-xs text-neutral-500 leading-none">
+                                    per month
+                                </p>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Price — only rendered once paid plans are live */}
+                    {plan.interval && paidPlansEnabled && (
+                        <p className="mt-3 text-sm text-neutral-500">
+                            {plan.priceLabel} / month
                         </p>
                     )}
                 </div>
-
-                {inlineFeatures.length > 0 && (
-                    <p className="mt-6 text-sm leading-relaxed text-neutral-400">
-                        {inlineFeatures.join(", ")}
-                    </p>
-                )}
             </div>
 
             <div className="pt-8">
@@ -286,7 +286,11 @@ function PlanCard({
                 />
             </div>
 
-            <PlanFeatures features={plan.features} />
+            {/* Always show all but the last 2 features; those sit behind the "+" toggle */}
+            <PlanFeatures
+                features={plan.features}
+                visibleCount={plan.features.length - 2}
+            />
         </div>
     );
 }
