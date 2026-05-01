@@ -1,9 +1,10 @@
 /* ============================================================================
-   Tagline section + showcase intro headline.
+   Tagline section.
    ----------------------------------------------------------------------------
-   Below-the-fold lead copy, the showcase intro headline that LandingHero
-   slots into the section's `middleContent` prop, and the optional CTA
-   styling (used by the section's own <Link> CTA).
+   Below-the-fold lead copy and the optional CTA styling. The middle
+   slot is a generic `ReactNode`; the showcase-specific intro headline
+   that's slotted in lives next to its sibling outro headline in
+   ./showcase-headlines.module.css.
    ========================================================================= */
 
 .taglineSection {
@@ -84,34 +85,6 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-}
-
-/* ── Showcase intro headline (slotted via TaglineSection.middleContent) ── */
-
-.showcaseIntro {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: clamp(12px, 1.5vw, 20px);
-}
-
-.showcaseIntroHeadline {
-    margin: 0;
-    color: var(--lp-subtitle-headline);
-    font-size: clamp(1.25rem, 2.6vw, 2rem);
-    font-weight: 300;
-    line-height: 1.2;
-    letter-spacing: -0.015em;
-}
-
-.showcaseIntroHeadlineLead {
-    font-weight: 300;
-    color: var(--lp-text-muted);
-}
-
-.showcaseIntroHeadlineEmphasis {
-    font-weight: 700;
-    color: var(--lp-subtitle-headline);
 }
 
 @media (max-width: 900px) {

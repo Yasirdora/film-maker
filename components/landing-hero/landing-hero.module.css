@@ -1,20 +1,15 @@
 /* ============================================================================
    Landing-hero — page-level shell.
    ----------------------------------------------------------------------------
-   This module only owns rules that LandingHero itself renders:
+   This module only owns rules that LandingPage itself renders:
      • `.page` — the main element wrapping the whole hero tree, including
        the loader-gated visibility (.pageHidden / .pageReady).
      • `.hero` — the rounded-corner hero shell with its bottom row.
-     • `.showcaseOutro` — the headline section LandingHero renders
-       directly between the showcase and the StickyNav.
 
-   Per-component styles live next to each component:
-     announcement-banner.module.css, clapperboard-loader.module.css,
-     editor-toolbar.module.css, feature-video.module.css,
-     hero-background.module.css, hero-content.module.css,
-     hero-prompt.module.css, prompt-showcase.module.css,
-     scroll-indicator.module.css, tagline-section.module.css,
-     reveal.module.css.
+   Per-component styles live next to each component (announcement-banner,
+   clapperboard-loader, editor-toolbar, feature-video, hero-background,
+   hero-content, hero-prompt, prompt-showcase, scroll-indicator,
+   showcase-headlines, tagline-section, reveal).
 
    Design tokens (`--lp-*`) live at :root in app/globals.css.
    ========================================================================= */
@@ -51,7 +46,7 @@
     width: calc(100% - clamp(16px, 3vw, 48px));
     max-width: 1800px;
     margin: clamp(8px, 1.5vw, 16px) auto clamp(8px, 2vw, 24px);
-    min-height: calc(100svh - var(--header-height, 64px) - 32px);
+    min-height: calc(100svh - var(--header-height) - 32px);
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -86,34 +81,6 @@
     gap: 16px;
 }
 
-/* ── Showcase outro headline ───────────────────────────────────────────── */
-
-.showcaseOutro {
-    width: 100%;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: clamp(64px, 9vw, 128px) clamp(24px, 4vw, 48px);
-    text-align: center;
-}
-
-.showcaseOutroHeadline {
-    margin: 0;
-    color: var(--lp-subtitle-headline);
-    font-size: clamp(2rem, 5vw, 3.75rem);
-    line-height: 1.1;
-    letter-spacing: -0.025em;
-}
-
-.showcaseOutroHeadlineLead {
-    font-weight: 200;
-    color: var(--lp-text-muted);
-}
-
-.showcaseOutroHeadlineEmphasis {
-    font-weight: 700;
-    color: var(--lp-subtitle-headline);
-}
-
 /* ── Responsive ────────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
@@ -130,10 +97,6 @@
 }
 
 @media (max-width: 640px) {
-    /* Reserve room for the fixed-bottom AppNav tab bar (66px). */
-    .page {
-        padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
-    }
     .hero {
         border-radius: 14px;
     }

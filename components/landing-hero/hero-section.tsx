@@ -39,7 +39,7 @@ export function HeroSection({
     turnstileSiteKey,
 }: HeroSectionProps) {
     return (
-        <section className={styles.hero}>
+        <section className={styles.hero} aria-label="Film-maker — Artistic Intelligence for filmmakers">
             <HeroBackground sources={HERO_VIDEO_SOURCES} />
 
             <AnnouncementBanner

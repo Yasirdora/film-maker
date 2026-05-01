@@ -28,7 +28,7 @@
 }
 
 .title {
-    margin: 0 0 0;
+    margin: 0;
     line-height: 0.95;
     color: var(--lp-text-strong);
     /* Larger reveal: subtle scale instead of translate for big SVG */
@@ -95,6 +95,9 @@
         --title-column-width: min(82vw, 320px);
         align-items: center;
         text-align: center;
+        /* Centered layout needs symmetric horizontal padding; parent
+           heroBottom already supplies the page gutter. */
+        padding-left: 0;
     }
     .description {
         font-size: 1rem;

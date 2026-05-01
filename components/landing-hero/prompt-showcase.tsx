@@ -58,11 +58,6 @@ export function PromptShowcase({ slides }: PromptShowcaseProps) {
             </div>
 
             <div className={styles.showcaseUi}>
-                {/* Prompt text intentionally hidden for now — label +
-                    prompt copy will return once final wording is set.
-                    The slides[].label / .prompt fields are still read
-                    here so they stay in the component contract. */}
-
                 <div className={styles.showcaseNav}>
                     <button
                         type="button"

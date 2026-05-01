@@ -66,9 +66,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     padding: 9px 20px;
     border-radius: 9px;
-    background: #fff;
+    background: var(--lp-on-dark-primary-bg);
     color: var(--lp-bg);
     font-family: inherit;
     font-size: 13px;
@@ -81,17 +82,17 @@
 }
 
 .primaryCta:hover {
-    background: rgb(255 255 255 / 0.88);
+    background: var(--lp-on-dark-primary-bg-hover);
 }
 
 .primaryCta:active {
     transform: scale(0.97);
 }
 
-.arrow {
-    display: inline-block;
-    margin-left: 5px;
-    font-size: 12px;
+.primaryCtaArrow {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
 }
 
 .secondaryCta {
@@ -115,8 +116,8 @@
 }
 
 .secondaryCta:hover {
-    background: rgb(255 255 255 / 0.05);
-    border-color: rgb(255 255 255 / 0.15);
+    background: var(--lp-on-dark-secondary-bg-hover);
+    border-color: var(--lp-on-dark-secondary-border-hover);
 }
 
 .secondaryCta:active {
@@ -128,7 +129,7 @@
 .footnote {
     margin: 0;
     font-size: 11px;
-    color: rgb(255 255 255 / 0.2);
+    color: var(--lp-text-faint);
     line-height: 1.4;
 }
 

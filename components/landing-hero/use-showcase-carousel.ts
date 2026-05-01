@@ -94,38 +94,17 @@ export function useShowcaseCarousel(
     const [order, setOrder] = useState(() => slides.map((_, i) => i));
     const [activeIndex, setActiveIndex] = useState(0);
 
-    // Mirrors activeIndex for synchronous reads inside goNext/goPrev —
-    // we need to know the next slide's id BEFORE React commits the
-    // state update so we can rewind the incoming video before the
-    // slide animation begins.
-    const activeIndexRef = useRef(0);
-    useEffect(() => {
-        activeIndexRef.current = activeIndex;
-    }, [activeIndex]);
-
-    const advanceActive = useCallback(
-        (delta: 1 | -1) => {
-            setActiveIndex(
-                (current) => (current + delta + slides.length) % slides.length,
-            );
-        },
-        [slides.length],
-    );
-
-    // Called at the END of a slide transition, once the outgoing card
-    // is fully off-screen. Rewinds every non-active video so the next
-    // time any of them rotates back into view it starts at frame 0.
-    // Safe here because only the active card is in the viewport — any
-    // currentTime = 0 jump on other cards is invisible.
-    const rewindInactiveVideos = useCallback((activeId: string | undefined) => {
-        videoRefs.current.forEach((video, id) => {
-            if (id === activeId) return;
-            try {
-                video.currentTime = 0;
-            } catch {
-                /* some browsers throw before metadata loads — ignore */
-            }
-        });
+    /** Rewind a single video to frame 0, ignoring browsers that throw
+     *  before metadata loads. */
+    const rewindVideo = useCallback((id: string | undefined) => {
+        if (!id) return;
+        const video = videoRefs.current.get(id);
+        if (!video) return;
+        try {
+            video.currentTime = 0;
+        } catch {
+            /* metadata not yet loaded — the video starts at 0 anyway */
+        }
     }, []);
 
     const measureStep = useCallback(() => {
@@ -209,13 +188,19 @@ export function useShowcaseCarousel(
         [],
     );
 
+    /**
+     * Force a layout flush. Reading `offsetHeight` on the track makes the
+     * browser commit any pending style/transform writes synchronously,
+     * which we need before kicking off the next animation frame.
+     */
+    const forceLayout = (el: HTMLElement) => {
+        void el.offsetHeight;
+    };
+
     const goNext = useCallback(async () => {
         const track = trackRef.current;
         if (!track || isAnimatingRef.current || slides.length < 2) return;
         isAnimatingRef.current = true;
-
-        const nextIndex = (activeIndexRef.current + 1) % slides.length;
-        advanceActive(1);
 
         // The first card is the one sliding off the left edge — fade it out.
         const outgoing = track.firstElementChild as HTMLElement | null;
@@ -229,30 +214,32 @@ export function useShowcaseCarousel(
         });
         if (trackRef.current) {
             trackRef.current.style.transform = "translate3d(0, 0, 0)";
-            void trackRef.current.offsetHeight;
+            forceLayout(trackRef.current);
         }
         if (outgoing) outgoing.style.opacity = "1";
-        // Outgoing card is now at the tail, fully off-screen. Rewind
-        // every inactive video so next rotations start at frame 0.
-        rewindInactiveVideos(slides[nextIndex]?.id);
+
+        // Rewind the incoming active to frame 0 BEFORE updating
+        // activeIndex — when the playback effect runs, it sees a clean
+        // playhead and the user gets a fresh start of the clip rather
+        // than a mid-frame resume.
+        const nextIndex = (activeIndex + 1) % slides.length;
+        rewindVideo(slides[nextIndex]?.id);
+
+        setActiveIndex(nextIndex);
         isAnimatingRef.current = false;
-    }, [advanceActive, rewindInactiveVideos, runSlide, slides]);
+    }, [activeIndex, rewindVideo, runSlide, slides]);
 
     const goPrev = useCallback(async () => {
         const track = trackRef.current;
         if (!track || isAnimatingRef.current || slides.length < 2) return;
         isAnimatingRef.current = true;
 
-        const prevIndex =
-            (activeIndexRef.current - 1 + slides.length) % slides.length;
-        advanceActive(-1);
-
         // Pre-shift tail to head, offset track invisibly, then animate back.
         flushSync(() => {
             setOrder((prev) => [prev[prev.length - 1], ...prev.slice(0, -1)]);
         });
         track.style.transform = `translate3d(-${stepWidthRef.current}px, 0, 0)`;
-        void track.offsetHeight;
+        forceLayout(track);
 
         // The new head (previously the tail) needs to fade IN as the
         // track slides right — the user should see it materialize,
@@ -261,11 +248,15 @@ export function useShowcaseCarousel(
         if (incoming) incoming.style.opacity = "0";
         await runSlide(-stepWidthRef.current, 0, incoming, "in");
 
-        // Old active is now the second child, off-screen to the right.
-        // Rewind every inactive video so they're ready for next rotations.
-        rewindInactiveVideos(slides[prevIndex]?.id);
+        // Same rationale as goNext: rewind the incoming active before
+        // committing the index update so the playback effect plays the
+        // clip from frame 0.
+        const prevIndex = (activeIndex - 1 + slides.length) % slides.length;
+        rewindVideo(slides[prevIndex]?.id);
+
+        setActiveIndex(prevIndex);
         isAnimatingRef.current = false;
-    }, [advanceActive, rewindInactiveVideos, runSlide, slides]);
+    }, [activeIndex, rewindVideo, runSlide, slides]);
 
     // Pause playback + autoplay rotation while the showcase is offscreen.
     useEffect(() => {
@@ -293,10 +284,11 @@ export function useShowcaseCarousel(
 
     // Only the active slide's video plays. Non-active videos pause but
     // keep their playhead so the outgoing clip doesn't snap to frame 0
-    // while it's still visible during the slide. The rewind happens
-    // AFTER each transition completes (rewindInactiveVideos in
-    // goNext/goPrev) so next time any card rotates back into view it's
-    // at frame 0. When the active video finishes playing it advances.
+    // while it's still visible during the slide. goNext/goPrev rewind
+    // the *incoming* active just before committing the index update,
+    // so when this effect runs the new active is already at frame 0
+    // and starts playing cleanly. The active video's `ended` handler
+    // advances the carousel.
     useEffect(() => {
         const activeId = slides[activeIndex]?.id;
         let activeVideo: HTMLVideoElement | undefined;

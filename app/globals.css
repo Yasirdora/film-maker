@@ -214,6 +214,12 @@
     --brand-text-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.8);
     --brand-icon-shadow: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
 
+    /* Sticky-header height — owned at :root rather than buried inside
+     * the ported landing-blocks bundle. Components.css redeclares the
+     * same values further down, but having the canonical source here
+     * means components don't need a fallback in their var() reads. */
+    --header-height: 56px;
+
     /* Landing-page tokens — the dark hero kit. Always-dark surfaces,
      * shared by every component under the landing tree (hero, banner,
      * prompt bar, mode menu, loader). Lives at :root so siblings of
@@ -281,6 +287,15 @@
     --lp-on-light-input-bg: rgb(0 0 0 / 0.04);
     --lp-on-light-input-border: rgb(0 0 0 / 0.08);
 
+    /* On-dark surface accents — used by glass CTAs sitting on the hero
+     * gradient. Kept named (not just per-component) so any future
+     * dark-glass surface can reuse them. */
+    --lp-on-dark-primary-bg: #fff;
+    --lp-on-dark-primary-bg-hover: rgb(255 255 255 / 0.88);
+    --lp-on-dark-secondary-bg-hover: rgb(255 255 255 / 0.05);
+    --lp-on-dark-secondary-border-hover: rgb(255 255 255 / 0.15);
+    --lp-text-faint: rgb(255 255 255 / 0.2);
+
     /* Showcase card surface — solid charcoal beneath each video. */
     --lp-card-bg: #151517;
 
@@ -290,6 +305,12 @@
 
     /* Tagline accent — italic gradient on the second line. */
     --lp-tagline-gradient: linear-gradient(90deg, #9b8bd5, #e4899a);
+}
+
+@media (min-width: 850px) {
+    :root {
+        --header-height: 64px;
+    }
 }
 
 @media (prefers-color-scheme: dark) {

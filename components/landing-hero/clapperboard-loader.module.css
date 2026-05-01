@@ -54,8 +54,10 @@
     animation: loaderClap 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+/* Hinge `transform-origin` is set inline from CLAPPERBOARD_HINGE — see
+   clapperboard-loader.tsx — so the SVG's pivot stays in lock-step with
+   any future path edits. The keyframe below picks up that origin. */
 .loaderTop {
-    transform-origin: 882.45px 448.09px;
     transform: rotate(-15deg);
 }
 

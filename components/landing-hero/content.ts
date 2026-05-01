@@ -22,8 +22,6 @@ export interface ShowcaseSlide {
     id: string;
     videoSrc: string;
     poster?: string;
-    label: string;
-    prompt: string;
 }
 
 // ─── Copy ──────────────────────────────────────────────────────────────────
@@ -52,6 +50,16 @@ export const HERO_VIDEO_SOURCES: readonly HeroVideoSource[] = [
     { src: "/assets/bg.mp4", type: "video/mp4" },
 ];
 
+// ─── Feature video ─────────────────────────────────────────────────────────
+
+/** Standalone showcase clip rendered between the StickyNav and the
+ *  product sections. Asset + label co-located with the rest of the
+ *  marketing data. */
+export const FEATURE_VIDEO = {
+    src: "/assets/Mercedes.mp4",
+    label: "Mercedes showcase film",
+} as const;
+
 // ─── Showcase slides ───────────────────────────────────────────────────────
 
 /**
@@ -59,34 +67,9 @@ export const HERO_VIDEO_SOURCES: readonly HeroVideoSource[] = [
  * reads this list verbatim and adapts to any length ≥ 2.
  */
 export const SHOWCASE_SLIDES: readonly ShowcaseSlide[] = [
-    {
-        id: "slide-01",
-        videoSrc: "/assets/showcase/01.mp4",
-        label: "Neon rainfall.",
-        prompt: "Courier through rainy Shinjuku, 35 mm handheld.",
-    },
-    {
-        id: "slide-02",
-        videoSrc: "/assets/showcase/02.mp4",
-        label: "Sunrise atelier.",
-        prompt: "Tailor at a Parisian window, golden-hour dolly-in.",
-    },
-    {
-        id: "slide-03",
-        videoSrc: "/assets/showcase/03.mp4",
-        label: "The archive room.",
-        prompt: "Historian, dusty film canister, single shaft of light.",
-    },
-    {
-        id: "slide-04",
-        videoSrc: "/assets/showcase/04.mp4",
-        label: "Last takeoff.",
-        prompt: "Astronaut at ignition, anamorphic dawn tarmac.",
-    },
-    {
-        id: "slide-05",
-        videoSrc: "/assets/showcase/05.mp4",
-        label: "Quiet coast.",
-        prompt: "Lighthouse keeper at dawn, pastel sea, long lens.",
-    },
+    { id: "slide-01", videoSrc: "/assets/showcase/01.mp4" },
+    { id: "slide-02", videoSrc: "/assets/showcase/02.mp4" },
+    { id: "slide-03", videoSrc: "/assets/showcase/03.mp4" },
+    { id: "slide-04", videoSrc: "/assets/showcase/04.mp4" },
+    { id: "slide-05", videoSrc: "/assets/showcase/05.mp4" },
 ];

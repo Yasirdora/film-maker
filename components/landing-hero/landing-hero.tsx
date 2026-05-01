@@ -11,22 +11,21 @@
  *   │  <LandingPageShell>  (client — loader + reveal context)      │
  *   │ ┌────────────────────────────────────────────────────────────┐│
  *   ││ <HeroSection>  (above-fold hero block)                     ││
- *   ││   Video background, announcement banner, headline,         ││
- *   ││   prompt bar, editor toolbar                               ││
  *   │└────────────────────────────────────────────────────────────┘│
- *   │  Model providers marquee                                     │
- *   │  Scroll indicator                                            │
- *   │  Tagline section                                             │
- *   │  Prompt showcase carousel                                    │
- *   │  Showcase outro headline                                     │
+ *   │  <ModelProviders />  marquee                                 │
+ *   │  <ScrollIndicator />                                         │
+ *   │  <TaglineSection> + <ShowcaseIntroHeadline>                  │
+ *   │  <PromptShowcase />  carousel                                │
+ *   │  <ShowcaseOutroHeadline />                                   │
  *   │  ────────────────────────────────────────────────────────── │
  *   │  StickyNav │ FeatureVideo │ NextGenAI │ Generation │        │
  *   │  Automation │ Benefits │ AppDownload                        │
  *   └──────────────────────────────────────────────────────────────┘
  *
- * Static copy and data live in ./content.ts — edit there for messaging
- * changes without touching component logic. Props are reserved for
- * runtime-only config (e.g. environment keys).
+ * Static copy and data live in ./content.ts; cross-component anchor
+ * IDs live in ./anchors.ts. Edit those files for messaging or
+ * navigation changes without touching component logic. Props are
+ * reserved for runtime-only config (e.g. environment keys).
  */
 
 import Link from "next/link";
@@ -39,20 +38,28 @@ import BenefitsSection from "@/components/landing-blocks/sections/BenefitsSectio
 import AppDownload from "@/components/landing-blocks/sections/AppDownload";
 import Spacer from "@/components/landing-blocks/shared/Spacer";
 
-import { COPY, SHOWCASE_SLIDES } from "./content";
+import { ANCHORS } from "./anchors";
+import { COPY, FEATURE_VIDEO, SHOWCASE_SLIDES } from "./content";
 import { FeatureVideo } from "./feature-video";
 import { HeroSection } from "./hero-section";
 import { LandingPageShell } from "./landing-hero-shell";
 import { ModelProviders } from "./model-providers";
 import { PromptShowcase } from "./prompt-showcase";
 import { ScrollIndicator } from "./scroll-indicator";
+import {
+    ShowcaseIntroHeadline,
+    ShowcaseOutroHeadline,
+} from "./showcase-headlines";
 import { TaglineSection } from "./tagline-section";
 
 import announcementStyles from "./announcement-banner.module.css";
-import taglineStyles from "./tagline-section.module.css";
-import styles from "./landing-hero.module.css";
 
-// ─── JSX copy (depends on styles/components — kept in this file) ──────────
+// ─── JSX-bearing copy ──────────────────────────────────────────────────────
+//
+// Lives here rather than in content.ts because both fragments depend
+// on JSX (a styled <Link>, a <b>) — content.ts is reserved for plain
+// serializable data. The announcement body's style import is the only
+// cross-module reference left in this file.
 
 const ANNOUNCEMENT_BODY = (
     <>
@@ -77,11 +84,7 @@ interface LandingPageProps {
     turnstileSiteKey: string;
 }
 
-/**
- * Full landing-page composition. Exported as both `LandingPage` (the
- * canonical name) and `LandingHero` (backward-compatible alias so
- * existing consumers don't break during migration).
- */
+/** Full landing-page composition. */
 export function LandingPage({ turnstileSiteKey }: LandingPageProps) {
     return (
         <LandingPageShell>
@@ -92,56 +95,22 @@ export function LandingPage({ turnstileSiteKey }: LandingPageProps) {
 
             <ModelProviders />
 
-            <ScrollIndicator targetId="tagline" />
+            <ScrollIndicator targetId={ANCHORS.tagline} />
 
             <TaglineSection
-                id="tagline"
+                id={ANCHORS.tagline}
                 lead={TAGLINE_LEAD}
-                middleContent={
-                    <div className={taglineStyles.showcaseIntro}>
-                        <h2 className={taglineStyles.showcaseIntroHeadline}>
-                            <span
-                                className={
-                                    taglineStyles.showcaseIntroHeadlineLead
-                                }
-                            >
-                                {COPY.showcaseHeadlineLead}
-                            </span>
-                            <span
-                                className={
-                                    taglineStyles.showcaseIntroHeadlineEmphasis
-                                }
-                            >
-                                {COPY.showcaseHeadlineEmphasis}
-                            </span>
-                        </h2>
-                    </div>
-                }
+                middleContent={<ShowcaseIntroHeadline />}
                 cta={COPY.taglineCta}
             />
 
             <PromptShowcase slides={SHOWCASE_SLIDES} />
 
-            <section
-                id="sticky-nav-headline"
-                className={styles.showcaseOutro}
-            >
-                <h2 className={styles.showcaseOutroHeadline}>
-                    <span className={styles.showcaseOutroHeadlineLead}>
-                        {COPY.showcaseOutroLead}
-                    </span>
-                    <span className={styles.showcaseOutroHeadlineEmphasis}>
-                        {COPY.showcaseOutroEmphasis}
-                    </span>
-                </h2>
-            </section>
+            <ShowcaseOutroHeadline id={ANCHORS.stickyNavHeadline} />
 
             <StickyNav />
 
-            <FeatureVideo
-                src="/assets/Mercedes.mp4"
-                label="Mercedes showcase film"
-            />
+            <FeatureVideo src={FEATURE_VIDEO.src} label={FEATURE_VIDEO.label} />
 
             <NextGenAISection />
             <GenerationSection />
@@ -153,6 +122,3 @@ export function LandingPage({ turnstileSiteKey }: LandingPageProps) {
         </LandingPageShell>
     );
 }
-
-/** @deprecated Use `LandingPage` instead. */
-export const LandingHero = LandingPage;

@@ -33,13 +33,6 @@
     place-items: center;
     color: var(--lp-text-muted);
     border-radius: 6px;
-    cursor: pointer;
-    transition: color 0.2s ease, background 0.2s ease;
-}
-
-.toolIcon:hover {
-    color: var(--lp-text-strong);
-    background: var(--lp-mode-hover-bg);
 }
 
 .toolIconDim {

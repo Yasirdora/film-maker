@@ -1,0 +1,70 @@
+/* ============================================================================
+   Showcase intro + outro headlines.
+   ----------------------------------------------------------------------------
+   Two related typographic blocks that frame the prompt-showcase carousel:
+     • `.intro*`  — slotted between the tagline lines (TaglineSection
+                    consumes via its `middleContent` prop).
+     • `.outro*`  — standalone section between the carousel and the
+                    StickyNav.
+
+   Kept in one module because the lead/emphasis treatment is shared:
+   light-weight muted prefix + bold display emphasis. If the design
+   ever diverges, split into two files at that point.
+   ========================================================================= */
+
+/* ── Intro ──────────────────────────────────────────────────────────────── */
+
+.intro {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 1.5vw, 20px);
+}
+
+.introHeadline {
+    margin: 0;
+    color: var(--lp-subtitle-headline);
+    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    font-weight: 300;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+}
+
+.introHeadlineLead {
+    font-weight: 300;
+    color: var(--lp-text-muted);
+}
+
+.introHeadlineEmphasis {
+    font-weight: 700;
+    color: var(--lp-subtitle-headline);
+}
+
+/* ── Outro ──────────────────────────────────────────────────────────────── */
+
+.outro {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(64px, 9vw, 128px) clamp(24px, 4vw, 48px)
+        clamp(32px, 5vw, 72px);
+    text-align: center;
+}
+
+.outroHeadline {
+    margin: 0;
+    color: var(--lp-subtitle-headline);
+    font-size: clamp(2rem, 5vw, 3.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+}
+
+.outroHeadlineLead {
+    font-weight: 200;
+    color: var(--lp-text-muted);
+}
+
+.outroHeadlineEmphasis {
+    font-weight: 700;
+    color: var(--lp-subtitle-headline);
+}

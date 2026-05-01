@@ -13,6 +13,7 @@
 import clsx from "clsx";
 
 import {
+    CLAPPERBOARD_HINGE,
     CLAPPERBOARD_VIEWBOX,
     ClapperboardArt,
 } from "@/components/icons/clapperboard-art";
@@ -36,19 +37,22 @@ export function ClapperboardLoader({ phase }: ClapperboardLoaderProps) {
         phase === "finished" && styles.loaderOverlayFinished,
     );
 
+    // Loader is purely decorative. Focus management for the gated page
+    // content is handled by `inert` on <main> in LandingPageShell, so
+    // the overlay can stay aria-hidden across every phase.
     return (
-        <div className={className} aria-hidden={phase !== "pulse"}>
+        <div className={className} aria-hidden="true">
             <div className={styles.loaderWrapper}>
                 <svg
                     className={styles.loaderSvg}
                     viewBox={CLAPPERBOARD_VIEWBOX}
                     xmlns="http://www.w3.org/2000/svg"
-                    role="img"
-                    aria-label="Film-maker logo loading"
+                    focusable="false"
                 >
                     <ClapperboardArt
                         baseClassName={styles.loaderPart}
                         topClassName={`${styles.loaderPart} ${styles.loaderTop}`}
+                        topStyle={{ transformOrigin: CLAPPERBOARD_HINGE }}
                     />
                 </svg>
             </div>

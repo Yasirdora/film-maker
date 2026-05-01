@@ -25,10 +25,7 @@ export function FeatureVideo({ src, label }: FeatureVideoProps) {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    const playResult = video.play();
-                    if (playResult && typeof playResult.catch === "function") {
-                        playResult.catch(() => {});
-                    }
+                    video.play().catch(() => {});
                 } else {
                     video.pause();
                 }
@@ -43,14 +40,9 @@ export function FeatureVideo({ src, label }: FeatureVideoProps) {
     const toggleMuted = () => {
         const next = !muted;
         setMuted(next);
-        // When unmuting, ensure playback resumes (some browsers pause
-        // on unmute if the video wasn't user-initiated).
-        if (!next && videoRef.current) {
-            const playResult = videoRef.current.play();
-            if (playResult && typeof playResult.catch === "function") {
-                playResult.catch(() => {});
-            }
-        }
+        // Some browsers pause on unmute when playback wasn't user-
+        // initiated; nudge it back to playing.
+        if (!next) videoRef.current?.play().catch(() => {});
     };
 
     return (

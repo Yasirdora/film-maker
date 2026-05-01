@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cx } from "@/styles/landing-blocks/classNames";
+import { ANCHORS as LANDING_ANCHORS } from "@/components/landing-hero/anchors";
 import Button from "../shared/Button";
 import { FilmmakerIcon } from "../shared/FilmmakerIcon";
 
@@ -40,9 +41,11 @@ const SECTION_IDS = SECTION_LINKS.map((l) => l.href.slice(1));
 
 // Layout-anchor ids referenced by the scroll observer. These must exist
 // somewhere on the page for the corresponding nav state to ever flip.
+// `stickyTrigger` is owned by the landing-hero composition; the other two
+// are owned by sections rendered inside this component's neighbourhood.
 const ANCHORS = {
   /** When this element's top crosses the viewport top, the nav becomes "sticky". */
-  stickyTrigger: "sticky-nav-headline",
+  stickyTrigger: LANDING_ANCHORS.stickyNavHeadline,
   /** When this section is mostly in view, the nav slides off-screen. */
   pastContent: "benefits",
   /** When this section reaches the activation line, the nav reveals its CTA. */
