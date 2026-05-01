@@ -32,9 +32,14 @@ export function LandingPageShell({ children }: LandingPageShellProps) {
     const loader = useLoaderPhase();
     const reveal = useRevealOnScroll(loader.mainInteractive);
 
+    // Loader is rendered unconditionally so server and client agree at
+    // hydration time. The `loaderOverlaySkipped` CSS class hides it
+    // instantly (no transition) for repeat / reduced-motion visitors,
+    // so the cost of the always-mounted SVG is just one inert overlay
+    // node — not a visible flash.
     return (
         <>
-            {loader.overlayShown && <ClapperboardLoader phase={loader.phase} />}
+            <ClapperboardLoader phase={loader.phase} />
 
             <main
                 className={clsx(

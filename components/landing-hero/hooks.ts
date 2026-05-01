@@ -10,11 +10,20 @@
 import {
     useCallback,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type RefObject,
 } from "react";
+
+/**
+ * `useLayoutEffect` warns when rendered on the server, but `"use client"`
+ * components still SSR in App Router. Fall back to `useEffect` on the
+ * server (where it's a no-op anyway) so the warning never fires.
+ */
+const useIsomorphicLayoutEffect =
+    typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 // ─── use-loader-phase ──────────────────────────────────────────────────────
 
@@ -26,13 +35,10 @@ export type LoaderPhase =
     | "skipped";  // repeat visitor — skip the animation entirely
 
 export interface LoaderState {
-    /** Internal state-machine phase; consumers should generally prefer
-     *  `mainInteractive` and `overlayShown` over reading the phase. */
+    /** Pass to `<ClapperboardLoader>` — drives its CSS class set. */
     phase: LoaderPhase;
     /** True once the page below the overlay should be focusable + visible. */
     mainInteractive: boolean;
-    /** True while the overlay is still part of the visual flow. */
-    overlayShown: boolean;
 }
 
 const LOADER_SESSION_KEY = "fm-landing-loader-seen";
@@ -43,50 +49,45 @@ const LOADER_CLAP_DELAY_MS = 300;
 const LOADER_FADE_DELAY_MS = 800;
 
 /**
- * Resolves the initial loader phase synchronously, before first paint.
- * Reading these inputs in the `useState` initializer (rather than from
- * `useEffect`) eliminates a one-frame flash where reduced-motion or
- * already-seen users would otherwise see the loader briefly and then
- * skip it.
- *
- * Server-rendered output always returns "pulse" — `useState` initializers
- * run only on the client, so SSR and the first hydration tick agree.
- * The first browser-side render then uses the resolved value.
- */
-function readInitialPhase(): LoaderPhase {
-    if (typeof window === "undefined") return "pulse";
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        return "skipped";
-    }
-    try {
-        if (sessionStorage.getItem(LOADER_SESSION_KEY) === "1") {
-            return "skipped";
-        }
-    } catch {
-        // sessionStorage can throw in privacy mode — fall through and
-        // play the loader every time as graceful degradation.
-    }
-    return "pulse";
-}
-
-/**
  * Orchestrates the clapperboard intro. On first visit it waits for the
  * page to settle, runs the clap, then fades out. Return visits in the
  * same session and reduced-motion users skip straight to "skipped" so
  * the page is immediately interactive.
  *
+ * Why a layout-effect — not a `useState` initializer — for the skip
+ * detection: SSR renders `phase = "pulse"` (no access to `window` /
+ * `sessionStorage` on the server). If the client picked a different
+ * value during the first render, hydration would diverge from the
+ * server output and React would either warn loudly or, worse, leave
+ * the server-rendered loader DOM orphaned. By keeping the *initial*
+ * render identical on both sides and dispatching `setPhase("skipped")`
+ * inside `useLayoutEffect`, the update commits synchronously between
+ * hydration and first paint — so skipped users still never see the
+ * loader, but the JSX trees agree at hydration time.
+ *
  * The state machine is monotonic — once `finished` or `skipped`, it
  * cannot re-enter earlier phases — so consumers can use it as a gate.
  */
 export function useLoaderPhase(): LoaderState {
-    const [phase, setPhase] = useState<LoaderPhase>(readInitialPhase);
+    const [phase, setPhase] = useState<LoaderPhase>("pulse");
 
-    useEffect(() => {
-        // If the initial-state resolver already routed us to "skipped",
-        // there's no animation to drive — bail out without wiring any
-        // timers or window listeners.
-        if (phase !== "pulse") return;
+    useIsomorphicLayoutEffect(() => {
+        // ── Skip detection (runs before first paint) ───────────────────
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            setPhase("skipped");
+            return;
+        }
+        try {
+            if (sessionStorage.getItem(LOADER_SESSION_KEY) === "1") {
+                setPhase("skipped");
+                return;
+            }
+        } catch {
+            // sessionStorage can throw in privacy mode — fall through
+            // and play the loader every time as graceful degradation.
+        }
 
+        // ── Animation sequence (first-time visitor) ────────────────────
         let started = false;
         const timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -101,7 +102,7 @@ export function useLoaderPhase(): LoaderState {
                     try {
                         sessionStorage.setItem(LOADER_SESSION_KEY, "1");
                     } catch {
-                        /* ignore — same reason as readInitialPhase */
+                        /* ignore — same reason as the read above */
                     }
                 }, LOADER_FADE_DELAY_MS),
             );
@@ -121,17 +122,12 @@ export function useLoaderPhase(): LoaderState {
             window.removeEventListener("load", startSequence);
             timers.forEach(clearTimeout);
         };
-        // We deliberately depend only on the *initial* phase — once the
-        // sequence starts, we don't want subsequent phase transitions
-        // (ready → clapping → finished) to retrigger the effect.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return useMemo(
         () => ({
             phase,
             mainInteractive: phase === "finished" || phase === "skipped",
-            overlayShown: phase !== "skipped",
         }),
         [phase],
     );
