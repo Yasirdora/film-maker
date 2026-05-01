@@ -20,7 +20,7 @@ export default function BenefitsSection() {
             <ReversibleTile
               className="reversible-tile reversible-tile-bg-black reversible-tile-shared-asset"
               frontContent={
-                <div className="tile-front tile5050 tile5050-asset-left tile5050-bg-black tile5050-dark tile5050-asset-align-center">
+                <div className="tile-front tile5050 tile5050-asset-left tile5050-bg-black tile5050-dark">
                   <div className="tile5050-layout">
                     <div className="tile5050-content copy-group copy-group-dark">
                       <div className="tile5050-content-eyebrow copy-group-eyebrow eyebrow-tag eyebrow-dark eyebrow-outline eyebrow-size">
@@ -40,9 +40,9 @@ export default function BenefitsSection() {
                         sources={[
                           {
                             breakpoint: "all",
-                            src: "/assets/filmmaker academy.jpg",
-                            srcSet2x: "/assets/filmmaker academy.jpg",
-                            srcSet1x: "/assets/filmmaker academy.jpg",
+                            src: "/assets/filmmaker%20academy.webp",
+                            srcSet2x: "/assets/filmmaker%20academy.webp",
+                            srcSet1x: "/assets/filmmaker%20academy.webp",
                             width: 1550,
                             height: 1210,
                           },

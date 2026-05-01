@@ -454,7 +454,7 @@ export default function SpatialCarousel() {
     });
     // Playback-trigger: fires only once the carousel actually intersects
     // the viewport, so the active video doesn't decode while offscreen.
-    const inView = useInView(sceneRef, { threshold: 0.1 });
+    const inView = useInView(sceneRef, { threshold: 0.25 });
     const bfToken = useBfcacheToken();
 
     const { activeIdx, advance } = useRingMotion({
