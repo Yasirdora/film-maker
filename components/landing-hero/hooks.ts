@@ -211,12 +211,21 @@ export function useRevealOnScroll(armed: boolean): RevealController {
  * All three vectors are expected in WCAG-compliant dismissible overlays.
  * The `enabled` gate lets callers cheaply disable the listeners when
  * the menu is closed.
+ *
+ * The callback is held in a ref so callers don't need to memoize it.
+ * This keeps the effect stable — listeners are only attached/detached
+ * when `enabled` or `ref` change, not on every render.
  */
 export function useClickOutside<T extends HTMLElement>(
     ref: RefObject<T | null>,
     enabled: boolean,
     onOutside: () => void,
 ): void {
+    const onOutsideRef = useRef(onOutside);
+    useEffect(() => {
+        onOutsideRef.current = onOutside;
+    });
+
     useEffect(() => {
         if (!enabled) return;
 
@@ -224,13 +233,13 @@ export function useClickOutside<T extends HTMLElement>(
             const target = event.target as Node | null;
             if (!target) return;
             if (ref.current && !ref.current.contains(target)) {
-                onOutside();
+                onOutsideRef.current();
             }
         };
 
         const handleKeydown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
-                onOutside();
+                onOutsideRef.current();
             }
         };
 
@@ -239,7 +248,7 @@ export function useClickOutside<T extends HTMLElement>(
             // outside (or null — e.g. focus left the document), dismiss.
             const next = event.relatedTarget as Node | null;
             if (ref.current && !ref.current.contains(next)) {
-                onOutside();
+                onOutsideRef.current();
             }
         };
 
@@ -253,5 +262,5 @@ export function useClickOutside<T extends HTMLElement>(
             document.removeEventListener("keydown", handleKeydown);
             el?.removeEventListener("focusout", handleFocusOut);
         };
-    }, [ref, enabled, onOutside]);
+    }, [ref, enabled]);
 }

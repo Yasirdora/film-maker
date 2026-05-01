@@ -4,7 +4,7 @@
  * RevealContext — exposes the reveal controller created by
  * `useRevealOnScroll` to descendant client components.
  *
- * The provider lives on `<LandingHeroShell>`, which itself owns the
+ * The provider lives on `<LandingPageShell>`, which itself owns the
  * loader-phase state that "arms" the reveal observer. Consumers
  * (HeroContent, TaglineSection, future reveal targets) call
  * `useReveal()` to get the controller without having to receive it
@@ -23,14 +23,14 @@ export const RevealProvider = RevealContext.Provider;
 
 /**
  * Read the reveal controller from context. Throws if called outside
- * `<LandingHeroShell>` so the missing-provider failure is loud and
+ * `<LandingPageShell>` so the missing-provider failure is loud and
  * obvious instead of silently producing a no-op reveal.
  */
 export function useReveal(): RevealController {
     const ctx = useContext(RevealContext);
     if (!ctx) {
         throw new Error(
-            "useReveal must be used inside <LandingHeroShell>. " +
+            "useReveal must be used inside <LandingPageShell>. " +
                 "Reveal targets must render under the landing-hero shell.",
         );
     }

@@ -511,12 +511,21 @@ export default function SpatialCarousel() {
                                     className="sc-card"
                                     style={{ transform: cardTransform(i) }}
                                 >
+                                    {slide.poster ? (
+                                        <img
+                                            className="sc-card-poster"
+                                            src={slide.poster}
+                                            alt=""
+                                            aria-hidden="true"
+                                            decoding="async"
+                                            loading="lazy"
+                                        />
+                                    ) : null}
                                     <video
                                         ref={(el) => {
                                             videosRef.current[i] = el;
                                         }}
                                         src={slide.video}
-                                        poster={slide.poster ?? undefined}
                                         aria-label={slide.alt}
                                         muted
                                         playsInline

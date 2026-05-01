@@ -87,6 +87,21 @@
     -webkit-user-drag: none;
   }
 
+  /* Always-on poster fallback. iOS Safari does not reliably render the
+     <video poster> attribute when preload="metadata" / "none" — the card
+     would otherwise show the bare #121212 background. The video lays on
+     top once frame 0 decodes. */
+  .sc-card-poster {
+    position: absolute;
+    inset: 0;
+  }
+
+  .sc-card video {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+  }
+
   .sc-card-overlay {
     position: absolute;
     inset: 0;

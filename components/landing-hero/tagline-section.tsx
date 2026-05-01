@@ -5,7 +5,7 @@
  * into view. The second line uses the Newsreader italic / gradient
  * treatment defined in the CSS module.
  *
- * The reveal controller is read from <LandingHeroShell> via context.
+ * The reveal controller is read from <LandingPageShell> via context.
  * This makes the component renderable from a server parent without
  * threading a function prop across the client boundary.
  */

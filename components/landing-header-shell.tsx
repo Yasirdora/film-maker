@@ -8,6 +8,18 @@
  * breakpoint (CSS handles the spacing). Right-side CTA is supplied by
  * the server component as a React node so session-bound data stays
  * server-side.
+ *
+ * NOTE — global class names. The class names used here (`header-content`,
+ * `header-links`, `header-link`, `header-cta`, etc.) are **intentionally
+ * global**, not CSS Modules. They originate from the ported google-one-next
+ * header stylesheet in `styles/landing-blocks/components.css`, which
+ * contains ~100 rules targeting these names — including scroll-driven
+ * show/hide, sticky-nav coordination, and breakpoint overrides in
+ * `app/globals.css`. Converting to CSS Modules would require migrating
+ * the entire ported stylesheet in tandem. Until that migration happens,
+ * these names must stay global. The double-class selectors (e.g.
+ * `header-links-links`) act as a specificity bump to override the
+ * ported CSS's default `display: none` on mobile.
  */
 
 import { useCallback, useRef, type ReactNode } from "react";

@@ -170,11 +170,18 @@
     border: 0;
     width: 100%;
     font-family: inherit;
+    font-size: inherit;
+    outline: none;
 }
 
 .modeMenuItem:hover {
     background: var(--lp-mode-hover-bg);
     color: var(--lp-text-strong);
+}
+
+.modeMenuItem:focus-visible {
+    outline: 2px solid var(--lp-accent);
+    outline-offset: -2px;
 }
 
 .modeMenuItemActive {

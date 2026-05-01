@@ -1,0 +1,143 @@
+/* ============================================================================
+   HeroSoloCta — glass-panel CTA for the Solo plan.
+   ----------------------------------------------------------------------------
+   A compact glass container (matching the hero's existing glass treatment)
+   with the Solo copy, CTA buttons, and a footnote. Mirrors the prompt
+   bar's visual weight so the swap feels seamless.
+   ========================================================================= */
+
+.wrapper {
+    background: var(--lp-glass-bg);
+    border: 1px solid var(--lp-glass-border);
+    border-radius: 12px;
+    padding: 18px 24px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Backdrop blur on a pseudo — same pattern as the prompt bar wrapper.
+   Keeps the blur off ancestors so it doesn't trigger iOS caret bugs
+   if any sibling ever becomes an input. */
+.wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    pointer-events: none;
+}
+
+/* All content sits above the blur pseudo. */
+.wrapper > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Copy ────────────────────────────────────────────────────────────────── */
+
+.copy {
+    margin: 0;
+    font-size: 15px;
+    color: var(--lp-text-muted);
+    line-height: 1.4;
+}
+
+.planName {
+    color: var(--lp-text-strong);
+    font-weight: 600;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.actions {
+    display: flex;
+    gap: 8px;
+}
+
+.primaryCta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 20px;
+    border-radius: 9px;
+    background: #fff;
+    color: var(--lp-bg);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        transform 0.15s ease;
+}
+
+.primaryCta:hover {
+    background: rgb(255 255 255 / 0.88);
+}
+
+.primaryCta:active {
+    transform: scale(0.97);
+}
+
+.arrow {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 12px;
+}
+
+.secondaryCta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 9px 20px;
+    border-radius: 9px;
+    background: transparent;
+    border: 1px solid var(--lp-glass-border);
+    color: var(--lp-text-soft);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease;
+}
+
+.secondaryCta:hover {
+    background: rgb(255 255 255 / 0.05);
+    border-color: rgb(255 255 255 / 0.15);
+}
+
+.secondaryCta:active {
+    transform: scale(0.97);
+}
+
+/* ── Footnote ────────────────────────────────────────────────────────────── */
+
+.footnote {
+    margin: 0;
+    font-size: 11px;
+    color: rgb(255 255 255 / 0.2);
+    line-height: 1.4;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+/* On mobile the hero content is centered — match that alignment and
+   let the card fill available width for a cleaner stacked layout. */
+@media (max-width: 640px) {
+    .wrapper {
+        max-width: 100%;
+    }
+}

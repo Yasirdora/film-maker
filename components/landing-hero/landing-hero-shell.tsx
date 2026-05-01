@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * LandingHeroShell — the only client component in the landing-hero
- * tree's composition layer. It exists for two reasons:
+ * LandingPageShell — the only client component in the landing page's
+ * composition layer. It exists for two reasons:
  *
  *   1. Owns the loader phase (`useLoaderPhase`) and the reveal
  *      controller (`useRevealOnScroll`), which need to live in the
@@ -14,28 +14,24 @@
  * server components to be passed as children of a client component,
  * so the bulk of the landing tree stays on the server while only the
  * genuinely interactive pieces get bundled to the client.
+ *
+ * @deprecated Import from this file still works but the canonical
+ * export name is now `LandingPageShell`. The old `LandingHeroShell`
+ * alias is preserved for backward compatibility during migration.
  */
 
 import type { ReactNode } from "react";
-import { Newsreader } from "next/font/google";
 
 import { ClapperboardLoader } from "./clapperboard-loader";
 import { useLoaderPhase, useRevealOnScroll } from "./hooks";
 import { RevealProvider } from "./reveal-context";
 import styles from "./landing-hero.module.css";
 
-const newsreader = Newsreader({
-    subsets: ["latin"],
-    style: ["italic"],
-    variable: "--font-newsreader",
-    display: "swap",
-});
-
-interface LandingHeroShellProps {
+interface LandingPageShellProps {
     children: ReactNode;
 }
 
-export function LandingHeroShell({ children }: LandingHeroShellProps) {
+export function LandingPageShell({ children }: LandingPageShellProps) {
     const phase = useLoaderPhase();
     const loaderDone = phase === "finished" || phase === "skipped";
     const reveal = useRevealOnScroll(loaderDone);
@@ -45,7 +41,7 @@ export function LandingHeroShell({ children }: LandingHeroShellProps) {
             <ClapperboardLoader phase={phase} />
 
             <main
-                className={`${newsreader.variable} ${styles.page} ${
+                className={`${styles.page} ${
                     loaderDone ? styles.pageReady : styles.pageHidden
                 }`}
                 inert={!loaderDone || undefined}

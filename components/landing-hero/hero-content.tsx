@@ -3,7 +3,7 @@
 /**
  * Left column of the hero: brand mark, headline, and description. All
  * three pieces reveal sequentially once the loader finishes. The
- * reveal controller is read from <LandingHeroShell> via context, so
+ * reveal controller is read from <LandingPageShell> via context, so
  * this component can be rendered from a server parent without having
  * to thread a function prop across the client boundary.
  */

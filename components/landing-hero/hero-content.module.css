@@ -23,7 +23,7 @@
     max-width: 600px;
     flex: 1;
     min-width: 0;
-    margin-bottom: clamp(24px, 4vw, 56px);
+    margin-bottom: 12px;
     padding-left: clamp(12px, 2vw, 32px);
 }
 
@@ -52,7 +52,7 @@
     display: block;
     width: var(--title-column-width);
     color: var(--lp-text-strong);
-    text-align: left;
+    text-align: inherit;
     /* Font-size tracks the column width so the rendered glyph run
        approaches the same visual edge as the wordmark SVG above it.
        The coefficient (~0.145) was picked so "without limits." fits
@@ -90,9 +90,11 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
     .heroContent {
         --title-column-width: min(82vw, 320px);
+        align-items: center;
+        text-align: center;
     }
     .description {
         font-size: 1rem;

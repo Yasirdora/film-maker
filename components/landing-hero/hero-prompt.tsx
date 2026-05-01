@@ -19,7 +19,7 @@
  *     └── <ModeMenu>          (local, not exported — only used here)
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 
@@ -139,6 +139,23 @@ interface ModeMenuProps {
     onSelect: (id: HeroModeId) => void;
 }
 
+/**
+ * Accessible mode picker for the hero prompt bar.
+ *
+ * Follows the WAI-ARIA Menu Button pattern:
+ *   - Trigger has `aria-haspopup="menu"` + `aria-expanded`.
+ *   - Menu panel uses `role="menu"`, items use `role="menuitemradio"`.
+ *   - Arrow keys cycle focus through items (wrapping at edges).
+ *   - Home / End jump to first / last item.
+ *   - Enter / Space selects the focused item.
+ *   - Escape closes the menu and returns focus to the trigger.
+ *   - On mobile (fixed bottom-sheet) a focus trap prevents Tab from
+ *     escaping behind the overlay.
+ *
+ * Items are `<button>` elements so they receive native focus rings,
+ * are announced correctly by screen readers, and work with click,
+ * touch, and keyboard out of the box.
+ */
 function ModeMenu({
     anchorRef,
     activeModeId,
@@ -147,10 +164,102 @@ function ModeMenu({
     onSelect,
 }: ModeMenuProps) {
     const activeMode = getHeroMode(activeModeId);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    // When the menu opens, focus the currently-active item so the
+    // user can immediately navigate with arrow keys.
+    useEffect(() => {
+        if (!open) return;
+        const activeIdx = HERO_MODES.findIndex((m) => m.id === activeModeId);
+        const target = itemRefs.current[activeIdx >= 0 ? activeIdx : 0];
+        // requestAnimationFrame so the DOM has painted the menu visible
+        // before we attempt to focus inside it (CSS transition from
+        // visibility: hidden → visible).
+        requestAnimationFrame(() => target?.focus());
+    }, [open, activeModeId]);
+
+    // Focus trap for the mobile bottom-sheet: when the menu is open
+    // and positioned as a fixed overlay (≤768px), Tab must not escape.
+    useEffect(() => {
+        if (!open) return;
+        const menu = menuRef.current;
+        if (!menu) return;
+
+        const handleTrap = (e: KeyboardEvent) => {
+            if (e.key !== "Tab") return;
+            const focusable = menu.querySelectorAll<HTMLElement>(
+                'button, [tabindex]:not([tabindex="-1"])',
+            );
+            if (focusable.length === 0) return;
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
+
+        menu.addEventListener("keydown", handleTrap);
+        return () => menu.removeEventListener("keydown", handleTrap);
+    }, [open]);
+
+    /** Arrow / Home / End / Escape keyboard navigation. */
+    const handleMenuKeyDown = useCallback(
+        (e: React.KeyboardEvent) => {
+            const items = itemRefs.current.filter(Boolean) as HTMLButtonElement[];
+            const currentIdx = items.indexOf(
+                document.activeElement as HTMLButtonElement,
+            );
+
+            let nextIdx: number | null = null;
+
+            switch (e.key) {
+                case "ArrowDown":
+                    e.preventDefault();
+                    nextIdx = (currentIdx + 1) % items.length;
+                    break;
+                case "ArrowUp":
+                    e.preventDefault();
+                    nextIdx =
+                        (currentIdx - 1 + items.length) % items.length;
+                    break;
+                case "Home":
+                    e.preventDefault();
+                    nextIdx = 0;
+                    break;
+                case "End":
+                    e.preventDefault();
+                    nextIdx = items.length - 1;
+                    break;
+                case "Escape":
+                    e.preventDefault();
+                    onToggle();
+                    // Return focus to the trigger so the user doesn't
+                    // lose their place in the page.
+                    triggerRef.current?.focus();
+                    return;
+                default:
+                    return;
+            }
+
+            if (nextIdx !== null) {
+                items[nextIdx].focus();
+            }
+        },
+        [onToggle],
+    );
 
     return (
         <div className={styles.modeWrapper} ref={anchorRef}>
             <button
+                ref={triggerRef}
                 type="button"
                 className={clsx(
                     styles.modeButton,
@@ -165,32 +274,32 @@ function ModeMenu({
             </button>
 
             <div
+                ref={menuRef}
                 className={clsx(
                     styles.modeMenu,
                     open && styles.modeMenuOpen,
                 )}
                 role="menu"
                 aria-label="Prompt destination"
+                onKeyDown={handleMenuKeyDown}
             >
-                {HERO_MODES.map((mode) => {
+                {HERO_MODES.map((mode, index) => {
                     const isActive = mode.id === activeModeId;
                     return (
-                        <div
+                        <button
                             key={mode.id}
+                            ref={(el) => {
+                                itemRefs.current[index] = el;
+                            }}
+                            type="button"
                             role="menuitemradio"
                             aria-checked={isActive}
-                            tabIndex={0}
+                            tabIndex={isActive ? 0 : -1}
                             className={clsx(
                                 styles.modeMenuItem,
                                 isActive && styles.modeMenuItemActive,
                             )}
                             onClick={() => onSelect(mode.id)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    onSelect(mode.id);
-                                }
-                            }}
                         >
                             <span aria-hidden="true">{mode.icon}</span>
                             <span className={styles.modeDetails}>
@@ -201,7 +310,7 @@ function ModeMenu({
                                     {mode.description}
                                 </span>
                             </span>
-                        </div>
+                        </button>
                     );
                 })}
             </div>

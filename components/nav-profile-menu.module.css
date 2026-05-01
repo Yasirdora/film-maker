@@ -1,0 +1,304 @@
+/* ============================================================================
+   NavProfileMenu — avatar trigger + dropdown / mobile overlay.
+   ----------------------------------------------------------------------------
+   Uses the shared `--lp-*` design token palette so colours stay in
+   lock-step with the rest of the landing page. No hardcoded hex.
+   ========================================================================= */
+
+/* ── Shared surfaces ───────────────────────────────────────────────────── */
+
+.avatarBubble {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 0.07);
+    box-shadow: inset 0 0 0 1px var(--lp-glass-border);
+    color: var(--lp-text-muted);
+    font-size: 1rem;
+    font-weight: 600;
+    border: 0;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.avatarBubble:hover {
+    background: rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+}
+
+/* ── Desktop dropdown ──────────────────────────────────────────────────── */
+
+.desktopWrapper {
+    position: relative;
+}
+
+.desktopWrapperResponsive {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .desktopWrapperResponsive {
+        display: block;
+    }
+}
+
+.dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 320px;
+    border-radius: 16px;
+    border: 1px solid var(--lp-glass-border);
+    background: var(--lp-mode-menu-bg);
+    -webkit-backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    backdrop-filter: var(--lp-glass-blur) saturate(150%);
+    padding: 8px;
+    box-shadow: var(--lp-glass-shadow);
+}
+
+/* ── Mobile tab-bar trigger ────────────────────────────────────────────── */
+
+.tabTrigger {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 25%;
+    height: 100%;
+    gap: 4px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+@media (min-width: 640px) {
+    .tabTrigger {
+        display: none;
+    }
+}
+
+.tabIcon {
+    display: flex;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
+.tabIconDefault {
+    background: rgb(255 255 255 / 0.07);
+    border: 1px solid var(--lp-glass-border);
+}
+
+.tabIconOpen {
+    background: var(--lp-surface);
+    border: none;
+}
+
+.tabIconInitial {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--lp-text-muted);
+    line-height: 1;
+}
+
+.tabLabel {
+    font-size: 11px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.tabLabelDefault {
+    color: var(--lp-text-soft);
+}
+
+.tabLabelOpen {
+    color: var(--lp-icon-dim, rgb(255 255 255 / 0.35));
+}
+
+/* ── Mobile full-screen overlay ────────────────────────────────────────── */
+
+.mobileOverlay {
+    position: fixed;
+    inset: 0 0 66px 0;
+    z-index: 40;
+    overflow-y: auto;
+    background: var(--lp-bg);
+    padding: 16px;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+@media (min-width: 640px) {
+    .mobileOverlay {
+        display: none;
+    }
+}
+
+/* ── Menu content shared styles ────────────────────────────────────────── */
+
+.userHeader {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+.userAvatar {
+    display: flex;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgb(255 255 255 / 0.07);
+}
+
+.userAvatarInitial {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--lp-text-muted);
+}
+
+.userInfo {
+    min-width: 0;
+    flex: 1;
+}
+
+.userName {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--lp-text-strong);
+}
+
+.userEmail {
+    margin: 1px 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    color: var(--lp-text-muted);
+}
+
+/* ── Credits card ──────────────────────────────────────────────────────── */
+
+.creditsCard {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 6px 4px;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid rgb(255 255 255 / 0.06);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s ease;
+}
+
+.creditsCard:hover {
+    border-color: rgb(255 255 255 / 0.12);
+}
+
+.creditsRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.creditsIcon {
+    flex-shrink: 0;
+    color: var(--lp-text-muted);
+}
+
+.creditsCount {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--lp-text-strong);
+}
+
+.creditsPlanBadge {
+    border-radius: 4px;
+    background: rgb(255 255 255 / 0.04);
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--lp-text-muted);
+}
+
+.creditsDescription {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--lp-text-muted);
+}
+
+.creditsCta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--lp-text-strong);
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--lp-bg);
+    transition: background 0.2s ease;
+}
+
+.creditsCta:hover {
+    background: rgb(255 255 255 / 0.85);
+}
+
+/* ── Nav link + sign-out ───────────────────────────────────────────────── */
+
+.menuLink {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--lp-text-muted);
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.menuLink:hover {
+    background: var(--lp-mode-hover-bg);
+    color: var(--lp-text-strong);
+}
+
+.menuButton {
+    composes: menuLink;
+    background: none;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.menuButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.menuIcon {
+    flex-shrink: 0;
+    color: var(--lp-icon-dim, rgb(255 255 255 / 0.35));
+}
+
+.divider {
+    margin: 4px 8px;
+    border: 0;
+    border-top: 1px solid rgb(255 255 255 / 0.06);
+}

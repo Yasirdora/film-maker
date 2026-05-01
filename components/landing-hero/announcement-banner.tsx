@@ -55,21 +55,29 @@ interface AnnouncementBannerProps {
     turnstileSiteKey: string;
 }
 
+/**
+ * Intentionally loose email check — catches obviously wrong inputs
+ * (no @, no domain part) without rejecting valid but unusual addresses.
+ * The server performs the authoritative validation; this only prevents
+ * clearly invalid strings from burning a network round-trip and a
+ * Turnstile token.
+ */
+const BASIC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export function AnnouncementBanner({
     headline,
     body,
     turnstileSiteKey,
 }: AnnouncementBannerProps) {
     const turnstileEnabled = turnstileSiteKey.length > 0;
-    const initialGate: TurnstileGate = turnstileEnabled
-        ? { kind: "pending" }
-        : { kind: "disabled" };
 
     const [isOpen, setIsOpen] = useState(true);
     const [isExpanded, setIsExpanded] = useState(false);
     const [email, setEmail] = useState("");
     const [status, setStatus] = useState<SubmitStatus>({ kind: "idle" });
-    const [gate, setGate] = useState<TurnstileGate>(initialGate);
+    const [gate, setGate] = useState<TurnstileGate>(() =>
+        turnstileEnabled ? { kind: "pending" } : { kind: "disabled" },
+    );
     const turnstileRef = useRef<TurnstileWidgetHandle>(null);
 
     /** Drop any verified token and ask the widget for a fresh one. */
@@ -101,6 +109,14 @@ export function AnnouncementBanner({
             event.preventDefault();
             const trimmed = email.trim();
             if (!trimmed) return;
+
+            if (!BASIC_EMAIL_RE.test(trimmed)) {
+                setStatus({
+                    kind: "error",
+                    message: "Please enter a valid email address.",
+                });
+                return;
+            }
 
             setStatus({ kind: "submitting" });
 
@@ -146,7 +162,7 @@ export function AnnouncementBanner({
 
     const canSubmit =
         status.kind !== "submitting" &&
-        email.trim().length > 0 &&
+        BASIC_EMAIL_RE.test(email.trim()) &&
         gate.kind !== "pending";
 
     return (

@@ -32,7 +32,6 @@ export const COPY = {
     announcementHeadline: "We're still building — join the private beta",
     headline: "without limits.",
     description: "Artistic Intelligence designed by and for filmmakers.",
-    promptPlaceholder: "Ask Auteur anything about your creative vision...",
     taglineCta: { href: "/studio", label: "Launch the studio" },
     showcaseHeadlineLead: "Discover a ",
     showcaseHeadlineEmphasis: "universe of possibilities.",

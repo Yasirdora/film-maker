@@ -1,11 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Google_Sans } from "next/font/google";
+import { Google_Sans, Newsreader } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 
 const googleSans = Google_Sans({
     subsets: ["latin"],
     variable: "--font-google-sans",
+});
+
+const newsreader = Newsreader({
+    subsets: ["latin"],
+    style: ["italic"],
+    weight: ["400", "500", "600", "700"],
+    variable: "--font-newsreader",
+    display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +59,7 @@ export default function RootLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <html lang="en" className={googleSans.variable} data-theme="dark">
+        <html lang="en" className={`${googleSans.variable} ${newsreader.variable}`} data-theme="dark">
             <body className="min-h-dvh">
                 {children}
                 <Toaster position="top-center" theme="dark" richColors closeButton />

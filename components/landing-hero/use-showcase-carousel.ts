@@ -279,6 +279,18 @@ export function useShowcaseCarousel(
         return () => observer.disconnect();
     }, []);
 
+    // Stable ref to goNext so the ended-event listener always invokes
+    // the latest version without needing goNext in the effect's
+    // dependency array. This eliminates the race where goNext's
+    // identity changes mid-playback and the effect re-runs — tearing
+    // down the old listener — while a video is about to end, causing
+    // the ended event to fire into the void between cleanup and
+    // re-attach.
+    const goNextRef = useRef(goNext);
+    useEffect(() => {
+        goNextRef.current = goNext;
+    });
+
     // Only the active slide's video plays. Non-active videos pause but
     // keep their playhead so the outgoing clip doesn't snap to frame 0
     // while it's still visible during the slide. The rewind happens
@@ -298,14 +310,16 @@ export function useShowcaseCarousel(
             }
         });
 
+        const onEnded = () => goNextRef.current();
+
         if (activeVideo && slides.length > 1) {
-            activeVideo.addEventListener("ended", goNext, { once: true });
+            activeVideo.addEventListener("ended", onEnded, { once: true });
         }
 
         return () => {
-            activeVideo?.removeEventListener("ended", goNext);
+            activeVideo?.removeEventListener("ended", onEnded);
         };
-    }, [activeIndex, slides, isInView, goNext]);
+    }, [activeIndex, slides, isInView]);
 
     const rows = useMemo(
         () => order.map((slotIndex) => slides[slotIndex]),

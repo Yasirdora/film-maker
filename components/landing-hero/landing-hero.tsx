@@ -1,23 +1,27 @@
 /**
- * LandingHero — server component that composes the entire landing tree.
+ * LandingPage — server component that composes the entire landing tree.
  *
- * Only the small `<LandingHeroShell>` wrapper is a client component;
+ * Only the small `<LandingPageShell>` wrapper is a client component;
  * everything passed inside it as `children` is server-rendered (those
  * children may themselves be client components, but they only get
  * client-bundled if they declare `"use client"` themselves).
  *
  * Layout
  *   ┌──────────────────────────────────────────────────────────────┐
- *   │  Announcement banner (absolute, top-center)                  │
- *   │ ┌──────────────────────────────────────────────────────────┐ │
- *   │ │ Video background + overlay + local blur                  │ │
- *   │ │                                            ┌─ Editor rail │ │
- *   │ │   ┌── Hero bottom row ───────────────────┐ │ (desktop)   │ │
- *   │ │   │ Title + headline + description │ Prompt │            │ │
- *   │ │   └───────────────────────────────────────┘              │ │
- *   │ └──────────────────────────────────────────────────────────┘ │
+ *   │  <LandingPageShell>  (client — loader + reveal context)      │
+ *   │ ┌────────────────────────────────────────────────────────────┐│
+ *   ││ <HeroSection>  (above-fold hero block)                     ││
+ *   ││   Video background, announcement banner, headline,         ││
+ *   ││   prompt bar, editor toolbar                               ││
+ *   │└────────────────────────────────────────────────────────────┘│
+ *   │  Model providers marquee                                     │
  *   │  Scroll indicator                                            │
  *   │  Tagline section                                             │
+ *   │  Prompt showcase carousel                                    │
+ *   │  Showcase outro headline                                     │
+ *   │  ────────────────────────────────────────────────────────── │
+ *   │  StickyNav │ FeatureVideo │ NextGenAI │ Generation │        │
+ *   │  Automation │ Benefits │ AppDownload                        │
  *   └──────────────────────────────────────────────────────────────┘
  *
  * Static copy and data live in ./content.ts — edit there for messaging
@@ -35,14 +39,10 @@ import BenefitsSection from "@/components/landing-blocks/sections/BenefitsSectio
 import AppDownload from "@/components/landing-blocks/sections/AppDownload";
 import Spacer from "@/components/landing-blocks/shared/Spacer";
 
-import { AnnouncementBanner } from "./announcement-banner";
-import { COPY, HERO_VIDEO_SOURCES, SHOWCASE_SLIDES } from "./content";
-import { EditorToolbar } from "./editor-toolbar";
+import { COPY, SHOWCASE_SLIDES } from "./content";
 import { FeatureVideo } from "./feature-video";
-import { HeroBackground } from "./hero-background";
-import { HeroContent } from "./hero-content";
-import { HeroPrompt } from "./hero-prompt";
-import { LandingHeroShell } from "./landing-hero-shell";
+import { HeroSection } from "./hero-section";
+import { LandingPageShell } from "./landing-hero-shell";
 import { ModelProviders } from "./model-providers";
 import { PromptShowcase } from "./prompt-showcase";
 import { ScrollIndicator } from "./scroll-indicator";
@@ -73,35 +73,22 @@ const TAGLINE_LEAD = (
 
 // ─── Component ─────────────────────────────────────────────────────────────
 
-interface LandingHeroProps {
+interface LandingPageProps {
     turnstileSiteKey: string;
 }
 
-export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
+/**
+ * Full landing-page composition. Exported as both `LandingPage` (the
+ * canonical name) and `LandingHero` (backward-compatible alias so
+ * existing consumers don't break during migration).
+ */
+export function LandingPage({ turnstileSiteKey }: LandingPageProps) {
     return (
-        <LandingHeroShell>
-            <section className={styles.hero}>
-                <HeroBackground sources={HERO_VIDEO_SOURCES} />
-
-                <AnnouncementBanner
-                    headline={COPY.announcementHeadline}
-                    body={ANNOUNCEMENT_BODY}
-                    turnstileSiteKey={turnstileSiteKey}
-                />
-
-                <div className={styles.heroBottom}>
-                    <HeroContent
-                        headline={COPY.headline}
-                        description={COPY.description}
-                    />
-
-                    <div className={styles.heroSearchSide}>
-                        <HeroPrompt placeholder={COPY.promptPlaceholder} />
-                    </div>
-                </div>
-
-                <EditorToolbar />
-            </section>
+        <LandingPageShell>
+            <HeroSection
+                announcementBody={ANNOUNCEMENT_BODY}
+                turnstileSiteKey={turnstileSiteKey}
+            />
 
             <ModelProviders />
 
@@ -163,6 +150,9 @@ export function LandingHero({ turnstileSiteKey }: LandingHeroProps) {
             <Spacer size="R14" />
             <AppDownload />
             <Spacer size="R14" />
-        </LandingHeroShell>
+        </LandingPageShell>
     );
 }
+
+/** @deprecated Use `LandingPage` instead. */
+export const LandingHero = LandingPage;
