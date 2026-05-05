@@ -55,6 +55,24 @@
         -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Fira Code", Menlo, Consolas, monospace;
     --ease-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* ── Workspace palette ───────────────────────────────────────────
+     * Always-dark surface tones shared by the studio, project workspace,
+     * and all related overlays. Named semantically so components read as
+     * `bg-ws-control` rather than opaque hex literals.
+     *
+     * Registered as Tailwind `--color-*` tokens so they generate the
+     * full suite of utilities: `bg-ws-canvas`, `text-ws-icon`, etc.
+     */
+    --color-ws-canvas: #0f0f11;       /* page / shell background          */
+    --color-ws-surface: #1a1a1c;      /* elevated panel (composer, modal)  */
+    --color-ws-control: #2a2a2d;      /* button / toggle resting bg        */
+    --color-ws-control-hover: #353538; /* button hover                      */
+    --color-ws-control-active: #3a3a3d; /* button pressed / open           */
+    --color-ws-input: #202022;        /* form input / stepper / segmented  */
+    --color-ws-input-hover: #282829;  /* form input hover                  */
+    --color-ws-icon: #9ca3af;         /* secondary text, icon labels       */
+    --color-ws-dim: #52525b;          /* tertiary / placeholder text       */
 }
 
 @keyframes auth-card-entrance {
