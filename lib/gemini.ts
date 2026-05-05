@@ -302,13 +302,18 @@ function classifyError(err: unknown): GenerationError {
 /**
  * Maximum time to wait for a Veo video to finish generating.
  *
- * Cloudflare Workers on the default plan have a ~30 s wall-clock limit;
- * "unbound" billing extends that to 15 min. 90 s is a safe ceiling that
- * works on most plans and keeps the response acceptable to the user.
- * When a video takes longer, the route throws a timeout and the client
- * should display a "try again" message.
+ * Veo typically completes in 60–120 s; complex prompts or busy regions
+ * can push past 2 minutes. Cloudflare Workers Standard plan allows up
+ * to 5 minutes of wall-clock per request (I/O wait doesn't count toward
+ * the 30 s CPU budget), so 240 s is well within bounds and leaves
+ * headroom for retries before the proxy itself times out.
+ *
+ * When a video genuinely exceeds this, the route throws and the client
+ * shows "try again" — the lib/poll-generation.ts recovery flow then
+ * re-sends with the same idempotency key, so the second attempt picks
+ * up the result the backend may have produced in the meantime.
  */
-const VIDEO_POLL_TIMEOUT_MS = 90_000;
+const VIDEO_POLL_TIMEOUT_MS = 240_000;
 const VIDEO_POLL_INTERVAL_MS = 10_000;
 
 export interface GenerateVideoParams {

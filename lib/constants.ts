@@ -22,10 +22,11 @@ export const SOLO_DAILY_CREDIT_LIMIT = 3;
 // no video cap. Counter resets on the first day of each UTC month.
 export const SOLO_MONTHLY_VIDEO_LIMIT = 1;
 
-// Video models the Solo plan is allowed to use. Restricted to the cheapest
-// model so one monthly video doesn't consume a disproportionate share of
-// the 100-credit monthly allotment.
-export const SOLO_ALLOWED_VIDEO_MODEL_IDS = ["veo-3-fast"] as const;
+// Video models the Solo plan is allowed to use. Restricted to Veo 3.1 Lite
+// — the cheapest tier (~$0.05/s vs ~$0.15/s for Fast) — so one monthly
+// video doesn't consume a disproportionate share of the 100-credit allotment
+// and our per-free-user spend stays predictable.
+export const SOLO_ALLOWED_VIDEO_MODEL_IDS = ["veo-3-lite"] as const;
 
 // ─── Paid plans kill switch ─────────────────────────────────────────────────
 // During the public testing phase only the free Solo tier is active.
@@ -282,7 +283,7 @@ export const VIDEO_MODELS = [
         id: "veo-3.1",
         name: "Veo 3.1",
         description: "Latest video model. Highest quality and motion coherence.",
-        geminiModelId: "veo-3.1-generate-preview",
+        geminiModelId: "veo-3.1-generate-001",
         creditBase: 10,
         minDuration: 5,
         maxDuration: 8,
@@ -302,6 +303,16 @@ export const VIDEO_MODELS = [
         description: "Faster video generation. Good for quick previews.",
         geminiModelId: "veo-3.0-fast-generate-001",
         creditBase: 5,
+        minDuration: 4,
+        maxDuration: 8,
+    },
+    {
+        id: "veo-3-lite",
+        name: "Veo 3 Lite",
+        description:
+            "Lowest-cost video. Best for sketches and exploratory ideas.",
+        geminiModelId: "veo-3.1-lite-generate-001",
+        creditBase: 2,
         minDuration: 4,
         maxDuration: 8,
     },

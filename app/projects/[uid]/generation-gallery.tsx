@@ -391,7 +391,7 @@ function GalleryCard({
             onMouseLeave={isVideo ? handleMouseLeave : undefined}
         >
             <div className="relative h-full w-full">
-                {status === "done" && isVideo ? (
+                {status === "done" && generation.imageUrl && isVideo ? (
                     <>
                         {showShimmer && <MediaShimmer />}
                         <video
@@ -406,7 +406,7 @@ function GalleryCard({
                             onError={() => setMediaError(true)}
                         />
                     </>
-                ) : status === "done" ? (
+                ) : status === "done" && generation.imageUrl ? (
                     <>
                         {showShimmer && <MediaShimmer />}
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -419,7 +419,7 @@ function GalleryCard({
                             onError={() => setMediaError(true)}
                         />
                     </>
-                ) : status === "pending" ? (
+                ) : status === "pending" || (status === "done" && !generation.imageUrl) ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2">
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-white/60" />
                         {isVideo && (
