@@ -17,6 +17,7 @@
  *   open the app to the public.
  */
 
+import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -25,11 +26,15 @@ import { getAuth } from "./auth";
 /**
  * Returns the current session + user, or null if unauthenticated.
  * Safe to call in any server context. Does not redirect.
+ *
+ * Wrapped in `React.cache()` so multiple calls within the same
+ * server request (e.g. `generateMetadata` + page component) share
+ * a single auth lookup instead of hitting the session store twice.
  */
-export async function getSession() {
+export const getSession = cache(async () => {
     const auth = await getAuth();
     return auth.api.getSession({ headers: await headers() });
-}
+});
 
 /**
  * Returns the current session + user, or redirects to /login.
