@@ -39,6 +39,7 @@ import {
 } from "@/components/icons/action-icons";
 import { InlineRenameForm } from "@/components/inline-rename-form";
 import { downloadPdf } from "@/lib/pdf";
+import { setCredits as setCreditStore } from "@/lib/credit-store";
 import styles from "./auteur.module.css";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
@@ -752,6 +753,7 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                                 }
                                 if (event.balance) {
                                     setTotalCredits(event.balance.totalCredits);
+                                    setCreditStore(event.balance.totalCredits);
                                 }
                                 if (event.quota) setAnonQuota(event.quota);
                                 break;

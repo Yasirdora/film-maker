@@ -6,6 +6,8 @@ import "./globals.css";
 const googleSans = Google_Sans({
     subsets: ["latin"],
     variable: "--font-google-sans",
+    display: "swap",
+    adjustFontFallback: false,
 });
 
 const newsreader = Newsreader({
