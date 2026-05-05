@@ -29,7 +29,6 @@
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
-    "@google/genai": "^1.49.0",
     "@react-pdf/renderer": "^4.5.1",
     "better-auth": "^1.6.2",
     "class-variance-authority": "^0.7.1",

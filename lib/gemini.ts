@@ -1,98 +1,46 @@
 /**
- * Gemini image & video generation client.
+ * Image & video generation client (Vertex AI).
  *
- * Image generation paths:
+ * Three generation paths:
  *
- *   1. **Text-to-image** (Imagen models):
- *      Uses `generateImages` API. Supports aspect ratio, negative prompt,
- *      batch count (numberOfImages), and person generation controls.
+ *   1. **Imagen text-to-image** — `imagenPredict()` → `:predict`. Returns
+ *      one or more images in a single response (sampleCount).
  *
- *   2. **generateContent models** (Nano Banana / image-to-image):
- *      Uses `generateContent` API with responseModalities: ['IMAGE', 'TEXT'].
- *      Supports multimodal input for style transfer and editing.
+ *   2. **Gemini multimodal image** — `generateContent()` with
+ *      `responseModalities: ['IMAGE', 'TEXT']`. Used by Nano Banana for
+ *      style transfer / image-to-image. Returns one image per call, so
+ *      we fan out N calls in parallel for batches.
  *
- * Video generation:
+ *   3. **Veo video** — `veoSubmit()` → poll `veoFetch()`. Long-running;
+ *      bounded by `VIDEO_POLL_TIMEOUT_MS` to fit Workers wall-clock limits.
  *
- *   3. **Text-to-video** (Veo models):
- *      Uses `generateVideos` API (long-running operation). Submits the job,
- *      polls for completion, then downloads the video from the returned URI.
+ * All paths classify failures into a small {@link GenerationError} taxonomy
+ * so the UI can show a meaningful message instead of leaking raw upstream
+ * text. The raw upstream message is logged for diagnostics but never
+ * surfaced to end users.
  */
-
-import { GoogleGenAI, PersonGeneration } from "@google/genai";
 import { getPhotoModel, getVideoModel } from "./constants";
 import { base64ToBytes } from "./base64";
+import {
+    generateContent,
+    imagenPredict,
+    veoFetch,
+    veoSubmit,
+    VertexApiError,
+} from "./vertex-client";
+import type {
+    GenerateContentResponse,
+    ImagenPredictResponse,
+} from "./vertex-client";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const GENERATION_TIMEOUT_MS = 180_000;
-const MAX_RETRIES = 3;
-
 /**
- * Models that use generateContent (with responseModalities: ['IMAGE', 'TEXT'])
- * instead of generateImages. These models support both text-to-image and
- * image-to-image via multimodal input.
+ * Models that use Gemini's multimodal `generateContent` instead of Imagen's
+ * `:predict`. These models accept reference images for style transfer and
+ * always return exactly one image per call.
  */
-const GENERATE_CONTENT_MODELS = new Set([
-    "gemini-2.5-flash-image",
-]);
-
-// ─── Client pool (round-robin across API keys) ─────────────────────────────
-
-let apiKeys: string[] | null = null;
-let clients: GoogleGenAI[] | null = null;
-let clientIndex = 0;
-
-/**
- * Returns a { client, apiKey } pair from the round-robin pool.
- * Always use this so the API key used for a request matches the key
- * used to authenticate any follow-up downloads (e.g. Veo video URIs
- * are scoped to the project that generated them).
- */
-function getClientAndKey(): { client: GoogleGenAI; apiKey: string } {
-    if (clients && apiKeys) {
-        const idx = clientIndex % clients.length;
-        clientIndex++;
-        return { client: clients[idx], apiKey: apiKeys[idx] };
-    }
-
-    // Support comma-separated keys (GOOGLE_GEMINI_API_KEYS) for multi-project
-    // rotation, with fallback to the single-key env var.
-    const keysRaw =
-        process.env.GOOGLE_GEMINI_API_KEYS ??
-        process.env.GOOGLE_GEMINI_API_KEY;
-
-    if (!keysRaw) {
-        throw new Error(
-            "GOOGLE_GEMINI_API_KEYS is not configured. " +
-            "Set it in .env.local (dev) or via wrangler secret put (prod).",
-        );
-    }
-
-    const keys = keysRaw.split(",").map((k) => k.trim()).filter(Boolean);
-    if (keys.length === 0) {
-        throw new Error("No valid Gemini API keys found.");
-    }
-    apiKeys = keys;
-
-    clients = keys.map(
-        (key) =>
-            new GoogleGenAI({
-                apiKey: key,
-                httpOptions: {
-                    timeout: GENERATION_TIMEOUT_MS,
-                    retryOptions: { attempts: MAX_RETRIES + 1 },
-                },
-            }),
-    );
-
-    clientIndex = 1;
-    return { client: clients[0], apiKey: keys[0] };
-}
-
-/** Convenience wrapper for callers that only need the SDK client. */
-function getClient(): GoogleGenAI {
-    return getClientAndKey().client;
-}
+const GENERATE_CONTENT_MODELS = new Set(["gemini-2.5-flash-image"]);
 
 // ─── Error type ─────────────────────────────────────────────────────────────
 
@@ -137,13 +85,6 @@ export interface GenerateImageResult {
 
 // ─── Main entry point ───────────────────────────────────────────────────────
 
-/**
- * Generates an image from a text prompt, optionally guided by
- * reference image(s).
- *
- * Returns raw image bytes + MIME type. Throws `GenerationError` on
- * safety filter, empty response, quota issues, or API errors.
- */
 export async function generateImage(
     params: GenerateImageParams,
 ): Promise<GenerateImageResult[]> {
@@ -160,46 +101,41 @@ export async function generateImage(
     const isContentModel = GENERATE_CONTENT_MODELS.has(model.geminiModelId);
 
     if (hasReference || isContentModel) {
-        // generateContent returns 1 image per call, so fire N in parallel.
-        const count = Math.min(Math.max(1, params.sampleCount ?? 1), 4);
-        const results = await Promise.all(
+        // generateContent returns one image per call; fan out for batches.
+        const count = clamp(params.sampleCount ?? 1, 1, 4);
+        return Promise.all(
             Array.from({ length: count }, () =>
                 generateWithContent(model.geminiModelId, params),
             ),
         );
-        return results;
     }
-    return generateTextToImage(params);
+    return generateTextToImage(model.geminiModelId, params);
 }
 
-// ─── Text-to-image (Imagen via generateImages API) ────────────────────────
+// ─── Text-to-image (Imagen :predict) ──────────────────────────────────────
 
 async function generateTextToImage(
+    geminiModelId: string,
     params: GenerateImageParams,
 ): Promise<GenerateImageResult[]> {
-    const model = getPhotoModel(params.modelId)!;
-    const ai = getClient();
-    const count = Math.min(Math.max(1, params.sampleCount ?? 1), 4);
+    const count = clamp(params.sampleCount ?? 1, 1, 4);
 
-    let response;
+    let response: ImagenPredictResponse;
     try {
-        response = await ai.models.generateImages({
-            model: model.geminiModelId,
+        response = await imagenPredict(geminiModelId, {
             prompt: params.prompt,
-            config: {
-                numberOfImages: count,
-                negativePrompt: params.negativePrompt || undefined,
-                aspectRatio: params.aspectRatio ?? "1:1",
-                outputMimeType: "image/jpeg",
-                includeRaiReason: true,
-                personGeneration: PersonGeneration.ALLOW_ADULT,
-            },
+            sampleCount: count,
+            aspectRatio: params.aspectRatio ?? "1:1",
+            negativePrompt: params.negativePrompt || undefined,
+            outputMimeType: "image/jpeg",
+            personGeneration: "allow_adult",
+            includeRaiReason: true,
         });
     } catch (err) {
         throw classifyError(err);
     }
 
-    return extractFromImagen(response, count);
+    return extractFromImagen(response);
 }
 
 // ─── generateContent path (Nano Banana / image-to-image) ──────────────────
@@ -208,12 +144,8 @@ async function generateWithContent(
     geminiModelId: string,
     params: GenerateImageParams,
 ): Promise<GenerateImageResult> {
-    const ai = getClient();
-
-    // Build multimodal parts: reference images (if any) first, then text.
     const parts: Array<
-        | { inlineData: { mimeType: string; data: string } }
-        | { text: string }
+        { inlineData: { mimeType: string; data: string } } | { text: string }
     > = [];
 
     if (params.referenceImages) {
@@ -224,22 +156,20 @@ async function generateWithContent(
         }
     }
 
-    // gemini-2.5-flash-image is a chat-style model: without a generation
-    // directive, a conversational prompt ("hi how are you") yields a text
-    // reply and no image. Prefixing forces image output even for prompts
-    // that don't read like a description.
+    // gemini-2.5-flash-image is conversational by default — without an
+    // explicit "generate an image" directive a casual prompt may yield
+    // text only. Prefixing forces the image modality every time.
     const directive =
         params.referenceImages && params.referenceImages.length > 0
             ? `Generate an image based on the reference(s) and this prompt: ${params.prompt}`
             : `Generate an image of: ${params.prompt}`;
     parts.push({ text: directive });
 
-    let response;
+    let response: GenerateContentResponse;
     try {
-        response = await ai.models.generateContent({
-            model: geminiModelId,
+        response = await generateContent(geminiModelId, {
             contents: [{ role: "user", parts }],
-            config: {
+            generationConfig: {
                 responseModalities: ["IMAGE", "TEXT"],
             },
         });
@@ -253,17 +183,11 @@ async function generateWithContent(
 // ─── Response extractors ────────────────────────────────────────────────────
 
 function extractFromImagen(
-    response: {
-        generatedImages?: Array<{
-            image?: { imageBytes?: string; mimeType?: string };
-            raiFilteredReason?: string;
-        }>;
-    } | undefined,
-    expectedCount: number,
+    response: ImagenPredictResponse,
 ): GenerateImageResult[] {
-    const images = response?.generatedImages ?? [];
+    const predictions = response.predictions ?? [];
 
-    if (images.length === 0) {
+    if (predictions.length === 0) {
         throw new GenerationError(
             "The model could not generate an image for this prompt.",
             "no_output",
@@ -273,47 +197,36 @@ function extractFromImagen(
     const results: GenerateImageResult[] = [];
     let lastFilterReason: string | undefined;
 
-    for (const generated of images) {
-        if (generated.image?.imageBytes) {
+    for (const prediction of predictions) {
+        if (prediction.bytesBase64Encoded) {
             results.push(
                 decodeBase64Image(
-                    generated.image.imageBytes,
-                    generated.image.mimeType ?? "image/jpeg",
+                    prediction.bytesBase64Encoded,
+                    prediction.mimeType ?? "image/jpeg",
                 ),
             );
-        } else if (generated.raiFilteredReason) {
-            lastFilterReason = generated.raiFilteredReason;
+        } else if (prediction.raiFilteredReason) {
+            lastFilterReason = prediction.raiFilteredReason;
         }
     }
 
-    // If every single image was filtered, throw.
+    // If every image was filtered, surface the safety reason.
     if (results.length === 0) {
         throw new GenerationError(
-            lastFilterReason ?? "The model could not generate an image for this prompt.",
+            lastFilterReason ??
+                "The model could not generate an image for this prompt.",
             lastFilterReason ? "safety_filtered" : "no_output",
         );
     }
 
-    // Partial filter: return whatever succeeded. Credit cost is based
-    // on the requested count; the user still gets some images.
     return results;
 }
 
 function extractFromGenerateContent(
-    response: {
-        candidates?: Array<{
-            content?: {
-                parts?: Array<{
-                    inlineData?: { mimeType?: string; data?: string };
-                    text?: string;
-                }>;
-            };
-        }>;
-    } | undefined,
+    response: GenerateContentResponse,
 ): GenerateImageResult {
-    const parts = response?.candidates?.[0]?.content?.parts ?? [];
+    const parts = response.candidates?.[0]?.content?.parts ?? [];
 
-    // Find the first image part in the response.
     for (const part of parts) {
         if (part.inlineData?.data) {
             return decodeBase64Image(
@@ -339,13 +252,18 @@ function decodeBase64Image(
     return { imageData: bytes.buffer as ArrayBuffer, mimeType };
 }
 
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(Math.max(value, min), max);
+}
+
 function classifyError(err: unknown): GenerationError {
     const message = err instanceof Error ? err.message : String(err);
+    console.error("[gemini] raw error:", message);
 
     if (
+        err instanceof DOMException && err.name === "AbortError" ||
         message.includes("abort") ||
-        message.includes("timeout") ||
-        (err instanceof DOMException && err.name === "AbortError")
+        message.includes("timeout")
     ) {
         return new GenerationError(
             "Generation timed out. Please try again.",
@@ -353,17 +271,28 @@ function classifyError(err: unknown): GenerationError {
         );
     }
 
-    if (message.includes("429") || message.includes("quota")) {
+    const status = err instanceof VertexApiError ? err.status : undefined;
+
+    if (
+        status === 429 ||
+        message.includes("RESOURCE_EXHAUSTED") ||
+        message.toLowerCase().includes("quota") ||
+        message.toLowerCase().includes("too many requests")
+    ) {
         return new GenerationError(
             "Generation quota exceeded. Please try again later.",
             "quota_exceeded",
         );
     }
 
-    return new GenerationError(
-        `Generation failed: ${message}`,
-        "api_error",
-    );
+    if (status === 400 || message.toLowerCase().includes("bad request")) {
+        return new GenerationError(
+            "Generation failed: invalid request parameters.",
+            "api_error",
+        );
+    }
+
+    return new GenerationError(`Generation failed: ${message}`, "api_error");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -374,13 +303,13 @@ function classifyError(err: unknown): GenerationError {
  * Maximum time to wait for a Veo video to finish generating.
  *
  * Cloudflare Workers on the default plan have a ~30 s wall-clock limit;
- * Workers set to "unbound" billing go up to 15 minutes. 90 s is a safe
- * ceiling that works on most Cloudflare plans and keeps the response
- * acceptable. If a video takes longer than this, the route throws a
- * timeout error and the client should display a "try again" message.
+ * "unbound" billing extends that to 15 min. 90 s is a safe ceiling that
+ * works on most plans and keeps the response acceptable to the user.
+ * When a video takes longer, the route throws a timeout and the client
+ * should display a "try again" message.
  */
-const VIDEO_POLL_TIMEOUT_MS = 90_000; // 90 seconds
-const VIDEO_POLL_INTERVAL_MS = 10_000; // 10 seconds
+const VIDEO_POLL_TIMEOUT_MS = 90_000;
+const VIDEO_POLL_INTERVAL_MS = 10_000;
 
 export interface GenerateVideoParams {
     prompt: string;
@@ -397,28 +326,17 @@ export interface GenerateVideoResult {
     mimeType: string;
 }
 
-/**
- * Generates one or more videos from a text prompt using the Veo model.
- *
- * Each video is a separate long-running operation. Multiple videos are
- * generated in parallel, each using a different API key via round-robin
- * to maximize throughput.
- */
 export async function generateVideo(
     params: GenerateVideoParams,
 ): Promise<GenerateVideoResult[]> {
-    const count = Math.min(Math.max(1, params.sampleCount ?? 1), 4);
+    const count = clamp(params.sampleCount ?? 1, 1, 4);
 
     if (count === 1) {
-        const result = await generateSingleVideo(params);
-        return [result];
+        return [await generateSingleVideo(params)];
     }
-
-    // Fire N parallel video generation calls.
-    const results = await Promise.all(
+    return Promise.all(
         Array.from({ length: count }, () => generateSingleVideo(params)),
     );
-    return results;
 }
 
 async function generateSingleVideo(
@@ -432,102 +350,73 @@ async function generateSingleVideo(
         );
     }
 
-    const { client: ai, apiKey } = getClientAndKey();
-    const duration = Math.min(
-        Math.max(params.durationSeconds ?? 8, model.minDuration),
+    const duration = clamp(
+        params.durationSeconds ?? 8,
+        model.minDuration,
         model.maxDuration,
     );
 
-    // Submit the video generation job.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const request: any = {
-        model: model.geminiModelId,
-        prompt: params.prompt,
-        config: {
-            numberOfVideos: 1,
-            durationSeconds: duration,
-            aspectRatio: params.aspectRatio ?? "16:9",
-        },
-    };
-
-    // Image-to-video: provide a starting frame.
-    if (params.referenceImage) {
-        request.image = {
-            imageBytes: params.referenceImage.data,
-            mimeType: params.referenceImage.mimeType,
-        };
-    }
-
     let operation;
     try {
-        operation = await ai.models.generateVideos(request);
+        operation = await veoSubmit(model.geminiModelId, {
+            prompt: params.prompt,
+            sampleCount: 1,
+            aspectRatio: params.aspectRatio ?? "16:9",
+            durationSeconds: duration,
+            image: params.referenceImage
+                ? {
+                      bytesBase64Encoded: params.referenceImage.data,
+                      mimeType: params.referenceImage.mimeType,
+                  }
+                : undefined,
+        });
     } catch (err) {
         throw classifyError(err);
     }
 
-    // Poll until the operation completes.
+    // Poll until done or we hit the wall-clock deadline.
     const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
-    let result = operation;
+    let result;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    while (!(result as any)?.done && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, VIDEO_POLL_INTERVAL_MS));
+    while (Date.now() < deadline) {
         try {
-            result = await ai.operations.get({ operation: result });
+            result = await veoFetch(model.geminiModelId, operation.name);
         } catch (err) {
             throw classifyError(err);
         }
+        if (result.done) break;
+        await new Promise((resolve) =>
+            setTimeout(resolve, VIDEO_POLL_INTERVAL_MS),
+        );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (!(result as any)?.done) {
+    if (!result?.done) {
         throw new GenerationError(
             "Video generation timed out. Please try again.",
             "api_error",
         );
     }
 
-    // Extract the video URI from the completed operation.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const generatedVideos = (result as any)?.response?.generatedVideos ?? [];
-    const videoUri = generatedVideos[0]?.video?.uri;
+    if (result.error) {
+        throw new GenerationError(
+            `Video generation failed: ${result.error.message}`,
+            "api_error",
+        );
+    }
 
-    if (!videoUri) {
+    const videos = result.response?.videos ?? [];
+    const video = videos[0];
+
+    if (!video?.bytesBase64Encoded) {
         throw new GenerationError(
             "The model could not generate a video for this prompt.",
             "no_output",
         );
     }
 
-    // Download the video from the returned URI using the same API key that
-    // submitted the generation job. Google's Veo download endpoint scopes
-    // the URI to the originating project/key, so using a different key from
-    // the round-robin pool returns 403.
-    // NOTE: this endpoint only accepts auth via ?key= query param — the
-    // x-goog-api-key header returns 403. The key never reaches a browser
-    // (server-side fetch only).
-    const separator = videoUri.includes("?") ? "&" : "?";
-    const downloadUrl = `${videoUri}${separator}key=${apiKey}`;
-
-    let videoResponse: Response;
-    try {
-        videoResponse = await fetch(downloadUrl);
-    } catch (err) {
-        throw new GenerationError(
-            "Failed to download the generated video.",
-            "api_error",
-        );
-    }
-
-    if (!videoResponse.ok) {
-        throw new GenerationError(
-            `Failed to download video: ${videoResponse.status}`,
-            "api_error",
-        );
-    }
-
-    const videoData = await videoResponse.arrayBuffer();
-    const mimeType = videoResponse.headers.get("content-type") ?? "video/mp4";
-
-    return { videoData, mimeType };
+    const bytes = base64ToBytes(video.bytesBase64Encoded);
+    return {
+        videoData: bytes.buffer as ArrayBuffer,
+        mimeType: video.mimeType ?? "video/mp4",
+    };
 }

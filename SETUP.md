@@ -49,9 +49,21 @@ flow is:
 > hurts deliverability and branding in production. Switch to a Google
 > Workspace address on `film-maker.net` before public launch.
 
-### `GOOGLE_GEMINI_API_KEY`
-[ai.google.dev](https://ai.google.dev/) → Get API key. Free tier is sufficient
-for development. Migration to Vertex AI happens in v1.
+### `GOOGLE_SERVICE_ACCOUNT_JSON`
+Image, video, and Auteur chat all run on **Vertex AI** (Gemini API was
+phased out as a v0 backend because GCP free trial credits don't apply
+to it).
+
+Setup:
+1. Cloud Console → **APIs & Services → Library** → enable **Vertex AI API**.
+2. **IAM & Admin → Service Accounts** → Create service account named
+   `film-maker-vertex` (or similar).
+3. Grant it the role **Vertex AI User** on the project.
+4. Open the service account → **Keys → Add key → JSON**. A `.json` file
+   downloads — paste its full contents (single line, including the curly
+   braces) as the value of `GOOGLE_SERVICE_ACCOUNT_JSON` in `.env.local`.
+5. Optionally set `GOOGLE_CLOUD_PROJECT` and `GOOGLE_CLOUD_LOCATION`
+   (defaults: project from the service account JSON, `us-central1`).
 
 ### `STRIPE_*`
 Stripe Dashboard → Developers → API keys. Use **test mode** keys for `.env.local`.
@@ -167,7 +179,7 @@ npx wrangler secret put GMAIL_CLIENT_ID
 npx wrangler secret put GMAIL_CLIENT_SECRET
 npx wrangler secret put GMAIL_REFRESH_TOKEN
 npx wrangler secret put GMAIL_SENDER
-npx wrangler secret put GOOGLE_GEMINI_API_KEY
+npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_JSON
 npx wrangler secret put STRIPE_SECRET_KEY
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 npx wrangler secret put TURNSTILE_SECRET_KEY

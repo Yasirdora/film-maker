@@ -36,3 +36,17 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
     }
     return btoa(binary);
 }
+
+/**
+ * Encodes a byte array to base64url (RFC 4648 §5) — the URL-safe variant
+ * used by JWTs. No padding, `-` instead of `+`, `_` instead of `/`.
+ */
+export function bytesToBase64Url(bytes: Uint8Array): string {
+    const base64 = arrayBufferToBase64(
+        bytes.buffer.slice(
+            bytes.byteOffset,
+            bytes.byteOffset + bytes.byteLength,
+        ) as ArrayBuffer,
+    );
+    return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}

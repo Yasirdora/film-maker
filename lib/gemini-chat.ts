@@ -23,8 +23,12 @@
  * marking the assistant message row as `failed`.
  */
 
-import { GEMINI_BASE_URL } from "./constants";
 import type { AuteurMode } from "./auteur";
+import {
+    generateContent,
+    streamGenerateContent,
+    VertexApiError,
+} from "./vertex-client";
 
 // ─── Model + limits ─────────────────────────────────────────────────────────
 
@@ -127,24 +131,6 @@ export class ChatStreamError extends Error {
     }
 }
 
-// ─── API key selection ─────────────────────────────────────────────────────
-
-function getApiKey(): string {
-    const raw =
-        process.env.GOOGLE_GEMINI_API_KEYS ??
-        process.env.GOOGLE_GEMINI_API_KEY;
-    if (!raw) {
-        throw new ChatStreamError(
-            "GOOGLE_GEMINI_API_KEYS is not configured.",
-            500,
-        );
-    }
-    // Round-robin would be marginal gain over a single chat's SSE window,
-    // so we pick the first key for simplicity. Image generation does the
-    // rotation where batch parallelism amplifies the benefit.
-    return raw.split(",").map((k) => k.trim()).filter(Boolean)[0];
-}
-
 // ─── Streaming ──────────────────────────────────────────────────────────────
 
 /**
@@ -158,13 +144,9 @@ function getApiKey(): string {
 export async function* streamChat(
     params: StreamChatParams,
 ): AsyncGenerator<string, void, unknown> {
-    const apiKey = getApiKey();
-    const endpoint =
-        `${GEMINI_BASE_URL}/${CHAT_GEMINI_MODEL}:streamGenerateContent?alt=sse`;
-
     const systemPrompt = getSystemPrompt(params.mode, params.projectContext);
 
-    // Convert our wire format to Gemini's.
+    // Convert our wire format to Vertex's.
     const contents = params.history.map((msg) => {
         const parts: Array<
             | { text: string }
@@ -179,7 +161,7 @@ export async function* streamChat(
             }
         }
 
-        // Gemini rejects empty parts arrays — send a single empty text
+        // Vertex rejects empty parts arrays — send a single empty text
         // part when the message is purely images (rare but possible).
         if (msg.content) {
             parts.push({ text: msg.content });
@@ -188,44 +170,42 @@ export async function* streamChat(
         }
 
         return {
-            role: msg.role === "assistant" ? "model" : "user",
+            role: (msg.role === "assistant" ? "model" : "user") as
+                | "user"
+                | "model",
             parts,
         };
     });
 
-    const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-            systemInstruction: { parts: [{ text: systemPrompt }] },
-            contents,
-            generationConfig: {
-                temperature: 0.8,
-                topP: 0.95,
-                maxOutputTokens: MAX_OUTPUT_TOKENS,
-                // Gemini 2.5 Flash enables chain-of-thought by default and
-                // will spend 400-1200 internal "thinking" tokens before the
-                // first visible one streams out. For a conversational reply
-                // that reads as dead air to the user. Disable it — Auteur
-                // is a creative/reactive assistant, not a reasoning solver.
-                thinkingConfig: { thinkingBudget: 0 },
+    let response: Response;
+    try {
+        response = await streamGenerateContent(
+            CHAT_GEMINI_MODEL,
+            {
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents,
+                generationConfig: {
+                    temperature: 0.8,
+                    topP: 0.95,
+                    maxOutputTokens: MAX_OUTPUT_TOKENS,
+                    // Gemini 2.5 Flash enables chain-of-thought by default
+                    // and will spend 400-1200 internal "thinking" tokens
+                    // before the first visible one streams out — that reads
+                    // as dead air to the user. Disable it; Auteur is a
+                    // creative/reactive assistant, not a reasoning solver.
+                    thinkingConfig: { thinkingBudget: 0 },
+                },
             },
-        }),
-        signal: params.signal,
-    });
-
-    if (!response.ok || !response.body) {
-        const text = await response.text().catch(() => "");
-        throw new ChatStreamError(
-            `Gemini stream failed (${response.status}): ${text.slice(0, 400)}`,
-            response.status,
+            { signal: params.signal },
         );
+    } catch (err) {
+        if (err instanceof VertexApiError) {
+            throw new ChatStreamError(err.message, err.status);
+        }
+        throw err;
     }
 
-    const reader = response.body.getReader();
+    const reader = response.body!.getReader();
     const decoder = new TextDecoder("utf-8");
 
     // SSE framing: events are separated by a blank line, which per the
@@ -370,9 +350,6 @@ export async function generateConversationTitle(params: {
     assistantResponse: string;
     signal?: AbortSignal;
 }): Promise<string> {
-    const apiKey = getApiKey();
-    const endpoint = `${GEMINI_BASE_URL}/${TITLE_GEMINI_MODEL}:generateContent`;
-
     // Give the model enough of each message to pick out what the chat is
     // *about* (early + later sentences both carry signal — the opening
     // states intent, the body reveals the concrete subject). 800 chars
@@ -381,64 +358,48 @@ export async function generateConversationTitle(params: {
     const userSnippet = clampForTitle(params.userMessage, 800);
     const assistantSnippet = clampForTitle(params.assistantResponse, 800);
 
-    const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-            systemInstruction: {
-                parts: [
+    let data;
+    try {
+        data = await generateContent(
+            TITLE_GEMINI_MODEL,
+            {
+                systemInstruction: {
+                    parts: [{ text: TITLE_SYSTEM_PROMPT }],
+                },
+                contents: [
                     {
-                        text: TITLE_SYSTEM_PROMPT,
+                        role: "user",
+                        parts: [
+                            {
+                                text: `User: ${userSnippet}\n\nAssistant: ${assistantSnippet}`,
+                            },
+                        ],
                     },
                 ],
-            },
-            contents: [
-                {
-                    role: "user",
-                    parts: [
-                        {
-                            text: `User: ${userSnippet}\n\nAssistant: ${assistantSnippet}`,
-                        },
-                    ],
+                generationConfig: {
+                    temperature: 0.2,
+                    // 3-8 words of Title Case can hit ~25 tokens once BPE
+                    // splits proper nouns like "Anamorphic". Generous cap
+                    // avoids mid-word truncation ("Opening Scene of …").
+                    maxOutputTokens: 96,
+                    // The v1 API counts thinking tokens against
+                    // maxOutputTokens, so even a bounded thinking budget
+                    // here truncates the visible title. The sharpened
+                    // prompt + 800-char context already anchors on the
+                    // concrete subject without thinking.
+                    thinkingConfig: { thinkingBudget: 0 },
                 },
-            ],
-            generationConfig: {
-                temperature: 0.2,
-                // Generous visible-output cap — 3-8 words of Title Case
-                // can hit ~25 tokens once BPE splits proper nouns like
-                // "Anamorphic" or "Interrogation". Leaving extra headroom
-                // so the model isn't forced to truncate the concrete
-                // subject mid-word (we were seeing "Opening Scene of"
-                // style cut-offs at 32).
-                maxOutputTokens: 96,
-                // Empirically the v1beta API counts thinking tokens
-                // against maxOutputTokens, so even a "bounded" thinking
-                // budget here truncates the visible title. Stick with
-                // non-thinking — the sharpened prompt + 800-char context
-                // already anchors the model on the concrete subject.
-                thinkingConfig: { thinkingBudget: 0 },
             },
-        }),
-        signal: params.signal,
-    });
-
-    if (!response.ok) {
-        throw new ChatStreamError(
-            `Title generation failed with status ${response.status}`,
-            response.status,
+            { signal: params.signal },
         );
+    } catch (err) {
+        if (err instanceof VertexApiError) {
+            throw new ChatStreamError(err.message, err.status);
+        }
+        throw err;
     }
 
-    const data = (await response.json()) as {
-        candidates?: Array<{
-            content?: { parts?: Array<{ text?: string }> };
-        }>;
-    };
-    const raw =
-        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
     if (!raw) {
         throw new ChatStreamError("Empty title response");
     }

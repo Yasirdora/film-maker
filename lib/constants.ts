@@ -53,12 +53,6 @@ export const SIGNUP_PER_IP_PER_HOUR = 10;
 // Public URL base for objects in the `storage.film-maker.net` R2 bucket.
 export const R2_STORAGE_BASE_URL = "https://storage.film-maker.net";
 
-// ─── Gemini API ─────────────────────────────────────────────────────────────
-// We use the Gemini API directly for v0. In v1 this moves to Vertex AI for
-// higher quotas.
-export const GEMINI_BASE_URL =
-    "https://generativelanguage.googleapis.com/v1beta/models";
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Subscription plans
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,6 +216,23 @@ export type CreditPack = (typeof CREDIT_PACKS)[number];
 
 export function getCreditPack(id: string): CreditPack | undefined {
     return CREDIT_PACKS.find((p) => p.id === id);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Generation models — shared UI-facing shape
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Narrow, UI-facing subset of a generation model. Both photo and video
+ * models expose these four fields to the composer, settings panel, and
+ * workspace. Internal fields (geminiModelId, maxDurationSeconds, etc.)
+ * stay private to the server-side constants.
+ */
+export interface GenerationModel {
+    id: string;
+    name: string;
+    description: string;
+    creditBase: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

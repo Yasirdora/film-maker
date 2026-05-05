@@ -490,7 +490,10 @@ export async function POST(
                     // Audit failures never break the reply.
                 }
             } catch (err) {
-                console.error("[auteur/messages] stream error:", err);
+                console.error(
+                    "[auteur/messages] stream error:",
+                    err instanceof Error ? err.message : err,
+                );
                 const message =
                     err instanceof ChatStreamError
                         ? "The assistant couldn't respond. Please try again."
