@@ -3,14 +3,19 @@
 /**
  * GenerationComposer — floating prompt input bar with image attachment.
  *
- * Pinned to the bottom of the workspace. Features:
+ * Pinned to the bottom of the workspace. Owns:
  *   • Text input for the prompt
  *   • Image attachment via +button, drag-and-drop, or paste
- *   • Thumbnail preview row for attached images
- *   • Mode toggle (Image — Video disabled for v0)
+ *   • Thumbnail preview row (rendered by `ImageThumbnail`)
+ *   • Mode toggle (Image / Video)
  *   • Aspect ratio quick-toggle
- *   • Settings gear (opens ComposerSettings modal)
+ *   • Settings gear (opens `ComposerSettings` modal)
  *   • Generate button (submit)
+ *
+ * Delegates the entire fetch → parse → poll → error pipeline to
+ * `useGenerationSubmit`, which parameterises the image/video
+ * differences (endpoint, body shape, reference encoding, poll budget,
+ * URL key normalisation) behind a single `submit()` call.
  *
  * When reference images are attached, the API uses Gemini's editImage
  * with StyleReferenceImage instead of text-only generateImages.
@@ -21,18 +26,22 @@ import {
     useCallback,
     useEffect,
     useImperativeHandle,
-    useLayoutEffect,
     useRef,
     useState,
 } from "react";
-import { createPortal, flushSync } from "react-dom";
-import { toast } from "sonner";
+import { flushSync } from "react-dom";
 import {
     ComposerSettings,
     type ComposerSettingsState,
-    type Model,
 } from "./composer-settings";
-import { RESOLUTION_MULTIPLIERS, type Resolution } from "@/lib/constants";
+import { ImageThumbnail } from "./image-thumbnail";
+import type { AttachedImage } from "./image-thumbnail";
+import { useGenerationSubmit } from "./use-generation-submit";
+import {
+    RESOLUTION_MULTIPLIERS,
+    type Resolution,
+    type GenerationModel,
+} from "@/lib/constants";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -50,29 +59,17 @@ const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface AttachedImage {
-    id: string;
-    file: File;
-    previewUrl: string;
-}
-
 export type ComposerMode = "image" | "video";
-
-interface VideoModel {
-    id: string;
-    name: string;
-    description: string;
-    creditBase: number;
-}
 
 interface GenerationComposerProps {
     projectUid: string;
-    models: Model[];
-    videoModels: VideoModel[];
+    models: GenerationModel[];
+    videoModels: GenerationModel[];
     availableResolutions: string[];
     planName: string;
     credits: number;
     onGenerationStart: (placeholder: {
+        generationKey: string;
         prompt: string;
         resolution: string;
         aspectRatio: string;
@@ -80,6 +77,7 @@ interface GenerationComposerProps {
         kind: ComposerMode;
     }) => void;
     onGenerationComplete: (result: {
+        generationKey: string;
         uid: string;
         imageUrls: string[];
         creditCost: number;
@@ -88,23 +86,10 @@ interface GenerationComposerProps {
         aspectRatio: string;
         kind: ComposerMode;
     }) => void;
-    onGenerationError: (prompt: string, errorMessage: string) => void;
+    onGenerationError: (generationKey: string, errorMessage: string) => void;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            // Strip the data:image/...;base64, prefix — API expects raw base64.
-            resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
 
 function isValidImageFile(file: File): boolean {
     return (
@@ -202,7 +187,6 @@ export const GenerationComposer = forwardRef<
     const [prompt, setPrompt] = useState("");
     const [mode, setMode] = useState<ComposerMode>("image");
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
     const [settings, setSettings] = useState<ComposerSettingsState>({
@@ -211,7 +195,6 @@ export const GenerationComposer = forwardRef<
         sampleCount: 1,
     });
     const [videoModelId, setVideoModelId] = useState(videoModels[0]?.id ?? "");
-    const abortRef = useRef<AbortController | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dragCounterRef = useRef(0);
@@ -221,12 +204,29 @@ export const GenerationComposer = forwardRef<
     const selectedModel = isVideo
         ? videoModels.find((m) => m.id === videoModelId)
         : models.find((m) => m.id === settings.model);
-    const resolution = availableResolutions[availableResolutions.length - 1] ?? "1K";
+    const resolution = availableResolutions[0] ?? "1K";
     const creditCost = isVideo
         ? (selectedModel?.creditBase ?? 5) * settings.sampleCount
         : (selectedModel?.creditBase ?? 1) *
           (RESOLUTION_MULTIPLIERS[resolution as Resolution] ?? 1) *
           settings.sampleCount;
+
+    // ─── Submit (hook before canGenerate so isGenerating is available) ──
+
+    const clearComposer = useCallback(() => {
+        setPrompt("");
+        setAttachedImages((prev) => {
+            prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+            return [];
+        });
+    }, []);
+
+    const { submit, isGenerating } = useGenerationSubmit({
+        onGenerationStart,
+        onGenerationComplete,
+        onGenerationError,
+        onSuccess: clearComposer,
+    });
 
     const canGenerate =
         !isGenerating &&
@@ -234,6 +234,18 @@ export const GenerationComposer = forwardRef<
         credits >= creditCost;
 
     // ─── Image attachment ───────────────────────────────────────────
+
+    // Revoke any lingering object URLs when the composer unmounts
+    // (e.g. navigating away while images are still attached).
+    useEffect(() => {
+        return () => {
+            // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup reads final snapshot
+            setAttachedImages((prev) => {
+                prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+                return prev;
+            });
+        };
+    }, []);
 
     const maxImages = isVideo ? MAX_ATTACHED_IMAGES_VIDEO : MAX_ATTACHED_IMAGES_PHOTO;
     // In video mode, only the first 2 images are used (first/last frame).
@@ -318,186 +330,24 @@ export const GenerationComposer = forwardRef<
         }
     }
 
-    // ─── Submit ─────────────────────────────────────────────────────
+    // ─── Generate handler ───────────────────────────────────────────
 
-    const handleGenerate = useCallback(async () => {
+    const handleGenerate = useCallback(() => {
         if (!canGenerate) return;
-
-        const trimmedPrompt = prompt.trim();
-        const idempotencyKey = crypto.randomUUID();
-        abortRef.current = new AbortController();
-
-        setIsGenerating(true);
-        onGenerationStart({
-            prompt: trimmedPrompt,
+        submit({
+            prompt,
+            mode,
+            modelId: isVideo ? videoModelId : settings.model,
             resolution,
             aspectRatio: settings.aspectRatio,
             sampleCount: settings.sampleCount,
-            kind: mode,
+            creditCost,
+            projectUid,
+            visibleImages,
         });
-
-        if (isVideo) {
-            // ─── Video generation ──────────────────────────────────
-
-            // Convert the first attached image to base64 as a starting frame.
-            let referenceImage: { data: string; mimeType: string } | undefined;
-            if (visibleImages.length > 0) {
-                try {
-                    referenceImage = {
-                        data: await fileToBase64(visibleImages[0].file),
-                        mimeType: visibleImages[0].file.type,
-                    };
-                } catch {
-                    onGenerationError(trimmedPrompt, "Failed to read attached image.");
-                    setIsGenerating(false);
-                    return;
-                }
-            }
-
-            try {
-                const res = await fetch("/api/generate-video", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        prompt: trimmedPrompt,
-                        model: videoModelId,
-                        aspectRatio: settings.aspectRatio,
-                        durationSeconds: 8,
-                        sampleCount: settings.sampleCount,
-                        projectUid,
-                        idempotencyKey,
-                        referenceImage,
-                    }),
-                    signal: abortRef.current.signal,
-                });
-
-                const data = (await res.json()) as {
-                    uid?: string;
-                    videoUrl?: string;
-                    videoUrls?: string[];
-                    creditCost?: number;
-                    error?: string;
-                };
-
-                if (!res.ok) {
-                    const errorMessage = data.error ?? "Video generation failed.";
-                    toast.error(errorMessage);
-                    onGenerationError(trimmedPrompt, errorMessage);
-                } else {
-                    const urls = data.videoUrls ?? (data.videoUrl ? [data.videoUrl] : []);
-                    onGenerationComplete({
-                        uid: data.uid ?? "",
-                        imageUrls: urls,
-                        creditCost: data.creditCost ?? creditCost,
-                        prompt: trimmedPrompt,
-                        resolution,
-                        aspectRatio: settings.aspectRatio,
-                        kind: "video",
-                    });
-                    setPrompt("");
-                    setAttachedImages((prev) => {
-                        prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-                        return [];
-                    });
-                }
-            } catch (err) {
-                if (err instanceof DOMException && err.name === "AbortError") {
-                    onGenerationError(trimmedPrompt, "Cancelled");
-                } else {
-                    onGenerationError(
-                        trimmedPrompt,
-                        err instanceof Error
-                            ? err.message
-                            : "Video generation failed. Please try again.",
-                    );
-                }
-            } finally {
-                setIsGenerating(false);
-            }
-            return;
-        }
-
-        // ─── Image generation ──────────────────────────────────────
-
-        // Convert attached images to base64 for the API.
-        let referenceImages: { data: string; mimeType: string }[] | undefined;
-        if (visibleImages.length > 0) {
-            try {
-                referenceImages = await Promise.all(
-                    visibleImages.map(async (img) => ({
-                        data: await fileToBase64(img.file),
-                        mimeType: img.file.type,
-                    })),
-                );
-            } catch {
-                onGenerationError(trimmedPrompt, "Failed to read attached images.");
-                setIsGenerating(false);
-                return;
-            }
-        }
-
-        try {
-            const res = await fetch("/api/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    prompt: trimmedPrompt,
-                    model: settings.model,
-                    resolution,
-                    aspectRatio: settings.aspectRatio,
-                    sampleCount: settings.sampleCount,
-                    projectUid,
-                    idempotencyKey,
-                    referenceImages,
-                }),
-                signal: abortRef.current.signal,
-            });
-
-            const data = (await res.json()) as {
-                uid?: string;
-                imageUrl?: string;
-                imageUrls?: string[];
-                creditCost?: number;
-                error?: string;
-            };
-
-            if (!res.ok) {
-                const errorMessage = data.error ?? "Generation failed.";
-                toast.error(errorMessage);
-                onGenerationError(trimmedPrompt, errorMessage);
-            } else {
-                const urls = data.imageUrls ?? (data.imageUrl ? [data.imageUrl] : []);
-                onGenerationComplete({
-                    uid: data.uid ?? "",
-                    imageUrls: urls,
-                    creditCost: data.creditCost ?? creditCost,
-                    prompt: trimmedPrompt,
-                    resolution,
-                    aspectRatio: settings.aspectRatio,
-                    kind: "image",
-                });
-                setPrompt("");
-                setAttachedImages((prev) => {
-                    prev.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-                    return [];
-                });
-            }
-        } catch (err) {
-            if (err instanceof DOMException && err.name === "AbortError") {
-                onGenerationError(trimmedPrompt, "Cancelled");
-            } else {
-                onGenerationError(
-                    trimmedPrompt,
-                    err instanceof Error
-                        ? err.message
-                        : "Generation failed. Please try again.",
-                );
-            }
-        } finally {
-            setIsGenerating(false);
-        }
     }, [
         canGenerate,
+        submit,
         prompt,
         mode,
         isVideo,
@@ -506,10 +356,7 @@ export const GenerationComposer = forwardRef<
         resolution,
         creditCost,
         projectUid,
-        attachedImages,
-        onGenerationStart,
-        onGenerationComplete,
-        onGenerationError,
+        visibleImages,
     ]);
 
     // ─── Imperative API for parent-driven actions ──────────────────
@@ -577,7 +424,7 @@ export const GenerationComposer = forwardRef<
         <div className="relative shrink-0 px-3 pb-2 sm:px-0 sm:pb-8">
             <div className="mx-auto w-full sm:max-w-[600px]">
                 <div
-                    className={`relative flex flex-col rounded-2xl bg-[#1a1a1c]/90 px-2.5 py-2.5 ring-1 backdrop-blur-2xl sm:px-3 sm:py-2.5 ${
+                    className={`relative flex flex-col rounded-2xl bg-ws-surface px-2.5 py-2.5 ring-1 sm:px-3 sm:py-2.5 ${
                         isDragging
                             ? "ring-white/20 outline-2 outline-dashed outline-white/20 outline-offset-[-2px]"
                             : "ring-white/[0.12] shadow-[0_-4px_24px_rgba(0,0,0,0.3)]"
@@ -590,12 +437,12 @@ export const GenerationComposer = forwardRef<
                     {/* Drag overlay */}
                     {isDragging && (
                         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl">
-                            <svg className="text-[#9ca3af]" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg className="text-ws-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                                 <polyline points="17 8 12 3 7 8" />
                                 <line x1="12" y1="3" x2="12" y2="15" />
                             </svg>
-                            <span className="text-[13px] font-medium text-[#9ca3af]">
+                            <span className="text-[13px] font-medium text-ws-icon">
                                 Drop images here
                             </span>
                         </div>
@@ -638,7 +485,7 @@ export const GenerationComposer = forwardRef<
                                     <button
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-[#9ca3af] transition-colors hover:bg-white/[0.12] hover:text-white"
+                                        className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl bg-white/[0.07] text-ws-icon transition-colors hover:bg-white/[0.12] hover:text-white"
                                         aria-label="Add more images"
                                     >
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -656,7 +503,7 @@ export const GenerationComposer = forwardRef<
                                 <button
                                     type="button"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.07] text-[#9ca3af] transition-colors hover:bg-white/[0.12] hover:text-white"
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.07] text-ws-icon transition-colors hover:bg-white/[0.12] hover:text-white"
                                     aria-label="Add image"
                                 >
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -682,7 +529,7 @@ export const GenerationComposer = forwardRef<
                                                 : "Describe your image..."
                                 }
                                 disabled={isGenerating}
-                                className="min-w-0 flex-1 bg-transparent text-[16px] text-white placeholder-[#52525b] outline-none disabled:opacity-50"
+                                className="min-w-0 flex-1 bg-transparent text-[16px] text-white placeholder-ws-dim outline-none disabled:opacity-50"
                                 autoComplete="off"
                             />
                         </div>
@@ -706,35 +553,43 @@ export const GenerationComposer = forwardRef<
                             />
 
                             {/* Mode toggle */}
-                            <div className="flex h-9 items-center rounded-[10px] bg-[#2a2a2d] p-[3px] shrink-0">
+                            <div
+                                role="radiogroup"
+                                aria-label="Generation mode"
+                                className="flex h-9 items-center rounded-[10px] bg-ws-control p-[3px] shrink-0"
+                            >
                                 <button
                                     type="button"
+                                    role="radio"
+                                    aria-checked={!isVideo}
                                     onClick={() => setMode("image")}
                                     className={`flex h-full items-center gap-1.5 rounded-lg transition-all ${
                                         !isVideo ? "bg-[#1c1c1c] px-3" : "px-2.5"
                                     }`}
                                 >
-                                    <svg className="shrink-0 text-[#9ca3af]" width="18" height="18" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg className="shrink-0 text-ws-icon" width="18" height="18" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.17" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M4.583 5.75a1.167 1.167 0 1 0 0-2.333 1.167 1.167 0 0 0 0 2.333Z" />
                                         <path d="M.583 2.917A2.333 2.333 0 0 1 2.917.583h7a2.333 2.333 0 0 1 2.333 2.334v7a2.333 2.333 0 0 1-2.333 2.333h-7A2.333 2.333 0 0 1 .583 9.917V2.917Z" />
                                         <path d="m2.917 12.25 4.958-4.958a1.167 1.167 0 0 1 1.633 0l2.742 2.625" />
                                     </svg>
                                     {!isVideo && (
-                                        <span className="text-[13px] font-medium text-[#9ca3af]">Image</span>
+                                        <span className="text-[13px] font-medium text-ws-icon">Image</span>
                                     )}
                                 </button>
                                 <button
                                     type="button"
+                                    role="radio"
+                                    aria-checked={isVideo}
                                     onClick={() => setMode("video")}
                                     className={`flex h-full items-center gap-1.5 rounded-lg transition-all ${
                                         isVideo ? "bg-[#1c1c1c] px-3" : "px-2.5"
                                     }`}
                                 >
-                                    <svg className="shrink-0 text-[#9ca3af]" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <svg className="shrink-0 text-ws-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <polygon points="6 3 20 12 6 21 6 3" />
                                     </svg>
                                     {isVideo && (
-                                        <span className="text-[13px] font-medium text-[#9ca3af]">Video</span>
+                                        <span className="text-[13px] font-medium text-ws-icon">Video</span>
                                     )}
                                 </button>
                             </div>
@@ -743,11 +598,11 @@ export const GenerationComposer = forwardRef<
                             <button
                                 type="button"
                                 onClick={handleRatioToggle}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-[10px] bg-[#2a2a2d] transition-colors hover:bg-[#353538] sm:w-auto sm:px-3"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-[10px] bg-ws-control transition-colors hover:bg-ws-control-hover sm:w-auto sm:px-3"
                                 aria-label={`Aspect ratio: ${settings.aspectRatio}`}
                             >
                                 <svg
-                                    className={`text-[#9ca3af] transition-transform duration-300 ${!isLandscape ? "rotate-90" : ""}`}
+                                    className={`text-ws-icon transition-transform duration-300 ${!isLandscape ? "rotate-90" : ""}`}
                                     width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                 >
                                     <rect x="3" y="7" width="18" height="10" rx="2" />
@@ -763,8 +618,8 @@ export const GenerationComposer = forwardRef<
                                 onClick={() => setSettingsOpen((o) => !o)}
                                 className={`group flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] outline-none transition-colors focus:outline-none focus-visible:outline-none ${
                                     settingsOpen
-                                        ? "bg-[#3a3a3d]"
-                                        : "bg-[#2a2a2d] hover:bg-[#353538]"
+                                        ? "bg-ws-control-active"
+                                        : "bg-ws-control hover:bg-ws-control-hover"
                                 }`}
                                 aria-label="Generation settings"
                             >
@@ -786,7 +641,7 @@ export const GenerationComposer = forwardRef<
 
                             {/* Credit cost preview */}
                             {prompt.trim().length > 0 && (
-                                <span className="text-xs tabular-nums text-[#52525b]">
+                                <span className="text-xs tabular-nums text-ws-dim">
                                     {creditCost} cr
                                 </span>
                             )}
@@ -816,190 +671,3 @@ export const GenerationComposer = forwardRef<
     );
 });
 
-// ─── Image thumbnail ──────────────────────────────────────────────────────
-
-function ImageThumbnail({
-    image,
-    onRemove,
-    showSwap,
-    onSwap,
-}: {
-    image: AttachedImage;
-    onRemove: () => void;
-    showSwap: boolean;
-    onSwap: () => void;
-}) {
-    const [previewOpen, setPreviewOpen] = useState(false);
-    const [entered, setEntered] = useState(false);
-    const [canHover, setCanHover] = useState(false);
-    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-    const thumbRef = useRef<HTMLDivElement>(null);
-    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    // Device capability — desktop uses hover, mobile uses tap.
-    useEffect(() => {
-        setCanHover(window.matchMedia("(hover: hover)").matches);
-    }, []);
-
-    // Trigger the fade+scale transition on the frame after the portal
-    // mounts, so the CSS transition has a starting state to animate from.
-    useLayoutEffect(() => {
-        if (previewOpen && anchorRect) {
-            const r = requestAnimationFrame(() => setEntered(true));
-            return () => cancelAnimationFrame(r);
-        }
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- reset on close
-        setEntered(false);
-    }, [previewOpen, anchorRect]);
-
-    // Clear any pending hover-open timer on unmount.
-    useEffect(() => {
-        return () => {
-            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-        };
-    }, []);
-
-    // Measure the thumb's viewport position whenever the preview opens,
-    // and re-measure on scroll/resize so the bubble stays pinned.
-    useLayoutEffect(() => {
-        if (!previewOpen || !thumbRef.current) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-            setAnchorRect(null);
-            return;
-        }
-        function measure() {
-            if (thumbRef.current) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-                setAnchorRect(thumbRef.current.getBoundingClientRect());
-            }
-        }
-        measure();
-        window.addEventListener("resize", measure);
-        window.addEventListener("scroll", measure, true);
-        return () => {
-            window.removeEventListener("resize", measure);
-            window.removeEventListener("scroll", measure, true);
-        };
-    }, [previewOpen]);
-
-    // Mobile: dismiss on outside tap. setTimeout keeps the opening tap
-    // from immediately closing it.
-    useEffect(() => {
-        if (!previewOpen || canHover) return;
-        function handleClick(e: MouseEvent) {
-            if (thumbRef.current?.contains(e.target as Node)) return;
-            setPreviewOpen(false);
-        }
-        const t = setTimeout(() => {
-            document.addEventListener("mousedown", handleClick);
-        }, 0);
-        return () => {
-            clearTimeout(t);
-            document.removeEventListener("mousedown", handleClick);
-        };
-    }, [previewOpen, canHover]);
-
-    const previewHandlers = canHover
-        ? {
-              onMouseEnter: () => {
-                  if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-                  hoverTimerRef.current = setTimeout(() => {
-                      setPreviewOpen(true);
-                  }, 320);
-              },
-              onMouseLeave: () => {
-                  if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-                  hoverTimerRef.current = null;
-                  setPreviewOpen(false);
-              },
-          }
-        : {
-              onClick: () => setPreviewOpen((o) => !o),
-          };
-
-    return (
-        <div ref={thumbRef} className="group/thumb relative shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-                src={image.previewUrl}
-                alt=""
-                className="h-[52px] w-[52px] cursor-pointer rounded-xl bg-white/[0.04] object-cover ring-1 ring-white/[0.08]"
-                draggable={false}
-                {...previewHandlers}
-            />
-            <button
-                type="button"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove();
-                }}
-                className="absolute -right-1 -top-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-black/65 text-white/90 backdrop-blur-sm transition-all hover:bg-black/80 hover:text-white sm:opacity-0 sm:group-hover/thumb:opacity-100"
-                aria-label="Remove image"
-            >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-            </button>
-
-            {previewOpen && anchorRect && typeof document !== "undefined" &&
-                createPortal(
-                    (() => {
-                        const BUBBLE_MAX_W = 280;
-                        const MARGIN = 12;
-                        const ideal = anchorRect.left + anchorRect.width / 2;
-                        const half = BUBBLE_MAX_W / 2;
-                        const minCenter = half + MARGIN;
-                        const maxCenter = window.innerWidth - half - MARGIN;
-                        const left =
-                            minCenter > maxCenter
-                                ? window.innerWidth / 2
-                                : Math.max(minCenter, Math.min(maxCenter, ideal));
-                        return (
-                            <div
-                                style={{
-                                    position: "fixed",
-                                    bottom: window.innerHeight - anchorRect.top + 10,
-                                    left,
-                                    zIndex: 80,
-                                    pointerEvents: "none",
-                                    transformOrigin: "bottom center",
-                                }}
-                                className={`transition-[opacity,transform] duration-200 ease-out ${
-                                    entered
-                                        ? "translate-x-[-50%] translate-y-0 scale-100 opacity-100"
-                                        : "translate-x-[-50%] translate-y-1 scale-95 opacity-0"
-                                }`}
-                            >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={image.previewUrl}
-                                    alt=""
-                                    className="max-h-[260px] max-w-[min(280px,calc(100vw-24px))] rounded-xl bg-[#0f0f11] object-contain shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_18px_-4px_rgba(0,0,0,0.5),0_24px_56px_-12px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.08]"
-                                    draggable={false}
-                                />
-                            </div>
-                        );
-                    })(),
-                    document.body,
-                )}
-
-            {/* Swap — floats over the gap between the two video frames */}
-            {showSwap && (
-                <button
-                    type="button"
-                    onClick={onSwap}
-                    className="absolute top-1/2 left-[calc(100%+6px)] z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[8px] bg-black/55 text-white/80 ring-1 ring-white/[0.08] backdrop-blur-sm transition-all hover:bg-black/70 hover:text-white sm:opacity-0 sm:group-hover/row:opacity-100"
-                    aria-label="Swap first and last frame"
-                >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3L4 7l4 4" />
-                        <path d="M4 7h16" />
-                        <path d="M16 21l4-4-4-4" />
-                        <path d="M20 17H4" />
-                    </svg>
-                </button>
-            )}
-        </div>
-    );
-}

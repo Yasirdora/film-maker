@@ -73,42 +73,58 @@ export default async function ProjectPage({ params }: PageProps) {
     // Map GenerationRow → GenerationItem(s) for the client component.
     // Batch generations (multiple output URLs) expand into one gallery
     // item per image so the grid displays each result individually.
+    //
+    // Server-loaded items are always resolved (done or failed) — the DB
+    // only stores completed generations. The discriminated union requires
+    // us to build the correct variant for each status.
     const generationItems = generations.flatMap((g) => {
         const urls = g.outputUrls ?? (g.thumbnailUrls ? g.thumbnailUrls : []);
 
-        // No images (pending/failed) or single image/video — one item.
-        if (urls.length <= 1) {
-            return [{
-                uid: g.uid,
-                prompt: g.prompt,
-                kind: g.kind,
-                status: g.status,
-                resolution: g.resolution,
-                aspectRatio: g.aspectRatio,
-                imageUrl: urls[0] ?? null,
-                creditCost: g.creditCost,
-                createdAt: g.createdAt,
-                errorMessage: g.errorMessage,
-            }];
-        }
-
-        // Multiple images — expand into separate items.
-        return urls.map((url, i) => ({
-            uid: `${g.uid}-${i}`,
+        /** Shared base fields for every item mapped from this row. */
+        const base = {
             prompt: g.prompt,
             kind: g.kind,
-            status: g.status,
             resolution: g.resolution,
             aspectRatio: g.aspectRatio,
-            imageUrl: url,
-            creditCost: i === 0 ? g.creditCost : 0,
             createdAt: g.createdAt,
-            errorMessage: g.errorMessage,
-        }));
+        } as const;
+
+        /** Build a single GenerationItem for one URL (or no URL). */
+        function toItem(uid: string, url: string | undefined, creditCost: number) {
+            if (g.status === "failed") {
+                return {
+                    ...base,
+                    uid,
+                    status: "failed" as const,
+                    creditCost,
+                    errorMessage: g.errorMessage ?? "Generation failed",
+                    generationKey: null,
+                };
+            }
+            // "done" or any other resolved status from the DB.
+            return {
+                ...base,
+                uid,
+                status: "done" as const,
+                creditCost,
+                imageUrl: url ?? "",
+                generationKey: null,
+            };
+        }
+
+        // Single (or zero) output — one gallery item.
+        if (urls.length <= 1) {
+            return [toItem(g.uid, urls[0], g.creditCost)];
+        }
+
+        // Multiple outputs — expand into one item per URL.
+        return urls.map((url, i) =>
+            toItem(`${g.uid}-${i}`, url, i === 0 ? g.creditCost : 0),
+        );
     });
 
     return (
-        <div className="flex h-dvh flex-col bg-[#0f0f11] pb-[66px] sm:pb-0">
+        <div className="flex h-dvh flex-col bg-ws-canvas pb-[66px] sm:pb-0">
             <AppNav />
 
             <AppHeader brandHref="/studio">

@@ -162,7 +162,7 @@ export function ProjectSettings({
                             aria-label="Project actions"
                             aria-haspopup="menu"
                             aria-expanded={menuOpen}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ws-icon transition-colors hover:bg-white/[0.06] hover:text-white"
                         >
                             <DotsIcon size={18} />
                         </button>
@@ -171,7 +171,7 @@ export function ProjectSettings({
             </div>
 
             {description && !isRenaming && (
-                <p className="mt-1 text-sm text-[#9ca3af]">{description}</p>
+                <p className="mt-1 text-sm text-ws-icon">{description}</p>
             )}
 
             {error && (

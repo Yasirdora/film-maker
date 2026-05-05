@@ -14,9 +14,19 @@
  * Empty state encourages the user to start generating.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { GenerationItem } from "./project-workspace";
+import { usePopover } from "@/lib/use-popover";
+import {
+    DotsIcon,
+    EditIcon,
+    LayersIcon,
+    RefreshIcon,
+    DownloadIcon,
+    LinkIcon,
+    TrashIcon,
+} from "@/components/icons/action-icons";
 
 interface GalleryActions {
     onReusePrompt: (prompt: string) => void;
@@ -248,7 +258,7 @@ export function GenerationGallery({
                         strokeWidth="1.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-[#52525b]"
+                        className="text-ws-dim"
                         aria-hidden
                     >
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
@@ -259,7 +269,7 @@ export function GenerationGallery({
                 <h2 className="mt-4 text-lg font-semibold">
                     No generations yet
                 </h2>
-                <p className="mt-2 max-w-sm text-sm text-[#9ca3af]">
+                <p className="mt-2 max-w-sm text-sm text-ws-icon">
                     Type a prompt below and hit generate to create your first image.
                 </p>
             </div>
@@ -295,9 +305,9 @@ function JustifiedRowsGrid({
         >
             {ready && (
                 <div className="flex flex-col" style={{ gap }}>
-                    {rows.map((row, rowIndex) => (
+                    {rows.map((row) => (
                         <div
-                            key={rowIndex}
+                            key={row.items.map(({ item }) => item.uid).join("|")}
                             className="flex"
                             style={{ gap, height: row.height }}
                         >
@@ -336,36 +346,84 @@ function GalleryCard({
     generation: GenerationItem;
     actions: GalleryActions;
 }) {
-    const { status, kind, imageUrl, prompt, resolution, aspectRatio, errorMessage } =
-        generation;
+    const { status, kind, prompt, resolution, aspectRatio } = generation;
     const isVideo = kind === "video";
 
+    // Narrow once — variant-specific fields are only accessed after this.
+    const imageUrl = status === "done" ? generation.imageUrl : null;
+    const errorMessage = status === "failed" ? generation.errorMessage : null;
+
+    // Media loading state — bridges the gap between "generation done"
+    // and "browser has the pixels." Without this, the card shows a
+    // near-transparent background while the browser fetches from R2.
+    const [mediaLoaded, setMediaLoaded] = useState(false);
+    const [mediaError, setMediaError] = useState(false);
+
+    // Reset loading state when the URL changes (pending → done transition).
+    useEffect(() => {
+        setMediaLoaded(false);
+        setMediaError(false);
+    }, [imageUrl]);
+
+    const showShimmer = status === "done" && !mediaLoaded && !mediaError;
+
+    // Hover-to-play for videos
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const handleMouseEnter = useCallback(() => {
+        const v = videoRef.current;
+        if (v && mediaLoaded) {
+            v.currentTime = 0;
+            v.play().catch(() => {});
+        }
+    }, [mediaLoaded]);
+    const handleMouseLeave = useCallback(() => {
+        const v = videoRef.current;
+        if (v) {
+            v.pause();
+            v.currentTime = 0;
+        }
+    }, []);
+
     return (
-        <div className="group relative h-full w-full overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/[0.06] transition-all hover:ring-white/[0.12]">
+        <div
+            className="group relative h-full w-full overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/[0.06] transition-all hover:ring-white/[0.12]"
+            onMouseEnter={isVideo ? handleMouseEnter : undefined}
+            onMouseLeave={isVideo ? handleMouseLeave : undefined}
+        >
             <div className="relative h-full w-full">
-                {status === "done" && imageUrl && isVideo ? (
-                    <video
-                        src={imageUrl}
-                        className="h-full w-full object-cover"
-                        controls
-                        playsInline
-                        muted
-                        loop
-                        preload="metadata"
-                    />
-                ) : status === "done" && imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={imageUrl}
-                        alt={prompt.slice(0, 100)}
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                    />
+                {status === "done" && isVideo ? (
+                    <>
+                        {showShimmer && <MediaShimmer />}
+                        <video
+                            ref={videoRef}
+                            src={generation.imageUrl}
+                            className={`h-full w-full object-cover transition-opacity duration-300 ${mediaLoaded ? "opacity-100" : "opacity-0"}`}
+                            playsInline
+                            muted
+                            loop
+                            preload="metadata"
+                            onLoadedData={() => setMediaLoaded(true)}
+                            onError={() => setMediaError(true)}
+                        />
+                    </>
+                ) : status === "done" ? (
+                    <>
+                        {showShimmer && <MediaShimmer />}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={generation.imageUrl}
+                            alt={prompt.slice(0, 100)}
+                            className={`h-full w-full object-cover transition-opacity duration-300 ${mediaLoaded ? "opacity-100" : "opacity-0"}`}
+                            loading="lazy"
+                            onLoad={() => setMediaLoaded(true)}
+                            onError={() => setMediaError(true)}
+                        />
+                    </>
                 ) : status === "pending" ? (
                     <div className="flex h-full flex-col items-center justify-center gap-2">
                         <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-white/60" />
                         {isVideo && (
-                            <span className="text-[11px] text-[#52525b]">Generating video...</span>
+                            <span className="text-[11px] text-ws-dim">Generating video...</span>
                         )}
                     </div>
                 ) : (
@@ -386,48 +444,81 @@ function GalleryCard({
                             <line x1="12" y1="8" x2="12" y2="12" />
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
-                        <span className="text-[11px] text-[#9ca3af]">
-                            {errorMessage ?? "Failed"}
+                        <span className="text-[11px] text-ws-icon">
+                            {errorMessage}
                         </span>
                     </div>
                 )}
 
+                {/* Media load error — retry affordance */}
+                {mediaError && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setMediaError(false);
+                                setMediaLoaded(false);
+                            }}
+                            className="flex items-center gap-1.5 rounded-lg bg-white/[0.08] px-3 py-1.5 text-[12px] text-ws-icon transition-colors hover:bg-white/[0.14] hover:text-white"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="23 4 23 10 17 10" />
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                            </svg>
+                            Retry
+                        </button>
+                    </div>
+                )}
+
                 {/* Action menu — visible on hover (desktop) or always on touch */}
-                {(status === "done" || status === "failed") && (
+                {status !== "pending" && (
                     <GalleryCardMenu
                         generation={generation}
                         actions={actions}
                     />
                 )}
 
-                {/* Type + resolution badge */}
-                {status === "done" && (
-                    <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                        {isVideo && (
-                            <div className="flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
-                                <svg className="text-white/80" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-                                    <polygon points="5 3 19 12 5 21 5 3" />
-                                </svg>
-                                <span className="text-[10px] font-medium text-white/80">Video</span>
-                            </div>
-                        )}
-                        <div className="rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
-                            {resolution}
-                            {aspectRatio && aspectRatio !== "1:1"
-                                ? ` · ${aspectRatio}`
-                                : ""}
-                        </div>
-                    </div>
-                )}
             </div>
 
+            {/* Type + resolution badge */}
+            {status === "done" && (
+                <div className="absolute bottom-1.5 right-1.5 z-[2] flex items-center gap-1">
+                    {isVideo && (
+                        <div className="flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
+                            <svg className="text-white/80" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                            <span className="text-[10px] font-medium text-white/80">Video</span>
+                        </div>
+                    )}
+                    <div className="rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white/80 backdrop-blur-sm">
+                        {resolution}
+                        {aspectRatio && aspectRatio !== "1:1"
+                            ? ` · ${aspectRatio}`
+                            : ""}
+                    </div>
+                </div>
+            )}
+
             {/* Prompt preview — visible on hover (desktop) */}
-            <div className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 pt-8 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 z-[1] translate-y-full bg-gradient-to-t from-black/80 via-black/60 to-transparent p-3 pt-8 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
                 <p className="line-clamp-2 text-[12px] leading-relaxed text-white/80">
                     {prompt}
                 </p>
             </div>
         </div>
+    );
+}
+
+// ─── Media shimmer ──────────────────────────────────────────────────────────
+
+/**
+ * Pulsing placeholder shown while the browser fetches the image/video
+ * from R2. Fills the card and fades out when the media's `onLoad` fires.
+ */
+function MediaShimmer() {
+    return (
+        <div className="absolute inset-0 z-[1] animate-pulse bg-white/[0.06]" />
     );
 }
 
@@ -451,53 +542,14 @@ function GalleryCardMenu({
     const [copied, setCopied] = useState(false);
     const [downloading, setDownloading] = useState(false);
     const buttonRef = useRef<HTMLButtonElement>(null);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
 
-    // Pin the popover to the trigger's live viewport position.
-    useLayoutEffect(() => {
-        if (!open) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-            setAnchorRect(null);
-            return;
-        }
-        function measure() {
-            if (buttonRef.current) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-                setAnchorRect(buttonRef.current.getBoundingClientRect());
-            }
-        }
-        measure();
-        window.addEventListener("resize", measure);
-        window.addEventListener("scroll", measure, true);
-        return () => {
-            window.removeEventListener("resize", measure);
-            window.removeEventListener("scroll", measure, true);
-        };
-    }, [open]);
+    const closeMenu = useCallback(() => setOpen(false), []);
 
-    // Outside click + Escape dismiss.
-    useEffect(() => {
-        if (!open) return;
-        function handleClick(e: MouseEvent) {
-            const target = e.target as Node;
-            if (menuRef.current?.contains(target)) return;
-            if (buttonRef.current?.contains(target)) return;
-            setOpen(false);
-        }
-        function handleKey(e: KeyboardEvent) {
-            if (e.key === "Escape") setOpen(false);
-        }
-        const t = setTimeout(() => {
-            document.addEventListener("mousedown", handleClick);
-            document.addEventListener("keydown", handleKey);
-        }, 0);
-        return () => {
-            clearTimeout(t);
-            document.removeEventListener("mousedown", handleClick);
-            document.removeEventListener("keydown", handleKey);
-        };
-    }, [open]);
+    const { anchorRect, menuRef } = usePopover({
+        open,
+        onClose: closeMenu,
+        anchorRef: buttonRef,
+    });
 
     // Reset transient inline states when the menu closes.
     useEffect(() => {
@@ -507,11 +559,74 @@ function GalleryCardMenu({
         }
     }, [open]);
 
-    const hasImage = generation.status === "done" && generation.imageUrl !== null;
+    const hasImage = generation.status === "done";
 
-    function closeMenu() {
-        setOpen(false);
-    }
+    // ── Keyboard navigation (WAI-ARIA menu pattern) ──────────────
+    // Arrow keys move focus between enabled menu items; Home/End
+    // jump to first/last; Escape closes the menu.
+    const handleMenuKeyDown = useCallback(
+        (e: React.KeyboardEvent<HTMLDivElement>) => {
+            const menu = e.currentTarget;
+            const items = Array.from(
+                menu.querySelectorAll<HTMLButtonElement>(
+                    '[role="menuitem"]:not(:disabled)',
+                ),
+            );
+            if (items.length === 0) return;
+
+            const currentIdx = items.indexOf(
+                document.activeElement as HTMLButtonElement,
+            );
+
+            let nextIdx: number | null = null;
+
+            switch (e.key) {
+                case "ArrowDown":
+                    nextIdx =
+                        currentIdx < 0 ? 0 : (currentIdx + 1) % items.length;
+                    break;
+                case "ArrowUp":
+                    nextIdx =
+                        currentIdx < 0
+                            ? items.length - 1
+                            : (currentIdx - 1 + items.length) % items.length;
+                    break;
+                case "Home":
+                    nextIdx = 0;
+                    break;
+                case "End":
+                    nextIdx = items.length - 1;
+                    break;
+                case "Escape":
+                    closeMenu();
+                    buttonRef.current?.focus();
+                    break;
+                default:
+                    return; // Don't preventDefault for unhandled keys.
+            }
+
+            if (nextIdx !== null) {
+                e.preventDefault();
+                items[nextIdx].focus();
+            }
+        },
+        [closeMenu],
+    );
+
+    // Auto-focus the first enabled menu item when the menu opens.
+    useEffect(() => {
+        if (!open) return;
+        // Defer to the next frame so the portal has mounted.
+        const raf = requestAnimationFrame(() => {
+            const el = menuRef.current;
+            if (!el) return;
+            const first = el.querySelector<HTMLButtonElement>(
+                '[role="menuitem"]:not(:disabled)',
+            );
+            first?.focus();
+        });
+        return () => cancelAnimationFrame(raf);
+    }, [open, menuRef]);
 
     function handleReusePrompt() {
         actions.onReusePrompt(generation.prompt);
@@ -519,7 +634,7 @@ function GalleryCardMenu({
     }
 
     async function handleUseAsReference() {
-        if (!generation.imageUrl) return;
+        if (generation.status !== "done") return;
         await actions.onUseAsReference(generation.imageUrl);
         closeMenu();
     }
@@ -530,7 +645,7 @@ function GalleryCardMenu({
     }
 
     async function handleDownload() {
-        if (!generation.imageUrl || downloading) return;
+        if (generation.status !== "done" || downloading) return;
         setDownloading(true);
         try {
             const response = await fetch(generation.imageUrl);
@@ -554,7 +669,7 @@ function GalleryCardMenu({
     }
 
     async function handleCopyLink() {
-        if (!generation.imageUrl) return;
+        if (generation.status !== "done") return;
         try {
             await navigator.clipboard.writeText(generation.imageUrl);
             setCopied(true);
@@ -594,17 +709,7 @@ function GalleryCardMenu({
                         : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 max-sm:opacity-100"
                 }`}
             >
-                <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    aria-hidden
-                >
-                    <circle cx="5" cy="12" r="1.75" />
-                    <circle cx="12" cy="12" r="1.75" />
-                    <circle cx="19" cy="12" r="1.75" />
-                </svg>
+                <DotsIcon size={14} />
             </button>
 
             {open && anchorRect && typeof document !== "undefined" &&
@@ -612,6 +717,7 @@ function GalleryCardMenu({
                     <div
                         ref={menuRef}
                         role="menu"
+                        onKeyDown={handleMenuKeyDown}
                         style={{
                             position: "fixed",
                             top: anchorRect.bottom + 6,
@@ -695,15 +801,16 @@ function MenuItem({
             <button
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
                 onClick={onClick}
                 disabled={disabled}
                 className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                     destructive
-                        ? "text-[#ef4444] hover:bg-[#ef4444]/10"
+                        ? "text-[var(--destructive)] hover:bg-[var(--destructive)]/10"
                         : "text-white/85 hover:bg-white/[0.06] hover:text-white"
                 }`}
             >
-                <span className="shrink-0 text-[#9ca3af]">{icon}</span>
+                <span className="shrink-0 text-ws-icon">{icon}</span>
                 <span className="truncate">{label}</span>
             </button>
         </li>
@@ -716,75 +823,4 @@ function MenuDivider() {
     );
 }
 
-// ─── Menu icons ─────────────────────────────────────────────────────────────
-
-const ICON_PROPS = {
-    width: 14,
-    height: 14,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.75,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true,
-};
-
-function EditIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
-    );
-}
-
-function LayersIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <polygon points="12 2 2 7 12 12 22 7 12 2" />
-            <polyline points="2 17 12 22 22 17" />
-            <polyline points="2 12 12 17 22 12" />
-        </svg>
-    );
-}
-
-function RefreshIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <polyline points="23 4 23 10 17 10" />
-            <polyline points="1 20 1 14 7 14" />
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-        </svg>
-    );
-}
-
-function DownloadIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-    );
-}
-
-function LinkIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
-    );
-}
-
-function TrashIcon() {
-    return (
-        <svg {...ICON_PROPS}>
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-        </svg>
-    );
-}
+// Menu icons are now imported from @/components/icons/action-icons.

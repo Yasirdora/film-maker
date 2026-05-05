@@ -7,7 +7,7 @@
 
 export default function ProjectLoading() {
     return (
-        <div className="flex h-dvh flex-col bg-[#0f0f11]">
+        <div className="flex h-dvh flex-col bg-ws-canvas">
             {/* Header */}
             <div className="flex shrink-0 items-center px-5 h-[48px] sm:px-8 sm:h-[56px]">
                 <div className="h-4 w-4 animate-pulse rounded bg-white/10" />

@@ -10,17 +10,12 @@
  * Controlled by the parent (open/close state lives in the composer).
  */
 
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { usePopover } from "@/lib/use-popover";
+import type { GenerationModel } from "@/lib/constants";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-interface Model {
-    id: string;
-    name: string;
-    description: string;
-    creditBase: number;
-}
 
 export interface ComposerSettingsState {
     model: string;
@@ -29,8 +24,8 @@ export interface ComposerSettingsState {
 }
 
 interface ComposerSettingsProps {
-    models: Model[];
-    videoModels: Model[];
+    models: GenerationModel[];
+    videoModels: GenerationModel[];
     mode: "image" | "video";
     videoModelId: string;
     onVideoModelChange: (id: string) => void;
@@ -70,71 +65,28 @@ export function ComposerSettings({
 }: ComposerSettingsProps) {
     const [view, setView] = useState<"root" | "model">("root");
     const [modelSearch, setModelSearch] = useState("");
-    const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
-    const modalRef = useRef<HTMLDivElement>(null);
 
-    // Measure the trigger's viewport position so the portal-rendered
-    // panel can anchor itself above it. Re-measure on resize + scroll so
-    // the panel stays pinned while the page moves.
-    useLayoutEffect(() => {
-        if (!open) {
-            // Drop the cached rect so the next open measures fresh
-            // before painting — avoids a one-frame flash at a stale
-            // position when the trigger has moved.
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-            setAnchorRect(null);
-            return;
-        }
-        function measure() {
-            if (triggerRef?.current) {
-                // eslint-disable-next-line react-hooks/set-state-in-effect -- DOM measurement state
-                setAnchorRect(triggerRef.current.getBoundingClientRect());
-            }
-        }
-        measure();
-        window.addEventListener("resize", measure);
-        window.addEventListener("scroll", measure, true);
-        return () => {
-            window.removeEventListener("resize", measure);
-            window.removeEventListener("scroll", measure, true);
-        };
-    }, [open, triggerRef]);
+    // Fallback ref for the rare case where triggerRef is not provided.
+    const fallbackRef = useRef<HTMLElement>(null);
+    const anchorRefToUse = triggerRef ?? fallbackRef;
 
-    // Close on outside click or Escape.
+    const { anchorRect, menuRef } = usePopover({
+        open,
+        onClose,
+        anchorRef: anchorRefToUse,
+    });
+
+    // Reset internal state when the panel closes so it always opens
+    // fresh at the root view with an empty search.
     useEffect(() => {
-        if (!open) return;
-        function handleClick(e: MouseEvent) {
-            const target = e.target as Node;
-            // Ignore clicks inside the panel itself.
-            if (modalRef.current?.contains(target)) return;
-            // Ignore clicks on the trigger button — the button's own
-            // onClick handler manages the toggle. Without this, the
-            // outside-click fires first (closing), then onClick toggles
-            // it back open, making the button appear broken.
-            if (triggerRef?.current?.contains(target)) return;
-            onClose();
+        if (!open) {
+            setView("root");
+            setModelSearch("");
         }
-        function handleEsc(e: KeyboardEvent) {
-            if (e.key === "Escape") onClose();
-        }
-        // Use setTimeout so the opening click doesn't immediately close.
-        const timer = setTimeout(() => {
-            document.addEventListener("mousedown", handleClick);
-            document.addEventListener("keydown", handleEsc);
-        }, 0);
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener("mousedown", handleClick);
-            document.removeEventListener("keydown", handleEsc);
-        };
-    }, [open, onClose, triggerRef]);
+    }, [open]);
 
-    if (!open || !anchorRect) {
-        if (view !== "root") setView("root");
-        if (modelSearch !== "") setModelSearch("");
-        return null;
-    }
+    if (!open || !anchorRect) return null;
 
     const isVideo = mode === "video";
     const activeModels = isVideo ? videoModels : models;
@@ -164,7 +116,7 @@ export function ComposerSettings({
     // keeps the old visual placement (anchored above the gear button).
     const panel = (
         <div
-            ref={modalRef}
+            ref={menuRef}
             style={{
                 position: "fixed",
                 bottom: window.innerHeight - anchorRect.top + 8,
@@ -173,7 +125,7 @@ export function ComposerSettings({
                 zIndex: 70,
             }}
         >
-            <div className="overflow-hidden rounded-2xl bg-[#1a1a1c]/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
+            <div className="overflow-hidden rounded-2xl bg-ws-surface/90 ring-1 ring-white/[0.05] backdrop-blur-2xl">
                 {view === "root" ? (
                     <RootView
                         selectedModel={selectedModel}
@@ -209,7 +161,7 @@ function RootView({
     onUpdate,
     onDrillToModel,
 }: {
-    selectedModel: Model | undefined;
+    selectedModel: GenerationModel | undefined;
     settings: ComposerSettingsState;
     isVideo: boolean;
     onUpdate: (partial: Partial<ComposerSettingsState>) => void;
@@ -226,24 +178,24 @@ function RootView({
             {/* Handle + title */}
             <div className="flex flex-col items-center px-4 pt-2 pb-0.5 sm:px-5">
                 <div className="mb-2.5 h-[3px] w-8 rounded-full bg-white/15" />
-                <span className="self-start text-[11px] font-semibold uppercase tracking-[0.08em] text-[#9ca3af]">
+                <span className="self-start text-[11px] font-semibold uppercase tracking-[0.08em] text-ws-icon">
                     {isVideo ? "Video Settings" : "Image Settings"}
                 </span>
             </div>
 
             {/* Model */}
             <div className="flex flex-col gap-1 px-4 pt-2.5 sm:px-5">
-                <span className="text-[13px] text-[#9ca3af]">Model</span>
+                <span className="text-[13px] text-ws-icon">Model</span>
                 <button
                     type="button"
                     onClick={onDrillToModel}
-                    className="flex w-full items-center justify-between rounded-[10px] border border-white/5 bg-[#202022] px-3 py-2 text-left transition-colors hover:bg-[#282829]"
+                    className="flex w-full items-center justify-between rounded-[10px] border border-white/5 bg-ws-input px-3 py-2 text-left transition-colors hover:bg-ws-input-hover"
                 >
                     <span className="text-[14px] font-medium">
                         {selectedModel?.name ?? "Select model"}
                     </span>
                     <svg
-                        className="shrink-0 text-[#52525b]"
+                        className="shrink-0 text-ws-dim"
                         width="18"
                         height="18"
                         viewBox="0 0 24 24"
@@ -260,11 +212,11 @@ function RootView({
 
             {/* Aspect ratio — compact pill, expands to full picker on tap */}
             <div className="flex items-center justify-between px-4 pt-3.5 sm:px-5">
-                <span className="text-[13px] text-[#9ca3af]">Aspect ratio</span>
+                <span className="text-[13px] text-ws-icon">Aspect ratio</span>
                 <button
                     type="button"
                     onClick={() => setAspectExpanded((o) => !o)}
-                    className="flex h-[34px] w-[72px] items-center justify-center gap-1.5 rounded-[10px] border border-white/5 bg-[#202022] transition-colors hover:bg-[#282829]"
+                    className="flex h-[34px] w-[72px] items-center justify-center gap-1.5 rounded-[10px] border border-white/5 bg-ws-input transition-colors hover:bg-ws-input-hover"
                 >
                     <svg
                         className="shrink-0 text-gray-300"
@@ -300,7 +252,7 @@ function RootView({
 
             {/* Batch count */}
             <div className="flex items-center justify-between px-4 pb-4 pt-3.5 sm:px-5">
-                <span className="text-[13px] text-[#9ca3af]">Generations</span>
+                <span className="text-[13px] text-ws-icon">Generations</span>
                 <BatchStepper
                     value={settings.sampleCount}
                     onChange={(v) => onUpdate({ sampleCount: v })}
@@ -320,7 +272,7 @@ function AspectRatioPicker({
     onChange: (v: string) => void;
 }) {
     return (
-        <div className="flex items-center gap-0.5 rounded-xl border border-white/5 bg-[#202022] p-1">
+        <div className="flex items-center gap-0.5 rounded-xl border border-white/5 bg-ws-input p-1">
             {ASPECT_RATIOS.map((ar) => {
                 const active = ar.value === value;
                 return (
@@ -336,7 +288,7 @@ function AspectRatioPicker({
                         aria-label={ar.value}
                     >
                         <svg
-                            className={`${active ? "text-white" : "text-[#9ca3af]"} transition-colors`}
+                            className={`${active ? "text-white" : "text-ws-icon"} transition-colors`}
                             width="24"
                             height="24"
                             viewBox="0 0 24 24"
@@ -350,7 +302,7 @@ function AspectRatioPicker({
                         </svg>
                         <span
                             className={`mt-1 text-[11px] font-medium ${
-                                active ? "text-white" : "text-[#9ca3af]"
+                                active ? "text-white" : "text-ws-icon"
                             } transition-colors`}
                         >
                             {ar.value}
@@ -372,7 +324,7 @@ function BatchStepper({
     onChange: (v: number) => void;
 }) {
     return (
-        <div className="flex h-[34px] w-[72px] items-center rounded-[10px] border border-white/5 bg-[#202022] px-0.5">
+        <div className="flex h-[34px] w-[72px] items-center rounded-[10px] border border-white/5 bg-ws-input px-0.5">
             <StepperButton
                 label="Decrease"
                 disabled={value <= 1}
@@ -436,7 +388,7 @@ function StepperButton({
             onClick={onClick}
             disabled={disabled}
             aria-label={label}
-            className="group/step flex h-full w-6 items-center justify-center text-[#9ca3af] transition-colors duration-150 hover:text-white disabled:cursor-not-allowed disabled:text-[#3f3f46]"
+            className="group/step flex h-full w-6 items-center justify-center text-ws-icon transition-colors duration-150 hover:text-white disabled:cursor-not-allowed disabled:text-[#3f3f46]"
         >
             <span
                 className={`flex h-5 w-5 items-center justify-center rounded-md transition-colors duration-150 ${
@@ -462,7 +414,7 @@ function ModelListView({
     onSelect,
     onBack,
 }: {
-    models: Model[];
+    models: GenerationModel[];
     activeModelId: string;
     search: string;
     onSearchChange: (v: string) => void;
@@ -481,7 +433,7 @@ function ModelListView({
                     aria-label="Back"
                 >
                     <svg
-                        className="text-[#9ca3af]"
+                        className="text-ws-icon"
                         width="18"
                         height="18"
                         viewBox="0 0 24 24"
@@ -500,7 +452,7 @@ function ModelListView({
                     placeholder="Search models..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="flex-1 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-[13px] text-white placeholder-[#52525b] outline-none focus:border-white/[0.12] max-sm:text-[16px]"
+                    className="flex-1 rounded-lg border border-white/[0.06] bg-transparent px-2.5 py-1.5 text-[13px] text-white placeholder-ws-dim outline-none focus:border-white/[0.12] max-sm:text-[16px]"
                     autoComplete="off"
                     autoFocus
                 />
@@ -509,7 +461,7 @@ function ModelListView({
             {/* Model list */}
             <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto p-1.5 pt-0">
                 {models.length === 0 ? (
-                    <p className="py-6 text-center text-[13px] text-[#52525b]">
+                    <p className="py-6 text-center text-[13px] text-ws-dim">
                         No models found
                     </p>
                 ) : (
@@ -522,7 +474,7 @@ function ModelListView({
                                 onClick={() => onSelect(m.id)}
                                 className={`group flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-all ${
                                     active
-                                        ? "bg-[#2a2a2d]"
+                                        ? "bg-ws-control"
                                         : "hover:bg-white/[0.05]"
                                 }`}
                             >
@@ -531,7 +483,7 @@ function ModelListView({
                                         className={`text-[14px] font-medium ${
                                             active
                                                 ? "text-white"
-                                                : "text-[#9ca3af] group-hover:text-white"
+                                                : "text-ws-icon group-hover:text-white"
                                         } transition-colors`}
                                     >
                                         {m.name}
@@ -539,8 +491,8 @@ function ModelListView({
                                     <span
                                         className={`mt-[1px] text-[12px] ${
                                             active
-                                                ? "text-[#9ca3af]"
-                                                : "text-[#52525b] group-hover:text-[#9ca3af]"
+                                                ? "text-ws-icon"
+                                                : "text-ws-dim group-hover:text-ws-icon"
                                         } transition-colors`}
                                     >
                                         {m.description}
@@ -571,4 +523,4 @@ function ModelListView({
 }
 
 // Re-export for the composer's type needs.
-export type { Model };
+export type { GenerationModel };

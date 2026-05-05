@@ -8,14 +8,17 @@
  * generation lifecycle: idle → generating → result appears in gallery.
  *
  * State ownership:
- *   • generations[]     — local array, updated optimistically on submit
- *   • credits           — local counter, decremented on successful generation
+ *   • generations[]     �� local array, updated optimistically on submit
+ *   • credits           — shared credit store (see lib/credit-store.ts)
  *   • composerSettings  — aspect ratio, model, batch count
  *
  * The workspace is always dark-themed to keep visual focus on images.
  */
 
 import { useCallback, useRef, useState } from "react";
+import { useCreditCount, adjustCredits } from "@/lib/credit-store";
+import type { GenerationModel } from "@/lib/constants";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { GenerationGallery } from "./generation-gallery";
 import {
     GenerationComposer,
@@ -27,38 +30,59 @@ import {
 
 export type GenerationKind = "image" | "video";
 
-export interface GenerationItem {
+/**
+ * Shared fields present on every generation regardless of status.
+ */
+interface GenerationBase {
     uid: string;
     prompt: string;
     kind: GenerationKind;
-    status: "pending" | "done" | "failed";
     resolution: string;
     aspectRatio: string | null;
-    imageUrl: string | null;
     creditCost: number;
     createdAt: number;
-    errorMessage: string | null;
 }
 
-interface Model {
-    id: string;
-    name: string;
-    description: string;
-    creditBase: number;
+/**
+ * Pending — optimistic placeholder inserted when the user clicks
+ * Generate. `generationKey` links it to the eventual result.
+ */
+interface PendingGeneration extends GenerationBase {
+    status: "pending";
+    /** Links this placeholder to the eventual complete/error callback. */
+    generationKey: string;
 }
 
-interface VideoModel {
-    id: string;
-    name: string;
-    description: string;
-    creditBase: number;
+/**
+ * Done — the API returned successfully and we have a URL.
+ */
+interface DoneGeneration extends GenerationBase {
+    status: "done";
+    imageUrl: string;
+    generationKey: null;
 }
+
+/**
+ * Failed — the API (or poll recovery) reported an error.
+ */
+interface FailedGeneration extends GenerationBase {
+    status: "failed";
+    errorMessage: string;
+    generationKey: string | null;
+}
+
+/**
+ * Discriminated union — narrowing on `status` gives TypeScript full
+ * knowledge of which fields exist, eliminating defensive null-checks
+ * and impossible states (e.g. a "done" item with no `imageUrl`).
+ */
+export type GenerationItem = PendingGeneration | DoneGeneration | FailedGeneration;
 
 interface ProjectWorkspaceProps {
     projectUid: string;
     initialGenerations: GenerationItem[];
-    models: Model[];
-    videoModels: VideoModel[];
+    models: GenerationModel[];
+    videoModels: GenerationModel[];
     availableResolutions: string[];
     planName: string;
     totalCredits: number;
@@ -78,11 +102,12 @@ export function ProjectWorkspace({
     const [generations, setGenerations] = useState<GenerationItem[]>(
         initialGenerations,
     );
-    const [credits, setCredits] = useState(totalCredits);
+    const credits = useCreditCount(totalCredits);
     const composerRef = useRef<GenerationComposerHandle>(null);
 
     const handleGenerationComplete = useCallback(
         (result: {
+            generationKey: string;
             uid: string;
             imageUrls: string[];
             creditCost: number;
@@ -106,19 +131,27 @@ export function ProjectWorkspace({
                         imageUrl: url,
                         creditCost: i === 0 ? result.creditCost : 0,
                         createdAt: Date.now(),
-                        errorMessage: null,
+                        generationKey: null,
                     }),
                 );
 
-                // Replace all pending placeholders for this prompt with results.
+                // Replace all pending placeholders that share this
+                // generation key with the resolved items. Using the key
+                // instead of prompt text ensures duplicate prompts
+                // submitted in quick succession are matched correctly.
                 const firstPendingIdx = prev.findIndex(
-                    (g) => g.status === "pending" && g.prompt === result.prompt,
+                    (g) =>
+                        g.status === "pending" &&
+                        g.generationKey === result.generationKey,
                 );
                 if (firstPendingIdx !== -1) {
-                    // Count consecutive pending items with the same prompt.
+                    // Count consecutive pending items with the same key.
                     let pendingCount = 0;
                     for (let i = firstPendingIdx; i < prev.length; i++) {
-                        if (prev[i].status === "pending" && prev[i].prompt === result.prompt) {
+                        if (
+                            prev[i].status === "pending" &&
+                            prev[i].generationKey === result.generationKey
+                        ) {
                             pendingCount++;
                         } else {
                             break;
@@ -131,13 +164,14 @@ export function ProjectWorkspace({
                 // No pending match — prepend all items.
                 return [...newItems, ...prev];
             });
-            setCredits((c) => c - result.creditCost);
+            adjustCredits(-result.creditCost);
         },
         [],
     );
 
     const handleGenerationStart = useCallback(
         (placeholder: {
+            generationKey: string;
             prompt: string;
             resolution: string;
             aspectRatio: string;
@@ -154,10 +188,9 @@ export function ProjectWorkspace({
                     status: "pending" as const,
                     resolution: placeholder.resolution,
                     aspectRatio: placeholder.aspectRatio,
-                    imageUrl: null,
                     creditCost: 0,
                     createdAt: now,
-                    errorMessage: null,
+                    generationKey: placeholder.generationKey,
                 }),
             );
             setGenerations((prev) => [...pending, ...prev]);
@@ -166,13 +199,28 @@ export function ProjectWorkspace({
     );
 
     const handleGenerationError = useCallback(
-        (prompt: string, errorMessage: string) => {
+        (generationKey: string, errorMessage: string) => {
             setGenerations((prev) =>
-                prev.map((g) =>
-                    g.status === "pending" && g.prompt === prompt
-                        ? { ...g, status: "failed" as const, errorMessage }
-                        : g,
-                ),
+                prev.map((g): GenerationItem => {
+                    if (
+                        g.status === "pending" &&
+                        g.generationKey === generationKey
+                    ) {
+                        return {
+                            uid: g.uid,
+                            prompt: g.prompt,
+                            kind: g.kind,
+                            resolution: g.resolution,
+                            aspectRatio: g.aspectRatio,
+                            creditCost: g.creditCost,
+                            createdAt: g.createdAt,
+                            status: "failed",
+                            errorMessage,
+                            generationKey: g.generationKey,
+                        };
+                    }
+                    return g;
+                }),
             );
         },
         [],
@@ -232,25 +280,38 @@ export function ProjectWorkspace({
         }
     }, []);
 
+    // Derive a screen-reader-friendly status summary.
+    const pendingCount = generations.filter((g) => g.status === "pending").length;
+    const statusMessage = pendingCount > 0
+        ? `Generating ${pendingCount} ${pendingCount === 1 ? "image" : "images"}…`
+        : "";
+
     return (
         <div className="relative flex min-h-0 flex-1 flex-col text-white">
+            {/* Screen-reader announcement for generation status changes */}
+            <div aria-live="polite" aria-atomic="true" className="sr-only">
+                {statusMessage}
+            </div>
+
             {/* Gallery — fills remaining space. Bottom padding reserves
                 room for the floating composer so the last row isn't
                 permanently hidden behind it. */}
             <div className="flex-1 overflow-y-auto pb-40 sm:pb-44">
-                <GenerationGallery
-                    generations={generations}
-                    onReusePrompt={handleReusePrompt}
-                    onUseAsReference={handleUseAsReference}
-                    onRegenerate={handleRegenerate}
-                    onDelete={handleDeleteGeneration}
-                />
+                <ErrorBoundary>
+                    <GenerationGallery
+                        generations={generations}
+                        onReusePrompt={handleReusePrompt}
+                        onUseAsReference={handleUseAsReference}
+                        onRegenerate={handleRegenerate}
+                        onDelete={handleDeleteGeneration}
+                    />
+                </ErrorBoundary>
             </div>
 
             {/* Composer — floats over the gallery so its backdrop-blur
                 has content to blur (previously it sat as a sibling
                 below the gallery and rendered on bare page bg). */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0">
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10">
                 <div className="pointer-events-auto">
                     <GenerationComposer
                         ref={composerRef}
