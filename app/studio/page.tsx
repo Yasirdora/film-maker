@@ -41,7 +41,7 @@ export default async function StudioPage() {
         balance.plan.charAt(0).toUpperCase() + balance.plan.slice(1);
 
     return (
-        <div className="min-h-dvh bg-[#0f0f11] text-white pb-[66px] sm:pb-0">
+        <div className="min-h-dvh bg-ws-canvas text-white pb-[66px] sm:pb-0">
             <AppNav />
 
             <AppHeader />
@@ -50,10 +50,14 @@ export default async function StudioPage() {
                 {/* Welcome */}
                 <div className="mt-6 sm:mt-8">
                     <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                        Welcome back, {user.name?.split(" ")[0]}
+                        Welcome, {user.name?.split(" ")[0]}.
                     </h1>
-                    <p className="mt-1 text-sm text-[#9ca3af]">
-                        {Intl.NumberFormat("en-US").format(totalCredits)} credits remaining · {planLabel} plan
+                    <p className="mt-1 flex items-center gap-2 text-sm text-ws-icon">
+                        <span>{Intl.NumberFormat("en-US").format(totalCredits)} credits</span>
+                        <span className="text-ws-dim">·</span>
+                        <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white">
+                            {planLabel}
+                        </span>
                     </p>
                 </div>
 
@@ -64,12 +68,12 @@ export default async function StudioPage() {
                             <h2 className="text-lg font-semibold">
                                 Projects
                                 {projects.length > 0 && (
-                                    <span className="ml-2 text-sm font-medium text-[#52525b]">
+                                    <span className="ml-2 text-sm font-medium text-ws-dim">
                                         {projects.length}
                                     </span>
                                 )}
                             </h2>
-                            <p className="mt-1 text-sm text-[#52525b]">
+                            <p className="mt-1 text-sm text-ws-dim">
                                 Organize your generations into projects.
                             </p>
                         </div>

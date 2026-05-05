@@ -129,7 +129,7 @@ export function InlineRenameForm({
                 onClick={handleSave}
                 disabled={isSaving}
                 aria-label="Save"
-                className={`flex shrink-0 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50 ${cls.button}`}
+                className={`flex shrink-0 items-center justify-center rounded-lg text-ws-icon transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50 ${cls.button}`}
             >
                 <CheckIcon size={cls.icon} />
             </button>
@@ -138,7 +138,7 @@ export function InlineRenameForm({
                 onClick={onCancel}
                 disabled={isSaving}
                 aria-label="Cancel"
-                className={`flex shrink-0 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50 ${cls.button}`}
+                className={`flex shrink-0 items-center justify-center rounded-lg text-ws-icon transition-colors hover:bg-white/[0.06] hover:text-white disabled:opacity-50 ${cls.button}`}
             >
                 <CloseIcon size={cls.icon} />
             </button>

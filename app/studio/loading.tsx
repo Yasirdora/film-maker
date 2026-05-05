@@ -7,7 +7,7 @@
 
 export default function StudioLoading() {
     return (
-        <div className="min-h-dvh bg-[#0f0f11]">
+        <div className="min-h-dvh bg-ws-canvas">
             {/* Header */}
             <div className="mx-auto flex max-w-[85rem] items-center gap-3 px-4 py-4 sm:px-6 sm:py-5">
                 <div className="h-4 w-20 animate-pulse rounded bg-white/10" />

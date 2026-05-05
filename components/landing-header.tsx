@@ -18,6 +18,7 @@ import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
 
+import { CreditHydrator } from "@/lib/credit-store";
 import { LandingHeaderShell } from "./landing-header-shell";
 import { NavProfileMenu } from "./nav-profile-menu";
 import { NavScrollState } from "./nav-scroll-state";
@@ -60,6 +61,8 @@ export async function LandingHeader() {
 
     return (
         <>
+            {balance && <CreditHydrator credits={totalCredits} />}
+
             <NavScrollState />
 
             <header

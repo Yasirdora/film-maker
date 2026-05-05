@@ -36,7 +36,7 @@ export function ArchivedProjects({ projects }: ArchivedProjectsProps) {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center gap-2 text-sm text-[#52525b] transition-colors hover:text-[#9ca3af]"
+                className="flex items-center gap-2 text-sm text-ws-dim transition-colors hover:text-ws-icon"
             >
                 <svg
                     width="14"
@@ -141,13 +141,13 @@ function ArchivedProjectCard({
                 <h3 className="truncate text-sm font-semibold">
                     {name}
                 </h3>
-                <div className="mt-1.5 flex items-center justify-between text-xs text-[#52525b]">
+                <div className="mt-1.5 flex items-center justify-between text-xs text-ws-dim">
                     <span>{formatContentCount(imageCount, videoCount)}</span>
                     <button
                         type="button"
                         onClick={handleRestore}
                         disabled={isRestoring}
-                        className="font-medium text-[#9ca3af] underline underline-offset-2 transition-colors hover:text-white disabled:opacity-50"
+                        className="font-medium text-ws-icon underline underline-offset-2 transition-colors hover:text-white disabled:opacity-50"
                     >
                         {isRestoring ? "Restoring…" : "Restore"}
                     </button>

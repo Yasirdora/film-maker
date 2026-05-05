@@ -197,14 +197,14 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
                                     aria-label="Project actions"
                                     aria-haspopup="menu"
                                     aria-expanded={menuOpen}
-                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#9ca3af] transition-colors hover:bg-white/[0.06] hover:text-white"
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ws-icon transition-colors hover:bg-white/[0.06] hover:text-white"
                                 >
                                     <DotsIcon size={18} />
                                 </button>
                             </>
                         )}
                     </div>
-                    <div className="mt-1.5 flex items-center justify-between text-xs text-[#52525b]">
+                    <div className="mt-1.5 flex items-center justify-between text-xs text-ws-dim">
                         <span>
                             {formatContentCount(project.imageCount, project.videoCount)}
                         </span>

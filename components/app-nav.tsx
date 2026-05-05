@@ -20,6 +20,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
+import { CreditHydrator } from "@/lib/credit-store";
 import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
 import { NavScrollState } from "./nav-scroll-state";
@@ -42,6 +43,10 @@ export async function AppNav({ hideAuteurIcon = false }: { hideAuteurIcon?: bool
 
     return (
         <>
+            {/* Seed the shared credit store so every client consumer
+                (nav menu, workspace, composer) starts with the DB value. */}
+            {balance && <CreditHydrator credits={totalCredits} />}
+
             {/* Gradient blur scrims — fixed to the viewport so content
                 scrolling underneath the nav is subtly blurred, fading
                 into the page via a mask gradient. Ported from ConveX. */}

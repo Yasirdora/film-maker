@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
 import { signOut } from "@/lib/auth-client";
+import { useCreditCount } from "@/lib/credit-store";
 
 import styles from "./nav-profile-menu.module.css";
 
@@ -177,6 +178,10 @@ export function NavProfileMenu({
     const [signingOut, setSigningOut] = useState(false);
     const desktopRef = useRef<HTMLDivElement>(null);
 
+    // Live credit count — falls back to the server-rendered prop until
+    // the shared store has been seeded by <CreditHydrator>.
+    const liveCredits = useCreditCount(credits);
+
     const initial = (name || email)[0]?.toUpperCase() ?? "?";
 
     // Close dropdown on outside click or Escape.
@@ -231,7 +236,7 @@ export function NavProfileMenu({
         initial,
         name,
         email,
-        credits,
+        credits: liveCredits,
         planName,
         isFreePlan,
         onNavigate: close,

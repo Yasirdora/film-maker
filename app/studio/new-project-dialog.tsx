@@ -107,7 +107,7 @@ export function NewProjectButton({ variant = "header" }: NewProjectButtonProps) 
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="text-[#9ca3af]"
+                        className="text-ws-icon"
                         aria-hidden
                     >
                         <line x1="12" y1="5" x2="12" y2="19" />
@@ -117,7 +117,7 @@ export function NewProjectButton({ variant = "header" }: NewProjectButtonProps) 
                 <h3 className="mt-5 text-base font-semibold">
                     No projects yet
                 </h3>
-                <p className="mt-1.5 max-w-sm text-sm text-[#9ca3af]">
+                <p className="mt-1.5 max-w-sm text-sm text-ws-icon">
                     Create a project to organize your generations.
                 </p>
                 <div className="mt-6">

@@ -7,19 +7,11 @@
  * header so both surfaces present the same options, ordering,
  * keyboard behaviour, and visual styling.
  *
- * The menu is portal-rendered with `fixed` positioning measured from
- * the trigger's bounding rect — that way it escapes any `overflow`
- * clipping on its ancestors and its own `backdrop-blur` isn't
- * trapped by a parent blur stacking context. The horizontal position
- * is clamped so triggers near the viewport edge don't push the menu
- * off-screen.
- *
- * Dismiss handlers (outside click + Escape) are registered inside a
- * `setTimeout` so the click that opens the menu doesn't immediately
- * close it.
+ * Portal-rendered with `fixed` positioning measured from the
+ * trigger's bounding rect. Anchor tracking, outside-click dismissal,
+ * and Escape handling are delegated to `usePopover`.
  */
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -27,6 +19,7 @@ import {
     EditIcon,
     PinIcon,
 } from "@/components/icons/action-icons";
+import { usePopover } from "@/lib/use-popover";
 
 const MENU_WIDTH = 180;
 const MENU_GAP = 4;
@@ -50,55 +43,21 @@ export function ProjectActionMenu({
     onRename,
     onArchive,
 }: ProjectActionMenuProps) {
-    const menuRef = useRef<HTMLDivElement>(null);
-    const [position, setPosition] = useState<{ top: number; left: number } | null>(
-        null,
-    );
+    // This component is only mounted when open (the parent gates
+    // rendering), so `open` is always `true` here.
+    const { anchorRect, menuRef } = usePopover({
+        open: true,
+        onClose,
+        anchorRef,
+    });
 
-    useLayoutEffect(() => {
-        function measure() {
-            const anchor = anchorRef.current;
-            if (!anchor) return;
-            const rect = anchor.getBoundingClientRect();
-            const maxLeft = window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN;
-            const preferredLeft = rect.right - MENU_WIDTH;
-            const left = Math.max(
-                VIEWPORT_MARGIN,
-                Math.min(preferredLeft, maxLeft),
-            );
-            setPosition({ top: rect.bottom + MENU_GAP, left });
-        }
-        measure();
-        window.addEventListener("resize", measure);
-        window.addEventListener("scroll", measure, true);
-        return () => {
-            window.removeEventListener("resize", measure);
-            window.removeEventListener("scroll", measure, true);
-        };
-    }, [anchorRef]);
+    if (!anchorRect) return null;
 
-    useEffect(() => {
-        function handleClick(e: MouseEvent) {
-            const target = e.target as Node;
-            if (menuRef.current?.contains(target)) return;
-            if (anchorRef.current?.contains(target)) return;
-            onClose();
-        }
-        function handleKey(e: KeyboardEvent) {
-            if (e.key === "Escape") onClose();
-        }
-        const timer = setTimeout(() => {
-            document.addEventListener("mousedown", handleClick);
-            document.addEventListener("keydown", handleKey);
-        }, 0);
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener("mousedown", handleClick);
-            document.removeEventListener("keydown", handleKey);
-        };
-    }, [anchorRef, onClose]);
-
-    if (!position) return null;
+    // Clamp the horizontal position so triggers near the viewport
+    // edge don't push the menu off-screen.
+    const maxLeft = window.innerWidth - MENU_WIDTH - VIEWPORT_MARGIN;
+    const preferredLeft = anchorRect.right - MENU_WIDTH;
+    const left = Math.max(VIEWPORT_MARGIN, Math.min(preferredLeft, maxLeft));
 
     return createPortal(
         <div
@@ -106,12 +65,12 @@ export function ProjectActionMenu({
             role="menu"
             style={{
                 position: "fixed",
-                top: position.top,
-                left: position.left,
+                top: anchorRect.bottom + MENU_GAP,
+                left,
                 width: MENU_WIDTH,
                 zIndex: 60,
             }}
-            className="overflow-hidden rounded-xl bg-[#1a1a1c]/95 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08] backdrop-blur-xl"
+            className="overflow-hidden rounded-xl bg-ws-surface/95 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08] backdrop-blur-xl"
         >
             <MenuItem onClick={onTogglePin} icon={<PinIcon size={14} />}>
                 {isPinned ? "Unpin" : "Pin"}

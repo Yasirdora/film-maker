@@ -68,7 +68,7 @@ export function ConfirmDialog({
             }}
         >
             <div
-                className="w-full max-w-md rounded-2xl bg-[#1a1a1c] p-6 text-white shadow-[0_24px_48px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08]"
+                className="w-full max-w-md rounded-2xl bg-ws-surface p-6 text-white shadow-[0_24px_48px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08]"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h2
@@ -78,7 +78,7 @@ export function ConfirmDialog({
                     {title}
                 </h2>
                 {description && (
-                    <div className="mt-2 text-sm text-[#9ca3af]">
+                    <div className="mt-2 text-sm text-ws-icon">
                         {description}
                     </div>
                 )}
