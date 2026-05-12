@@ -140,21 +140,31 @@ export default function Inspector() {
                     >
                         {clip.kind} clip
                     </h2>
-                    <div
-                        style={{
-                            marginTop: 4,
-                            fontSize: 11,
-                            color: "rgba(255,255,255,0.45)",
-                        }}
-                    >
-                        {clip.duration.toFixed(2)}s @ {clip.start.toFixed(2)}s
-                    </div>
                 </div>
                 <CollapseToggle
                     direction="collapse"
                     onClick={() => setCollapsed(true)}
                 />
             </header>
+
+            {/* Timing — duration and timeline position with explicit
+                labels. Replaces the cryptic "Xs @ Ys" subtitle the
+                header used to carry; "Ends at" is computed so the user
+                doesn't have to do mental math when nudging clips. */}
+            <Section title="Timing">
+                <InfoRow
+                    label="Duration"
+                    value={`${clip.duration.toFixed(2)}s`}
+                />
+                <InfoRow
+                    label="Starts at"
+                    value={`${clip.start.toFixed(2)}s`}
+                />
+                <InfoRow
+                    label="Ends at"
+                    value={`${(clip.start + clip.duration).toFixed(2)}s`}
+                />
+            </Section>
 
             {hasAudioControls && (
                 <Section title="Audio">
@@ -456,6 +466,37 @@ function Section({
             >
                 {children}
             </div>
+        </div>
+    );
+}
+
+/**
+ * Two-column row for displaying a labeled value (e.g. "Duration · 15.07s").
+ * Read-only by design — for editable values use NumberInput / Slider.
+ * The value column uses tabular numerals so columns of numbers line up
+ * cleanly, which matters when several InfoRows stack inside one Section.
+ */
+function InfoRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div
+            style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                gap: 12,
+                fontSize: 12,
+                minWidth: 0,
+            }}
+        >
+            <span style={{ color: "rgba(255,255,255,0.55)" }}>{label}</span>
+            <span
+                style={{
+                    color: "rgba(255,255,255,0.85)",
+                    fontVariantNumeric: "tabular-nums",
+                }}
+            >
+                {value}
+            </span>
         </div>
     );
 }
