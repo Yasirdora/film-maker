@@ -82,14 +82,27 @@ export async function exportProject(
       playbackRate: Math.max(0.1, c.speed ?? 1),
     };
 
-    // Store transform: canvas-center-relative → Rect top-left absolute
+    // Translate the editor's clip-center coordinates into WebAV's
+    // sprite-top-left rect.
+    //
+    // In the editor, `transform.x` / `transform.y` are absolute canvas
+    // coordinates of the clip's *center* (see `defaultTransform` in
+    // `store.ts` which seeds them to `canvas.width/2`, `canvas.height/2`,
+    // and `PreviewStage` which renders Konva nodes with `offsetX = w/2`,
+    // `offsetY = h/2`).
+    //
+    // WebAV's `OffscreenSprite.rect.x|y` is the top-left of the sprite
+    // in output-canvas pixels, so subtract half the scaled clip size to
+    // place the center at (x, y). Rounding keeps the sprite on integer
+    // pixels — sub-pixel positioning can cause faint seams on the
+    // output edge.
     const { x, y, scale, rotation, opacity, flipX, flipY } = c.transform;
     const w = asset.width * scale;
     const h = asset.height * scale;
-    spr.rect.x = opts.width / 2 + x - w / 2;
-    spr.rect.y = opts.height / 2 + y - h / 2;
-    spr.rect.w = w;
-    spr.rect.h = h;
+    spr.rect.x = Math.round(x - w / 2);
+    spr.rect.y = Math.round(y - h / 2);
+    spr.rect.w = Math.round(w);
+    spr.rect.h = Math.round(h);
     spr.rect.angle = (rotation * Math.PI) / 180;
     spr.opacity = opacity;
     // WebAV supports one flip axis at a time; flipX takes priority.
