@@ -50,30 +50,92 @@ export default function PreviewStage() {
     return () => ro.disconnect();
   }, []);
 
-  const scale = useMemo(() => {
+  /* `fitScale` maps canvas pixels to container pixels with the canvas's
+     aspect-ratio constraint deciding which axis is limiting. Multiplied
+     by `userZoom` to get the final on-screen scale — `userZoom === 1`
+     means "at the size the editor naturally renders at", which is what
+     users mentally call 100% zoom in this kind of UI. */
+  const fitScale = useMemo(() => {
     if (!box.w || !box.h) return 0;
-    // No extra inset — the canvas fills the available space and lets its
-    // own aspect ratio decide which axis is the limiting one. The dark
-    // frame around the stage comes from the parent shell, not from a
-    // padded gutter inside the preview.
     return Math.min(box.w / canvas.width, box.h / canvas.height);
   }, [box, canvas.width, canvas.height]);
+
+  /* User-controlled zoom multiplier on top of the fit-scale. Clamped to
+     a sensible range — below 25% the canvas becomes a postage stamp,
+     above 4× the user is past anything the source resolution supports. */
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 4;
+  const [userZoom, setUserZoom] = useState(1);
+  const effectiveScale = fitScale * userZoom;
+
+  /* Auto-hiding zoom badge. `badgeVisible` flips to true on every zoom
+     change and back to false after `BADGE_HIDE_DELAY_MS` of idle so the
+     percentage doesn't overstay its welcome. Stored as state (not ref)
+     so the surrounding div re-renders to flip the CSS opacity. */
+  const BADGE_HIDE_DELAY_MS = 1200;
+  const [badgeVisible, setBadgeVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showBadge = useCallback(() => {
+    setBadgeVisible(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(
+      () => setBadgeVisible(false),
+      BADGE_HIDE_DELAY_MS,
+    );
+  }, []);
+
+  /* Clean up any pending timer on unmount so it can't fire against an
+     unmounted component. */
+  useEffect(
+    () => () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    },
+    [],
+  );
+
+  /* Pinch-to-zoom on trackpads, Cmd/Ctrl + wheel on mice. Both come
+     through as `WheelEvent` with `ctrlKey === true` — the browser sets
+     it automatically for pinch gestures even when the physical Ctrl
+     key isn't pressed. Plain wheel (no modifier, no pinch) bubbles up
+     so any parent scroll behaviour still works. */
+  const onWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      /* `deltaY` is positive for "scroll down" / pinch-in (zoom out).
+         An exponential factor keeps the zoom feel consistent at every
+         scale — small steps shrink relative to the current zoom, not
+         absolute pixels. The 0.01 constant approximates a 1% step per
+         wheel notch on most trackpads. */
+      setUserZoom((prev) => {
+        const next = prev * Math.exp(-e.deltaY * 0.01);
+        return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next));
+      });
+      showBadge();
+    },
+    [showBadge],
+  );
 
   return (
     <div
       ref={containerRef}
-      className="flex-1 min-h-0 bg-[#101114] flex items-center justify-center overflow-hidden"
+      onWheel={onWheel}
+      className="flex-1 min-h-0 bg-[#101114] flex items-center justify-center overflow-hidden relative"
     >
-      {scale > 0 && (
+      {effectiveScale > 0 && (
         <div
-          style={{ width: canvas.width * scale, height: canvas.height * scale }}
+          style={{
+            width: canvas.width * effectiveScale,
+            height: canvas.height * effectiveScale,
+          }}
           className="shadow-[0_0_0_1px_#252629,0_8px_32px_rgba(0,0,0,0.4)]"
         >
           <Stage
-            width={canvas.width * scale}
-            height={canvas.height * scale}
-            scaleX={scale}
-            scaleY={scale}
+            width={canvas.width * effectiveScale}
+            height={canvas.height * effectiveScale}
+            scaleX={effectiveScale}
+            scaleY={effectiveScale}
             onMouseDown={(e) => {
               if (e.target === e.target.getStage()) setSelectedClip(null);
             }}
@@ -98,8 +160,52 @@ export default function PreviewStage() {
           </Stage>
         </div>
       )}
+      <ZoomBadge percent={Math.round(userZoom * 100)} visible={badgeVisible} />
       {/* Drives clock-from-video resync via rVFC on the leading video. */}
       <ClockAnchor visible={visible} />
+    </div>
+  );
+}
+
+/**
+ * Auto-fading pill rendered top-right of the preview while the user
+ * zooms. Receives the current zoom percent (relative to the fit-scale
+ * baseline, i.e. 100% = how the preview normally renders) and a
+ * visibility flag that the parent flips back to false after a brief
+ * idle window. The fade is pure CSS so React doesn't re-render the
+ * badge for the animation itself.
+ */
+function ZoomBadge({ percent, visible }: { percent: number; visible: boolean }) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: "absolute",
+        top: 8,
+        right: 8,
+        padding: "4px 10px",
+        borderRadius: 999,
+        background: "rgba(0, 0, 0, 0.55)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        color: "rgba(255, 255, 255, 0.92)",
+        fontSize: 11,
+        fontWeight: 500,
+        fontVariantNumeric: "tabular-nums",
+        letterSpacing: 0.2,
+        opacity: visible ? 1 : 0,
+        /* Fast fade in (so the badge feels responsive while you spin
+           the wheel), slow fade out (so it "settles" rather than blinks
+           off). */
+        transition: visible
+          ? "opacity 120ms ease-out"
+          : "opacity 600ms ease-out",
+        pointerEvents: "none",
+        userSelect: "none",
+      }}
+    >
+      {percent}%
     </div>
   );
 }
