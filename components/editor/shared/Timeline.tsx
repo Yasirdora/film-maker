@@ -125,7 +125,11 @@ function DesktopTimeline({
   const [ctxMenu, setCtxMenu] = useState<{ clipId: string; x: number; y: number } | null>(null);
   const [loopCtxMenu, setLoopCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [razorGuideX, setRazorGuideX] = useState<number | null>(null);
-  const HEADER_W = isHeaderCollapsed ? 60 : DESK_HEADER_W;
+  /* Collapsed track-header column — 40px keeps just the icon-only
+     controls (chevron, S/M/lock, +) without giving them more lateral
+     room than they need. Expanded uses the full DESK_HEADER_W which
+     hosts the track name, color swatch, and full button row. */
+  const HEADER_W = isHeaderCollapsed ? 40 : DESK_HEADER_W;
 
   // Lay clips back-to-back starting at the playhead so multi-file drops
   // don't all stack at the same start position on the same track.
@@ -1327,7 +1331,9 @@ function DesktopTrackHeader({
     [config, track.id, seek],
   );
 
-  const HEADER_WIDTH = isCollapsed ? 60 : DESK_HEADER_W;
+  /* Mirror the collapsed-column width used by the Timeline shell above
+     so the per-track header shell and the outer column stay aligned. */
+  const HEADER_WIDTH = isCollapsed ? 40 : DESK_HEADER_W;
 
   const rowBg = "transparent";
   const baseShellStyle: React.CSSProperties = {
