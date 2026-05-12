@@ -312,11 +312,18 @@ function ShellFooter({
   formIdle: boolean;
   showResult: boolean;
   onClose: () => void;
-  /** When provided in the result state, exposes an "Export again" action
-   *  that drops the user back to the form without closing the dialog. */
+  /** When provided in the result state, exposes an "Adjust settings"
+   *  action that drops the user back to the form so they can tweak
+   *  resolution / quality / filename and render again. */
   onReset?: () => void;
 }) {
+  /* During progress the footer is hidden entirely. In the result state
+     it is only useful when there is an "Adjust settings" affordance to
+     surface — dismissal already lives in the header X / backdrop /
+     Escape, so a redundant "Close" button here would just dilute the
+     primary action. */
   if (!formIdle && !showResult) return null;
+  if (showResult && !onReset) return null;
   return (
     <div
       style={{
@@ -333,18 +340,14 @@ function ShellFooter({
           <DialogBtn variant="primary" type="submit">Export</DialogBtn>
         </>
       ) : (
-        <>
-          <DialogBtn variant="secondary" onClick={onClose}>Close</DialogBtn>
-          {onReset && (
-            /* Reopens the form so the user can tweak resolution /
-               quality / filename and render again. Not labeled "Export
-               again" because re-doing the same render verbatim has no
-               value — the value is in adjusting something first. */
-            <DialogBtn variant="primary" onClick={onReset}>
-              Adjust settings
-            </DialogBtn>
-          )}
-        </>
+        /* `onReset` is guaranteed to be defined here by the early-return
+           above; non-null assertion would clutter the JSX, so just call
+           through and let TypeScript narrow via the conditional render. */
+        onReset && (
+          <DialogBtn variant="primary" onClick={onReset}>
+            Adjust settings
+          </DialogBtn>
+        )
       )}
     </div>
   );
