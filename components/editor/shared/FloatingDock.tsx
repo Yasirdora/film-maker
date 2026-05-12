@@ -11,9 +11,9 @@
  *   • Desktop: floating squircle pinned to bottom-center, with SMPTE timecode.
  */
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useEditor } from "@/lib/editor/store";
-import { useClockTime, useClockPlaying } from "@/lib/editor/clock";
+import { clock, useClockPlaying } from "@/lib/editor/clock";
 import { useIsMobile } from "@/lib/editor/useMediaQuery";
 import {
   Loop,
@@ -30,6 +30,108 @@ export type RecorderIntegration = {
   state: RecorderState;
   /** idle → start, recording → pause, paused → stop & import. */
   toggle: () => void | Promise<void>;
+};
+
+/* ─── Style + size constants ─────────────────────────────────────────
+ * Hoisted out of the render path so we don't re-allocate the same style
+ * objects on every dock re-render (the dock re-renders whenever the
+ * editor store fires — record state, totalDuration, etc.). Values
+ * tuned ~15 % tighter than the prior dock for a denser, more
+ * professional readout while keeping the buttons comfortably tappable.
+ */
+const PLAY_BTN_SIZE = 40;
+const TBTN_SIZE = 34;
+
+const MOBILE_DOCK_STYLE: React.CSSProperties = {
+  /* In flow at the bottom of the timeline column; sits flush above
+     MobileEditingBar. Single row, no SMPTE — the ruler carries time.
+     Keeps the dark dock wrapper but skips backdrop-filter blur. */
+  position: "relative",
+  flexShrink: 0,
+  height: 48,
+  padding: "0 12px",
+  gap: 6,
+  justifyContent: "center",
+  background: "rgba(18, 18, 18, 0.94)",
+  borderTop: "1px solid rgba(255,255,255,0.08)",
+  zIndex: 50,
+};
+
+const DESKTOP_DOCK_STYLE: React.CSSProperties = {
+  position: "fixed",
+  bottom: 20,
+  left: "50%",
+  transform: "translateX(-50%)",
+  padding: "5px 7px",
+  gap: 8,
+  borderRadius: 12,
+  zIndex: 100,
+  background: "rgba(18, 18, 18, 0.94)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  boxShadow: "0 28px 56px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02)",
+};
+
+const PLAY_BTN_STYLE: React.CSSProperties = {
+  width: PLAY_BTN_SIZE,
+  height: PLAY_BTN_SIZE,
+  borderRadius: 9,
+  border: "none",
+  background: "#fdfdfd",
+  color: "#000000",
+  cursor: "pointer",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8)",
+  flexShrink: 0,
+  margin: "0 3px",
+};
+
+const PLAY_BTN_DISABLED_STYLE: React.CSSProperties = {
+  ...PLAY_BTN_STYLE,
+  cursor: "not-allowed",
+};
+
+const DOCK_MAIN_DIVIDER_STYLE: React.CSSProperties = {
+  width: 1,
+  height: 24,
+  background: "rgba(255,255,255,0.08)",
+  margin: "0 3px",
+};
+
+const DOCK_INNER_DIVIDER_STYLE: React.CSSProperties = {
+  width: 1,
+  height: 14,
+  background: "rgba(255,255,255,0.12)",
+  margin: "0 3px",
+};
+
+const TBTN_BASE_STYLE: React.CSSProperties = {
+  width: TBTN_SIZE,
+  height: TBTN_SIZE,
+  borderRadius: 7,
+  border: "none",
+};
+
+const TIMECODE_STYLE: React.CSSProperties = {
+  fontFamily: "'SF Mono', 'ui-monospace', monospace",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "#fff",
+  background: "#000000",
+  padding: "7px 14px",
+  borderRadius: 8,
+  border: "1px solid rgba(255,255,255,0.08)",
+  letterSpacing: "1.2px",
+  minWidth: 112,
+  textAlign: "center" as const,
+  userSelect: "none" as const,
+};
+
+const COMPACT_TIME_STYLE: React.CSSProperties = {
+  fontFamily: "'SF Mono', 'ui-monospace', monospace",
+  fontSize: 12,
+  fontWeight: 600,
+  color: "rgba(255,255,255,0.85)",
+  letterSpacing: "0.5px",
+  userSelect: "none" as const,
 };
 
 export type FloatingDockProps = {
@@ -61,34 +163,7 @@ export default function FloatingDock({ beforePlay, recorder }: FloatingDockProps
   // Play button shows "pause" affordance when either playback or recording is active.
   const showPauseIcon = isRecording || (!isRecorderActive && playing);
 
-  const dockStyle: React.CSSProperties = isMobile
-    ? {
-        /* In flow at the bottom of the timeline column; sits flush above
-           MobileEditingBar. Single row, no SMPTE — the ruler carries time.
-           Keeps the dark dock wrapper but skips backdrop-filter blur. */
-        position: "relative",
-        flexShrink: 0,
-        height: 52,
-        padding: "0 12px",
-        gap: 6,
-        justifyContent: "center",
-        background: "rgba(18, 18, 18, 0.94)",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        zIndex: 50,
-      }
-    : {
-        position: "fixed",
-        bottom: 24,
-        left: "50%",
-        transform: "translateX(-50%)",
-        padding: "6px 8px",
-        gap: 10,
-        borderRadius: 14,
-        zIndex: 100,
-        background: "rgba(18, 18, 18, 0.94)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 32px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.02)",
-      };
+  const dockStyle: React.CSSProperties = isMobile ? MOBILE_DOCK_STYLE : DESKTOP_DOCK_STYLE;
 
   return (
     <div className="flex items-center" style={dockStyle}>
@@ -98,7 +173,7 @@ export default function FloatingDock({ beforePlay, recorder }: FloatingDockProps
           onClick={() => seek(0)}
           disabled={isRecorderActive || transportDisabled}
         >
-          <SkipPrevious width={18} height={18} />
+          <SkipPrevious width={16} height={16} />
         </TBtn>
 
         <button
@@ -119,31 +194,22 @@ export default function FloatingDock({ beforePlay, recorder }: FloatingDockProps
               : "Play"
           }
           className="flex items-center justify-center transition-all ae-ease group"
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 10,
-            border: "none",
-            background: "#fdfdfd",
-            color: "#000000",
-            cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.8)",
-            flexShrink: 0,
-            margin: "0 4px",
-          }}
+          style={transportDisabled ? PLAY_BTN_DISABLED_STYLE : PLAY_BTN_STYLE}
           onMouseEnter={(e) => {
+            if (transportDisabled) return;
             (e.currentTarget as HTMLElement).style.background = "#ffffff";
             (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
           }}
           onMouseLeave={(e) => {
+            if (transportDisabled) return;
             (e.currentTarget as HTMLElement).style.background = "#fdfdfd";
             (e.currentTarget as HTMLElement).style.transform = "translateY(0)";
           }}
         >
           {showPauseIcon ? (
-            <Pause width={22} height={22} />
+            <Pause width={20} height={20} />
           ) : (
-            <PlayArrow width={22} height={22} style={{ marginLeft: 2 }} />
+            <PlayArrow width={20} height={20} style={{ marginLeft: 2 }} />
           )}
         </button>
 
@@ -152,7 +218,7 @@ export default function FloatingDock({ beforePlay, recorder }: FloatingDockProps
           onClick={() => seek(total)}
           disabled={isRecorderActive || transportDisabled}
         >
-          <SkipNextIcon width={18} height={18} />
+          <SkipNextIcon width={16} height={16} />
         </TBtn>
 
         {recorder && (
@@ -169,7 +235,7 @@ export default function FloatingDock({ beforePlay, recorder }: FloatingDockProps
         <LoopBtn disabled={transportDisabled} />
       </div>
 
-      <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
+      <div style={DOCK_MAIN_DIVIDER_STYLE} />
 
       {isMobile ? <CompactTime /> : <Timecode />}
     </div>
@@ -223,36 +289,38 @@ function RecordButton({
 }
 
 function DockDivider() {
-  return (
-    <div
-      style={{
-        width: 1,
-        height: 16,
-        background: "rgba(255,255,255,0.12)",
-        margin: "0 4px",
-      }}
-    />
-  );
+  return <div style={DOCK_INNER_DIVIDER_STYLE} />;
 }
 
+/**
+ * Compact mobile readout (m:ss). Updates imperatively on each clock
+ * tick — writing to `textContent` directly so playback doesn't trip a
+ * React re-render of the whole dock subtree 60×/second. Cheaper than
+ * `useClockTime()` and visually identical.
+ */
 function CompactTime() {
-  const t = useClockTime();
-  const m = Math.floor(t / 60);
-  const s = Math.floor(t % 60);
-  return (
-    <div
-      style={{
-        fontFamily: "'SF Mono', 'ui-monospace', monospace",
-        fontSize: 13,
-        fontWeight: 600,
-        color: "rgba(255,255,255,0.85)",
-        letterSpacing: "0.5px",
-        userSelect: "none",
-      }}
-    >
-      {`${m}:${String(s).padStart(2, "0")}`}
-    </div>
-  );
+  const ref = useRef<HTMLDivElement | null>(null);
+  const lastText = useRef("");
+  useEffect(() => {
+    const apply = () => {
+      const el = ref.current;
+      if (!el) return;
+      const t = clock.time();
+      const m = Math.floor(t / 60);
+      const s = Math.floor(t % 60);
+      const next = `${m}:${String(s).padStart(2, "0")}`;
+      /* Compare before writing — `textContent` writes still invalidate
+         layout even when the string is unchanged, and the clock fires
+         at frame rate while the seconds digit only ticks once a second. */
+      if (lastText.current !== next) {
+        lastText.current = next;
+        el.textContent = next;
+      }
+    };
+    apply();
+    return clock.subscribe(apply);
+  }, []);
+  return <div ref={ref} style={COMPACT_TIME_STYLE} />;
 }
 
 function TBtn({
@@ -289,10 +357,7 @@ function TBtn({
       aria-label={title}
       className="flex items-center justify-center transition-all ae-ease"
       style={{
-        width: 38,
-        height: 38,
-        borderRadius: 8,
-        border: "none",
+        ...TBTN_BASE_STYLE,
         background: active ? "rgba(255,255,255,0.1)" : "transparent",
         color: resolvedColor,
         opacity: disabled ? 1 : baseOpacity,
@@ -328,34 +393,39 @@ function LoopBtn({ disabled = false }: { disabled?: boolean }) {
       opacity={loopEnabled ? 1 : 0.55}
       active={loopEnabled}
     >
-      <Loop width={20} height={20} />
+      <Loop width={18} height={18} />
     </TBtn>
   );
 }
 
+/**
+ * SMPTE readout (hh:mm:ss:ff). Subscribes directly to the clock and
+ * writes `textContent` imperatively — the parent dock never re-renders
+ * just because the playhead moved, which keeps idle dock cost flat
+ * during playback regardless of how many tracks are on the timeline.
+ * `fps` lives in the editor store and changes rarely, so we re-read it
+ * inside the subscriber instead of holding it as a render-tracked dep.
+ */
 function Timecode() {
-  const t = useClockTime();
+  const ref = useRef<HTMLDivElement | null>(null);
+  const lastText = useRef("");
+  /* Subscribe `fps` through the store so the readout updates instantly
+     when the user changes project frame rate (very rare, but visible). */
   const fps = useEditor((s) => s.canvas.fps);
-  return (
-    <div
-      style={{
-        fontFamily: "'SF Mono', 'ui-monospace', monospace",
-        fontSize: 15,
-        fontWeight: 600,
-        color: "#fff",
-        background: "#000000",
-        padding: "10px 20px",
-        borderRadius: 10,
-        border: "1px solid rgba(255,255,255,0.08)",
-        letterSpacing: "1.5px",
-        minWidth: 130,
-        textAlign: "center",
-        userSelect: "none",
-      }}
-    >
-      {formatSMPTE(t, fps)}
-    </div>
-  );
+  useEffect(() => {
+    const apply = () => {
+      const el = ref.current;
+      if (!el) return;
+      const next = formatSMPTE(clock.time(), fps);
+      if (lastText.current !== next) {
+        lastText.current = next;
+        el.textContent = next;
+      }
+    };
+    apply();
+    return clock.subscribe(apply);
+  }, [fps]);
+  return <div ref={ref} style={TIMECODE_STYLE} />;
 }
 
 function formatSMPTE(t: number, fps: number): string {
