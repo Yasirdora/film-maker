@@ -24,6 +24,7 @@ import MobileEditingBar from "@/components/editor/shared/MobileEditingBar";
 import PreviewStage from "@/components/editor/shared/PreviewStage";
 import Inspector from "@/components/editor/shared/Inspector";
 import CanvasFromQuery from "@/components/editor/shared/CanvasFromQuery";
+import Splitter from "@/components/editor/shared/Splitter";
 import { VideoEditorToolButtons } from "@/app/editor/video/VideoEditorPageActions";
 import { videoTimelineConfig } from "./videoTimelineConfig";
 import VideoExportDialog from "./VideoExportDialog";
@@ -108,7 +109,11 @@ export default function VideoEditor() {
         className="flex-grow flex flex-col relative"
         style={{ minWidth: 0, minHeight: 0 }}
       >
-        {/* Preview canvas — sits above the timeline, fills remaining height. */}
+        {/* Preview canvas + timeline shell — rounded chrome on desktop,
+            edge-to-edge on mobile. On desktop the preview/timeline split
+            is user-resizable via Splitter; on mobile we fall back to the
+            natural flex layout because dragging a 1px handle on a small
+            screen is poor UX and the screen is already short. */}
         <div
           className="flex-grow flex flex-col relative overflow-hidden"
           style={{
@@ -120,19 +125,40 @@ export default function VideoEditor() {
             boxShadow: isMobile ? "none" : "0 8px 32px rgba(0,0,0,0.5)",
           }}
         >
-          <PreviewStage />
-          <Timeline
-            config={videoTimelineConfig}
-            mode={mode}
-            isHeaderCollapsed={isHeaderCollapsed}
-            setIsHeaderCollapsed={setIsHeaderCollapsed}
-            showHelp={showHelp}
-            setShowHelp={setShowHelp}
-          />
-          {isMobile && (
-            <MobileEditingBar>
-              <VideoEditorToolButtons menuPlacement="up" />
-            </MobileEditingBar>
+          {isMobile ? (
+            <>
+              <PreviewStage />
+              <Timeline
+                config={videoTimelineConfig}
+                mode={mode}
+                isHeaderCollapsed={isHeaderCollapsed}
+                setIsHeaderCollapsed={setIsHeaderCollapsed}
+                showHelp={showHelp}
+                setShowHelp={setShowHelp}
+              />
+              <MobileEditingBar>
+                <VideoEditorToolButtons menuPlacement="up" />
+              </MobileEditingBar>
+            </>
+          ) : (
+            <Splitter
+              orientation="vertical"
+              storageKey="film-maker:editor.video.preview-timeline"
+              defaultRatio={0.6}
+              minRatio={0.25}
+              maxRatio={0.85}
+              handleLabel="Resize video preview and timeline"
+            >
+              <PreviewStage />
+              <Timeline
+                config={videoTimelineConfig}
+                mode={mode}
+                isHeaderCollapsed={isHeaderCollapsed}
+                setIsHeaderCollapsed={setIsHeaderCollapsed}
+                showHelp={showHelp}
+                setShowHelp={setShowHelp}
+              />
+            </Splitter>
           )}
           <FloatingDock />
         </div>
