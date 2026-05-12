@@ -66,8 +66,18 @@ function VideoFilmstripBody({
   const sourceSpan = Math.max(0.001, sourceEnd - sourceStart);
   /* Pixels per second of source video, in clip coordinates. */
   const pxPerSourceSec = width / sourceSpan;
-  /* Render the frame at its native aspect; height fills the clip body. */
-  const frameDisplayWidth = (height / strip.frameHeight) * strip.frameWidth;
+
+  /* The filmstrip generator samples a fixed number of frames (8 by
+     default — see lib/editor/filmstrip.ts). Anchoring each frame at its
+     source time and rendering at native aspect leaves visible gaps when
+     the clip is wider than the frames collectively cover. Instead, lay
+     out each frame as a *segment* spanning from its time anchor to the
+     next frame's time anchor (the last frame fills the trailing slice
+     to the clip's right edge, the first starts at the left edge). With
+     `object-fit: cover` the source aspect ratio is preserved — the
+     edges crop a hair rather than stretching — so the lane reads as a
+     continuous strip at every zoom level. */
+  const frames = strip.frames;
 
   return (
     <div
@@ -79,11 +89,19 @@ function VideoFilmstripBody({
       }}
       aria-hidden="true"
     >
-      {strip.frames.map((frame) => {
-        /* Centre each frame on its source time so the lane reads as a
-           continuous strip even when the source span is short. */
-        const x = (frame.time - sourceStart) * pxPerSourceSec - frameDisplayWidth / 2;
-        if (x + frameDisplayWidth < 0 || x > width) return null;
+      {frames.map((frame, i) => {
+        const segmentStart =
+          i === 0
+            ? 0
+            : (frame.time - sourceStart) * pxPerSourceSec;
+        const segmentEnd =
+          i === frames.length - 1
+            ? width
+            : (frames[i + 1].time - sourceStart) * pxPerSourceSec;
+        const segmentWidth = Math.max(0, segmentEnd - segmentStart);
+        if (segmentWidth <= 0 || segmentEnd < 0 || segmentStart > width) {
+          return null;
+        }
         /* `next/image` can't optimise data: URLs (no static dimensions, no
            CDN to round-trip through), so the warning is irrelevant here. */
         return (
@@ -95,9 +113,9 @@ function VideoFilmstripBody({
             draggable={false}
             style={{
               position: "absolute",
-              left: x,
+              left: segmentStart,
               top: 0,
-              width: frameDisplayWidth,
+              width: segmentWidth,
               height,
               objectFit: "cover",
               pointerEvents: "none",
