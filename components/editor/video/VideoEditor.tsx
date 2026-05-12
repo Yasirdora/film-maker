@@ -109,13 +109,18 @@ export default function VideoEditor() {
         className="flex-grow flex flex-col relative"
         style={{ minWidth: 0, minHeight: 0 }}
       >
-        {/* Preview canvas + timeline shell — rounded chrome on desktop,
-            edge-to-edge on mobile. On desktop the preview/timeline split
-            is user-resizable via Splitter; on mobile we fall back to the
-            natural flex layout because dragging a 1px handle on a small
-            screen is poor UX and the screen is already short. */}
+        {/* Preview + timeline shell — rounded chrome on desktop,
+            edge-to-edge on mobile.
+            On desktop the shell is laid out as a flex row: a vertical
+            Splitter on the left (preview over timeline, resizable) and
+            the Inspector docked as a full-height column on the right.
+            That way the properties panel spans both rows of the split
+            without disturbing the preview / timeline ratio.
+            On mobile we fall back to the natural flex column because
+            dragging a 1px handle on a small screen is poor UX and the
+            screen is already short. */}
         <div
-          className="flex-grow flex flex-col relative overflow-hidden"
+          className={`flex-grow relative overflow-hidden ${isMobile ? "flex flex-col" : "flex flex-row"}`}
           style={{
             minHeight: 0,
             margin: isMobile ? 0 : "0 12px 12px 0",
@@ -141,34 +146,34 @@ export default function VideoEditor() {
               </MobileEditingBar>
             </>
           ) : (
-            <Splitter
-              orientation="vertical"
-              storageKey="film-maker:editor.video.preview-timeline"
-              defaultRatio={0.6}
-              minRatio={0.25}
-              maxRatio={0.85}
-              handleLabel="Resize video preview and timeline"
-            >
-              {/* Top pane: preview canvas + properties panel side-by-side.
-                  Inspector docks to the right of the canvas only while a
-                  clip is selected (it returns null otherwise), so the
-                  preview reclaims the full width when there is nothing
-                  to configure. */}
-              <div className="flex flex-row min-w-0 min-h-0 h-full w-full">
-                <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+            <>
+              {/* Left column: preview over timeline with a resizable
+                  splitter between them. `flex-1` lets the Inspector
+                  reclaim space only when it appears (it returns null
+                  when no clip is selected). */}
+              <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+                <Splitter
+                  orientation="vertical"
+                  storageKey="film-maker:editor.video.preview-timeline"
+                  defaultRatio={0.6}
+                  minRatio={0.25}
+                  maxRatio={0.85}
+                  handleLabel="Resize video preview and timeline"
+                >
                   <PreviewStage />
-                </div>
-                <Inspector />
+                  <Timeline
+                    config={videoTimelineConfig}
+                    mode={mode}
+                    isHeaderCollapsed={isHeaderCollapsed}
+                    setIsHeaderCollapsed={setIsHeaderCollapsed}
+                    showHelp={showHelp}
+                    setShowHelp={setShowHelp}
+                  />
+                </Splitter>
               </div>
-              <Timeline
-                config={videoTimelineConfig}
-                mode={mode}
-                isHeaderCollapsed={isHeaderCollapsed}
-                setIsHeaderCollapsed={setIsHeaderCollapsed}
-                showHelp={showHelp}
-                setShowHelp={setShowHelp}
-              />
-            </Splitter>
+              {/* Right column: full-height properties panel. */}
+              <Inspector />
+            </>
           )}
           <FloatingDock />
         </div>

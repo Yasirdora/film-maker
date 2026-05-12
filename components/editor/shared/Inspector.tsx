@@ -3,10 +3,15 @@
 /**
  * Inspector — properties panel for the selected clip.
  *
- * Mounted as a sibling of `<PreviewStage>` inside the preview pane so
- * the panel docks beside the canvas (not the whole editor). Returns
- * `null` until the user selects a clip — the parent flex row reclaims
- * the freed width and the preview canvas grows accordingly.
+ * Lives as a full-height right column inside the editor's rounded shell,
+ * sibling to the preview/timeline splitter. Spanning both rows lets the
+ * user resize the preview / timeline ratio without affecting the
+ * properties panel — and keeps the panel visible while the user
+ * scrubs the timeline or tweaks the canvas.
+ *
+ * Returns `null` until the user selects a clip; the parent flex row
+ * then reclaims the freed width so the preview / timeline column grows
+ * to fill the shell.
  *
  * Mode-agnostic: branches on `clip.kind` to surface only the controls
  * that apply. Audio clips show volume + fades; visual clips (video /
