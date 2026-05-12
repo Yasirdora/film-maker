@@ -15,6 +15,7 @@ import { clock, useClockTime } from "@/lib/editor/clock";
 import { leadingVideoClipId } from "@/lib/editor/mediaController";
 import * as pool from "@/lib/editor/mediaPool";
 import type { Clip, MediaAsset, MediaClip, TextClip } from "@/lib/editor/types";
+import ContextMenuPortal from "./ContextMenuPortal";
 
 type VisualMediaClip = MediaClip & { kind: "video" | "image" };
 
@@ -94,6 +95,34 @@ export default function PreviewStage() {
     [],
   );
 
+  /* Right-click viewport menu (Fit to screen / Actual size). Stored as
+     `{x, y} | null` so a single boolean flag isn't needed — the position
+     and the open state move together. */
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  /* "Actual size" maps 1 canvas pixel to 1 screen pixel, which means
+     `effectiveScale === 1`, i.e. `userZoom = 1 / fitScale`. Guarded
+     against a zero `fitScale` during the first render before the
+     container has laid out. */
+  const actualSizeZoom = fitScale > 0 ? 1 / fitScale : 1;
+
+  /* Explicit menu actions bypass the wheel-zoom clamps — when a user
+     picks "Actual size" on a 4K canvas in a small viewport, going above
+     ZOOM_MAX is the whole point of the command. The defensive clamps
+     exist to keep the trackpad from runaway-zooming, not to override
+     deliberate user intent. */
+  const handleFitToScreen = useCallback(() => {
+    setUserZoom(1);
+    showBadge();
+    setCtxMenu(null);
+  }, [showBadge]);
+
+  const handleActualSize = useCallback(() => {
+    setUserZoom(actualSizeZoom);
+    showBadge();
+    setCtxMenu(null);
+  }, [actualSizeZoom, showBadge]);
+
   /* Pinch-to-zoom on trackpads, Cmd/Ctrl + wheel on mice. Both come
      through as `WheelEvent` with `ctrlKey === true` — the browser sets
      it automatically for pinch gestures even when the physical Ctrl
@@ -149,6 +178,14 @@ export default function PreviewStage() {
     <div
       ref={containerRef}
       className="flex-1 min-h-0 bg-[#101114] flex items-center justify-center overflow-hidden relative"
+      onContextMenu={(e) => {
+        /* Suppress the browser's default context menu so ours can take
+           over. Anywhere in the viewport opens it — including over the
+           canvas itself; Konva doesn't intercept native context-menu
+           events on the underlying div. */
+        e.preventDefault();
+        setCtxMenu({ x: e.clientX, y: e.clientY });
+      }}
     >
       {effectiveScale > 0 && (
         <div
@@ -190,7 +227,101 @@ export default function PreviewStage() {
       <ZoomBadge percent={Math.round(userZoom * 100)} visible={badgeVisible} />
       {/* Drives clock-from-video resync via rVFC on the leading video. */}
       <ClockAnchor visible={visible} />
+      <PreviewContextMenu
+        open={ctxMenu !== null}
+        x={ctxMenu?.x ?? 0}
+        y={ctxMenu?.y ?? 0}
+        onFitToScreen={handleFitToScreen}
+        onActualSize={handleActualSize}
+        onClose={() => setCtxMenu(null)}
+      />
     </div>
+  );
+}
+
+/**
+ * Viewport right-click menu. Two commands for now:
+ *   • Fit to screen — resets `userZoom` to 1 so the preview returns to
+ *     the size that exactly fills the available container area.
+ *   • Actual size — sets `userZoom = 1 / fitScale` so each canvas pixel
+ *     maps to one screen pixel, useful for inspecting source detail at
+ *     1:1 (matches Photoshop's "100%" / Premiere's "Actual Size").
+ *
+ * Menu chrome mirrors the existing Clip / Loop context menus so the
+ * editor's right-click surfaces feel consistent.
+ */
+function PreviewContextMenu({
+  open,
+  x,
+  y,
+  onFitToScreen,
+  onActualSize,
+  onClose,
+}: {
+  open: boolean;
+  x: number;
+  y: number;
+  onFitToScreen: () => void;
+  onActualSize: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ContextMenuPortal open={open} x={x} y={y} onClose={onClose}>
+      <div
+        role="menu"
+        tabIndex={0}
+        style={{
+          minWidth: 160,
+          background: "#161616",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 12,
+          padding: 4,
+          boxShadow:
+            "0 16px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
+          color: "white",
+          fontSize: 13,
+          display: "flex",
+          flexDirection: "column",
+          outline: "none",
+        }}
+      >
+        <MenuItem onSelect={onFitToScreen}>Fit to screen</MenuItem>
+        <MenuItem onSelect={onActualSize}>Actual size</MenuItem>
+      </div>
+    </ContextMenuPortal>
+  );
+}
+
+function MenuItem({
+  children,
+  onSelect,
+}: {
+  children: React.ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className="ae-ctx-item"
+      onClick={onSelect}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        width: "100%",
+        background: "transparent",
+        border: "none",
+        color: "inherit",
+        padding: "8px 10px",
+        borderRadius: 6,
+        cursor: "pointer",
+        textAlign: "left",
+        fontFamily: "inherit",
+        fontSize: "inherit",
+      }}
+    >
+      {children}
+    </button>
   );
 }
 
