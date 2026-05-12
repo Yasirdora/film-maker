@@ -13,6 +13,8 @@
 
 import type { Metadata } from "next";
 
+import Link from "next/link";
+
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { listProjects, listArchivedProjects } from "@/lib/projects";
@@ -108,9 +110,58 @@ export default async function StudioPage() {
                     )}
                 </section>
 
+                {/* Editor tools — browser-side workspace for cutting,
+                    mixing, and converting media. Sits below the project
+                    grid because it's a complement to generation, not a
+                    replacement for it. */}
+                <section className="mt-12">
+                    <h2 className="text-lg font-semibold">Editor</h2>
+                    <p className="mt-1 text-sm text-ws-dim">
+                        Trim, mix, and convert media directly in your
+                        browser — no upload required.
+                    </p>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+                        <EditorToolLink
+                            href="/editor/video"
+                            label="Video editor"
+                            description="Frame-accurate timeline."
+                        />
+                        <EditorToolLink
+                            href="/editor/audio"
+                            label="Audio editor"
+                            description="Multi-track mixing & recording."
+                        />
+                        <EditorToolLink
+                            href="/editor/converter"
+                            label="Media converter"
+                            description="Convert between formats."
+                        />
+                    </div>
+                </section>
+
                 {/* Archived projects */}
                 <ArchivedProjects projects={archivedProjects} />
             </main>
         </div>
+    );
+}
+
+function EditorToolLink({
+    href,
+    label,
+    description,
+}: {
+    href: string;
+    label: string;
+    description: string;
+}) {
+    return (
+        <Link
+            href={href}
+            className="rounded-xl border border-white/10 bg-ws-surface p-4 transition-colors hover:border-white/20 hover:bg-ws-control"
+        >
+            <div className="text-sm font-medium text-white">{label}</div>
+            <p className="mt-1 text-xs text-ws-icon">{description}</p>
+        </Link>
     );
 }

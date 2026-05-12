@@ -96,8 +96,14 @@ export function middleware(request: NextRequest) {
     }
 
     // CSP — applies to all routes (protected and public).
+    //
+    // The editor module loads FFmpeg.wasm from unpkg and creates a Web
+    // Worker from a blob URL, so /editor/* needs a slightly relaxed
+    // policy. The rest of the site keeps the strict baseline.
     const nonce = generateNonce();
-    const csp = buildCsp(nonce);
+    const csp = pathname.startsWith("/editor")
+        ? buildEditorCsp(nonce)
+        : buildCsp(nonce);
 
     // Forward the nonce to the renderer so Next.js can apply it to
     // inline <script> tags, and so server components can read it via
@@ -169,6 +175,45 @@ function buildCsp(nonce: string): string {
         "object-src 'none'",
 
         // Auto-upgrade http:// requests to https:// on the client.
+        "upgrade-insecure-requests",
+    ];
+
+    return directives.join("; ");
+}
+
+/**
+ * Editor-specific CSP. Extends the baseline with the relaxations required
+ * by FFmpeg.wasm:
+ *
+ *  • `script-src` gains `blob:` so the worker bootstrap can execute the
+ *    blob-URL'd `ffmpeg-core.js`.
+ *  • `worker-src` is declared explicitly with `'self' blob:` (default
+ *    falls back to `child-src` → `script-src`, but being explicit is
+ *    clearer and forward-compatible).
+ *  • `connect-src` gains `https://unpkg.com` so `toBlobURL()` can fetch
+ *    the core JS and WASM. Also adds `blob:` and `data:` so the editor
+ *    can XHR-read its own object URLs (used by media probing and the
+ *    converter's URL-input flow).
+ *  • `media-src` gains `data:` for inline thumbnails and probe scratch
+ *    elements created from data URLs.
+ */
+function buildEditorCsp(nonce: string): string {
+    const isDev = process.env.NODE_ENV === "development";
+
+    const directives: string[] = [
+        "default-src 'self'",
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' blob: https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
+        "worker-src 'self' blob:",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' https://storage.film-maker.net blob: data:",
+        "media-src 'self' https://storage.film-maker.net blob: data:",
+        "font-src 'self'",
+        "connect-src 'self' https://unpkg.com blob: data:",
+        "frame-src https://challenges.cloudflare.com",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
         "upgrade-insecure-requests",
     ];
 

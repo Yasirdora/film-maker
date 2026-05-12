@@ -73,6 +73,63 @@
     --color-ws-input-hover: #282829;  /* form input hover                  */
     --color-ws-icon: #9ca3af;         /* secondary text, icon labels       */
     --color-ws-dim: #52525b;          /* tertiary / placeholder text       */
+
+    /* ── Editor module palette (/editor/*) ───────────────────────────
+     * Tokens consumed by the video and audio editors. Scoped names so
+     * they coexist with the workspace tokens above. Keep the `--color-*`
+     * prefix — Tailwind v4 turns each into a `bg-…`, `text-…`, `border-…`
+     * utility, which the editor components rely on.
+     */
+    --color-bg: #000000;
+    --color-surface: #16171a;
+    --color-surface-2: #1c1d20;
+    --color-surface-3: #27292c;
+    --color-border: #252629;
+    --color-divider: #000000;
+    --color-text: #d9dce3;
+    --color-text-strong: #ffffff;
+    --color-text-muted: #95979c;
+    --color-primary: #2962ff;
+    --color-primary-hover: #104fff;
+    --color-link-hover: #444ce7;
+    --color-accent-yellow: #ffee65;
+    --color-accent-yellow-strong: #ffd000;
+    --color-accent-yellow-active: #ffd433;
+    --color-accent-orange: #ff5b29;
+    --color-accent-cyan: #00a7f5;
+
+    --radius-card: 8px;
+    --radius-cta: 3px;
+
+    /* Audio-editor surface tokens — Apple-style near-invisible borders,
+     * pure-black outer surfaces, semantic status accents. */
+    --color-ae-bg: #000000;
+    --color-ae-bg-panel: rgba(30, 30, 30, 0.7);
+    --color-ae-bg-glass: rgba(40, 40, 40, 0.65);
+    --color-ae-bg-track-header: rgba(35, 35, 35, 0.9);
+    --color-ae-lane: #1c1c1e;
+
+    --color-ae-border: rgba(255, 255, 255, 0.03);
+    --color-ae-border-hover: rgba(255, 255, 255, 0.08);
+    --color-ae-border-strong: rgba(255, 255, 255, 0.12);
+
+    --color-ae-text: #ffffff;
+    --color-ae-text-2: rgba(255, 255, 255, 0.6);
+    --color-ae-text-3: rgba(255, 255, 255, 0.36);
+    --color-ae-text-mono: #32d74b;
+
+    --color-ae-red: #ff3b30;
+    --color-ae-blue: #0a84ff;
+    --color-ae-green: #32d74b;
+    --color-ae-yellow: #ffd60a;
+
+    /* Per-track RGB triples (consumed via `rgb(var(--track-…) / α)`). */
+    --track-vocal: 10, 132, 255;
+    --track-synth: 191, 90, 242;
+    --track-drums: 255, 159, 10;
+    --track-extra-1: 52, 199, 89;
+    --track-extra-2: 255, 55, 95;
+    --track-extra-3: 100, 210, 255;
 }
 
 @keyframes auth-card-entrance {
@@ -392,4 +449,382 @@ input:focus-visible,
 textarea:focus-visible,
 [contenteditable]:focus-visible {
     outline: none;
+}
+
+/* ─── Editor module styles ────────────────────────────────────────────────
+ * Helper classes, sliders, scrollbars, and keyframes used exclusively by
+ * `/editor/*` routes. Kept in this file so they ship with the same CSS
+ * bundle as the rest of the site (only ~5 KB compressed).
+ *
+ * Naming conventions:
+ *   • `.ae-*`     — audio editor primitives (sliders, menus, glass surfaces).
+ *   • `.font-ae*` — Apple-native typography for the audio editor's
+ *                   workspace; opt-in via the class so it doesn't override
+ *                   Google Sans elsewhere.
+ *   • `.no-focus-ring`, `.scrollbar-dark` — drop-in modifiers used by both
+ *                   editors.
+ */
+
+/* Editor focus-ring opt-out — any element (and descendants) carrying this
+ * class suppresses the global :focus-visible ring. Used where a component
+ * paints its own focus indicator (timeline scrubber, clip handles). */
+.no-focus-ring:focus-visible,
+.no-focus-ring :focus-visible {
+    outline: none;
+}
+
+/* Apple/native font stack for the audio editor only — no webfont request,
+ * no FOUT, takes whatever the OS ships. */
+.font-ae {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "SF Pro Display", "Segoe UI", system-ui, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
+}
+
+.font-ae-mono {
+    font-family: "SF Mono", ui-monospace, "Menlo", Consolas, "Roboto Mono",
+        monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+/* Glass surface helpers — backdrop blur on header + dock. */
+.ae-glass {
+    background: var(--color-ae-bg-glass);
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid var(--color-ae-border);
+}
+.ae-glass-panel {
+    background: var(--color-ae-bg-panel);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.ae-ease {
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Volume slider — Blackmagic-style thin track + small white round thumb. */
+.ae-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    height: 16px;
+}
+.ae-volume-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 3px;
+    background: #444;
+    border-radius: 1.5px;
+}
+.ae-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-top: -3.5px;
+    background: white;
+    border-radius: 2px;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.ae-volume-slider::-moz-range-track {
+    width: 100%;
+    height: 3px;
+    background: #444;
+    border-radius: 1.5px;
+}
+.ae-volume-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 2px;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Pan slider — thin track + dark rounded rect thumb. */
+.ae-pan-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    height: 16px;
+}
+.ae-pan-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 3px;
+    background: #444;
+    border-radius: 1.5px;
+}
+.ae-pan-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 7px;
+    height: 16px;
+    margin-top: -6.5px;
+    background: #777;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid #222;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.ae-pan-slider::-moz-range-track {
+    width: 100%;
+    height: 3px;
+    background: #444;
+    border-radius: 1.5px;
+}
+.ae-pan-slider::-moz-range-thumb {
+    width: 7px;
+    height: 16px;
+    background: #777;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid #222;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Timeline zoom slider — Apple-style thin track + white thumb. */
+.ae-zoom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    outline: none;
+    cursor: pointer;
+    height: 14px;
+}
+.ae-zoom-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 1px;
+}
+.ae-zoom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    margin-top: -4px;
+    background: white;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.ae-zoom-slider::-moz-range-track {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 1px;
+}
+.ae-zoom-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Track-header icon button (⋮ trigger, mute, solo, etc.). */
+.ae-icon-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.12s, background 0.12s;
+}
+.ae-icon-btn:hover,
+.ae-icon-btn[data-active] {
+    color: white;
+    background: rgba(255, 255, 255, 0.10);
+}
+.ae-icon-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.55);
+    outline-offset: 1px;
+}
+
+/* Track kebab menu — pure CSS hover/focus, no per-item React state. */
+.ae-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--menu-item-color, white);
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    transition: background 0.08s;
+    outline: none;
+}
+.ae-menu-item:hover:not([data-disabled]),
+.ae-menu-item:focus-visible:not([data-disabled]) {
+    background: rgba(255, 255, 255, 0.09);
+}
+.ae-menu-item[data-danger] {
+    color: #ff453a;
+}
+.ae-menu-item[data-disabled] {
+    color: rgba(255, 255, 255, 0.3);
+    cursor: default;
+}
+
+.ae-menu-shortcut {
+    font-family: var(--font-ae-mono, monospace);
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    color: rgba(255, 255, 255, 0.4);
+    flex-shrink: 0;
+}
+.ae-menu-item[data-danger] .ae-menu-shortcut {
+    color: rgba(255, 80, 60, 0.6);
+}
+
+/* Color swatch — circular button used in the track-color picker. */
+.ae-color-swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--swatch-color, #888);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+    transition: transform 0.12s, box-shadow 0.12s;
+    outline: none;
+}
+.ae-color-swatch:hover {
+    transform: scale(1.12);
+}
+.ae-color-swatch[data-selected] {
+    box-shadow: 0 0 0 2.5px white;
+}
+.ae-color-swatch:focus-visible {
+    box-shadow: 0 0 0 2.5px white, 0 0 0 4px rgba(255, 255, 255, 0.25);
+}
+
+/* Synced horizontal scrollers in the audio timeline keep behavior but
+ * hide the visual scrollbar. */
+.ae-no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.ae-no-scrollbar {
+    scrollbar-width: none;
+}
+
+/* AI pill — width animates on focus, per prototype. */
+.ae-ai-pill {
+    width: 280px;
+    transition: 0.3s;
+}
+.ae-ai-pill:focus-within {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    width: 320px;
+}
+@media (max-width: 768px) {
+    .ae-ai-pill,
+    .ae-ai-pill:focus-within {
+        width: 100%;
+    }
+    .ae-export-text {
+        display: none;
+    }
+}
+
+/* Dark themed scrollbar used by the editor's scrollable panels. */
+.scrollbar-dark::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+.scrollbar-dark::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+    background: #252629;
+    border-radius: 6px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+    background: #3a3b3f;
+}
+
+/* ─── Editor keyframes ──────────────────────────────────────────────── */
+
+@keyframes recordPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Indeterminate progress bar shimmer — converter file row when FFmpeg
+ * hasn't reported progress yet. */
+@keyframes converter-progress-shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}
+.converter-progress-shimmer {
+    animation: converter-progress-shimmer 1.4s ease-in-out infinite;
+}
+
+/* New audio-editor lane spawned during a drag slides in and fades up
+ * so the timeline doesn't pop a hard rectangle into existence. */
+@keyframes ae-track-lane-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+        max-height: 0;
+    }
+    60% {
+        opacity: 1;
+    }
+    to {
+        opacity: 1;
+        transform: none;
+        max-height: 240px;
+    }
+}
+.ae-track-lane-in {
+    animation: ae-track-lane-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+    transform-origin: top center;
+}
+
+/* Dashed phantom lane that appears under the last track while a clip
+ * is dragged into the "create new lane" zone. */
+@keyframes ae-drop-hint-pulse {
+    0%, 100% { border-color: rgba(255, 255, 255, 0.18); }
+    50% { border-color: rgba(255, 255, 255, 0.32); }
+}
+.ae-drop-hint {
+    border: 1.5px dashed rgba(255, 255, 255, 0.22);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.02);
+    animation: ae-drop-hint-pulse 1.6s ease-in-out infinite;
+    pointer-events: none;
 }
