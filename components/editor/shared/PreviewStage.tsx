@@ -52,8 +52,11 @@ export default function PreviewStage() {
 
   const scale = useMemo(() => {
     if (!box.w || !box.h) return 0;
-    const pad = 24;
-    return Math.min((box.w - pad) / canvas.width, (box.h - pad) / canvas.height);
+    // No extra inset — the canvas fills the available space and lets its
+    // own aspect ratio decide which axis is the limiting one. The dark
+    // frame around the stage comes from the parent shell, not from a
+    // padded gutter inside the preview.
+    return Math.min(box.w / canvas.width, box.h / canvas.height);
   }, [box, canvas.width, canvas.height]);
 
   return (
