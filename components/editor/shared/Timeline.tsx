@@ -1742,8 +1742,11 @@ function DesktopTrackHeader({
             step={0.1}
             value={gainDb}
             onChange={(e) => setGainDb(parseFloat(e.target.value))}
+            /* Double-click → unity gain (0 dB), the universal pro
+               audio reset convention. */
+            onDoubleClick={() => setGainDb(0)}
             className="ae-volume-slider flex-1"
-            title={`Gain ${dbReadout} dB`}
+            title={`Gain ${dbReadout} dB · double-click to reset to 0 dB`}
           />
           <span
             className="font-ae-mono tabular-nums text-right"
@@ -1763,8 +1766,10 @@ function DesktopTrackHeader({
             step={0.1}
             value={pan}
             onChange={(e) => setPan(parseFloat(e.target.value))}
+            /* Double-click → centre pan. */
+            onDoubleClick={() => setPan(0)}
             className="ae-pan-slider flex-1"
-            title={`Pan ${pan === 0 ? "C" : pan.toFixed(1)}`}
+            title={`Pan ${pan === 0 ? "C" : pan.toFixed(1)} · double-click to centre`}
           />
           <span
             className="font-ae-mono tabular-nums text-right"
@@ -2668,6 +2673,12 @@ function MobileTrackStrip({
           value={gainPct}
           disabled={empty}
           onChange={(e) => setGainPct(parseFloat(e.target.value))}
+          /* Double-click → 100 % (unity gain), matching the desktop
+             VOL slider's reset convention. */
+          onDoubleClick={() => {
+            if (!empty) setGainPct(100);
+          }}
+          title="Double-click to reset to 100%"
           className="ae-volume-slider"
           style={{ flex: 1, minWidth: 0 }}
         />

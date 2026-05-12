@@ -247,6 +247,7 @@ export default function Inspector() {
                         max={2}
                         step={0.01}
                         unit="x"
+                        defaultValue={1}
                         value={clip.volume}
                         onChange={(v) =>
                             updateClip(clip.id, { volume: v } as Partial<Clip>)
@@ -258,6 +259,7 @@ export default function Inspector() {
                         max={5}
                         step={0.05}
                         unit="s"
+                        defaultValue={0}
                         value={clip.fadeIn}
                         onChange={(v) =>
                             updateClip(clip.id, { fadeIn: v } as Partial<Clip>)
@@ -269,6 +271,7 @@ export default function Inspector() {
                         max={5}
                         step={0.05}
                         unit="s"
+                        defaultValue={0}
                         value={clip.fadeOut}
                         onChange={(v) =>
                             updateClip(clip.id, {
@@ -287,6 +290,7 @@ export default function Inspector() {
                         max={4}
                         step={0.05}
                         unit="x"
+                        defaultValue={1}
                         value={clip.speed}
                         onChange={(v) =>
                             updateClip(clip.id, { speed: v } as Partial<Clip>)
@@ -329,6 +333,7 @@ export default function Inspector() {
                         max={4}
                         step={0.01}
                         unit="x"
+                        defaultValue={1}
                         value={clip.transform.scale}
                         onChange={(v) =>
                             updateClipTransform(clip.id, { scale: v })
@@ -340,6 +345,7 @@ export default function Inspector() {
                         max={180}
                         step={1}
                         unit="°"
+                        defaultValue={0}
                         value={clip.transform.rotation}
                         onChange={(v) =>
                             updateClipTransform(clip.id, { rotation: v })
@@ -351,6 +357,7 @@ export default function Inspector() {
                         max={1}
                         step={0.01}
                         unit=""
+                        defaultValue={1}
                         value={clip.transform.opacity}
                         onChange={(v) =>
                             updateClipTransform(clip.id, { opacity: v })
@@ -551,6 +558,7 @@ function Slider({
     value,
     onChange,
     unit,
+    defaultValue,
 }: {
     label: string;
     min: number;
@@ -559,7 +567,15 @@ function Slider({
     value: number;
     onChange: (v: number) => void;
     unit: string;
+    /** Value the slider resets to when the user double-clicks it. Omit
+     *  to disable the reset gesture entirely (used for sliders whose
+     *  "natural" value isn't well-defined). */
+    defaultValue?: number;
 }) {
+    const resetTitle =
+        defaultValue !== undefined
+            ? `Double-click to reset to ${defaultValue}${unit}`
+            : undefined;
     return (
         <label
             style={{
@@ -594,6 +610,14 @@ function Slider({
                 step={step}
                 value={value}
                 onChange={(e) => onChange(parseFloat(e.target.value))}
+                /* Double-click resets to the natural default, mirroring
+                   the behaviour of every major NLE (Premiere, After
+                   Effects, DaVinci, Final Cut). No-op when `defaultValue`
+                   isn't supplied so callers can opt out explicitly. */
+                onDoubleClick={() => {
+                    if (defaultValue !== undefined) onChange(defaultValue);
+                }}
+                title={resetTitle}
                 className="ae-volume-slider"
                 /* Native range inputs default to ~150px wide; constrain to
                    the parent so they don't push the panel out and provoke
