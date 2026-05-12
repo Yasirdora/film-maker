@@ -172,17 +172,30 @@ function DesktopTimeline({
        Read every clock tick by the auto-scroll handler; written by the
        scroll handler (false on user scroll) and the play-transition
        handler (true on play-from-pause).
-     • `setFollowEnabled` — state setter that mirrors `autoFollowRef`
-       so the overlay pill re-renders when visibility flips. Kept in
-       sync with the ref so the auto-scroll handler (which reads on
-       every tick) doesn't depend on React reconciliation. */
+     • `followListenersRef` + `subscribeFollow` — a tiny pub/sub so the
+       `<JumpToPlayheadPill>` can react to toggles without holding the
+       state in React. If we used `useState` here, every user-scroll
+       during playback would re-render the entire VideoTimeline (lanes,
+       clips, ruler) synchronously inside the scroll event handler,
+       contending with the preview's paint budget and producing visible
+       playback stutter. Hoisting the state out of React keeps the
+       scroll path allocation-free: only the pill subscribes, and only
+       the pill re-renders. */
   const isAutoScrollingRef = useRef(false);
   const autoFollowRef = useRef(true);
-  const [followEnabled, setFollowEnabled] = useState(true);
+  const followListenersRef = useRef<Set<(v: boolean) => void>>(new Set());
   const setAutoFollow = useCallback((value: boolean) => {
+    if (autoFollowRef.current === value) return;
     autoFollowRef.current = value;
-    setFollowEnabled(value);
+    followListenersRef.current.forEach((fn) => fn(value));
   }, []);
+  const subscribeFollow = useCallback((fn: (v: boolean) => void) => {
+    followListenersRef.current.add(fn);
+    return () => {
+      followListenersRef.current.delete(fn);
+    };
+  }, []);
+  const getFollow = useCallback(() => autoFollowRef.current, []);
 
   useEffect(() => {
     const lane = scrollRef.current;
@@ -1028,7 +1041,8 @@ function DesktopTimeline({
         scrollRef={scrollRef}
         zoomRef={zoomRef}
         headerWidth={HEADER_W}
-        followEnabled={followEnabled}
+        subscribeFollow={subscribeFollow}
+        getFollow={getFollow}
         onJump={() => {
           const el = scrollRef.current;
           if (!el) return;
@@ -3206,30 +3220,26 @@ function JumpToPlayheadPill({
     scrollRef,
     zoomRef,
     headerWidth,
-    followEnabled,
+    subscribeFollow,
+    getFollow,
     onJump,
 }: {
     scrollRef: React.RefObject<HTMLDivElement | null>;
     zoomRef: React.RefObject<number>;
     headerWidth: number;
-    followEnabled: boolean;
+    subscribeFollow: (fn: (v: boolean) => void) => () => void;
+    getFollow: () => boolean;
     onJump: () => void;
 }) {
     /* "none" → hidden; "left" / "right" → visible on the chosen edge. */
     const [direction, setDirection] = useState<"left" | "right" | "none">("none");
 
     useEffect(() => {
-        /* When follow is engaged the pill must be hidden regardless of
-           where the playhead is. Snap the state to "none" rather than
-           leaving stale data behind from the previous disengaged run.
-           The setState is a deliberate sync to an external signal
-           (`followEnabled`), not a render-loop trigger. */
-        if (followEnabled) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setDirection("none");
-            return;
-        }
         const compute = (): "left" | "right" | "none" => {
+            /* Follow engaged → pill must be hidden regardless of
+               playhead position. Checked on every tick so the pill
+               disappears the instant follow re-engages. */
+            if (getFollow()) return "none";
             const el = scrollRef.current;
             if (!el || !clock.playing()) return "none";
             const playheadX = clock.time() * (zoomRef.current ?? 0);
@@ -3240,18 +3250,28 @@ function JumpToPlayheadPill({
             return "none";
         };
 
-        /* Seed state on engage so we don't briefly render the wrong
-           direction before the first clock tick. */
-        setDirection(compute());
-
-        const unsub = clock.subscribe(() => {
+        const tick = () => {
             const next = compute();
             /* Skip the setState round-trip when nothing changes —
                the clock fires up to 60 times per second. */
             setDirection((prev) => (prev === next ? prev : next));
-        });
-        return unsub;
-    }, [followEnabled, scrollRef, zoomRef]);
+        };
+
+        /* Seed initial state synchronously so we don't render a stale
+           direction on mount. */
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDirection(compute());
+
+        const unsubClock = clock.subscribe(tick);
+        /* React to follow toggles immediately rather than waiting for
+           the next clock tick — important when the user scrolls while
+           paused, where no clock ticks fire to drive `tick`. */
+        const unsubFollow = subscribeFollow(tick);
+        return () => {
+            unsubClock();
+            unsubFollow();
+        };
+    }, [scrollRef, zoomRef, subscribeFollow, getFollow]);
 
     if (direction === "none") return null;
 
