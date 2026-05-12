@@ -8,17 +8,26 @@
  * user resize the preview/timeline ratio without affecting the panel and
  * keeps the panel visible while scrubbing the timeline.
  *
+ * Visibility contract
+ * -------------------
+ * The panel mounts whenever the timeline has *any* clip, regardless of
+ * whether one is selected — selecting and deselecting only ever changes
+ * the panel's contents, never the editor's column widths. Returning
+ * `null` on every deselect caused a visible UI shift each time the
+ * user clicked away from a clip; pinning the panel keeps the
+ * preview / timeline width stable so the working surface doesn't jump
+ * around mid-edit.
+ *
+ * An empty timeline still hides the panel: there's nothing to inspect
+ * and the column would just be dead space.
+ *
  * Two visible states (controlled by the user, persisted to localStorage):
  *   • Expanded — full panel (PANEL_W wide). Header carries a chevron to
- *     collapse, body lists clip-type-specific controls.
+ *     collapse; the body lists clip-type-specific controls when a clip
+ *     is selected, or a small empty-state when nothing is.
  *   • Collapsed — thin rail (COLLAPSED_W wide) with a chevron to expand
  *     and a vertically-rotated "Properties" label so the panel remains
  *     discoverable, mirroring DaVinci Resolve's Inspector behavior.
- *
- * Returns `null` when no clip is selected so the parent flex row reclaims
- * the freed width and the preview / timeline column grows to fill the
- * shell. The collapsed state is remembered across selections so users
- * who prefer a roomy canvas don't have to re-collapse for every clip.
  *
  * Mode-agnostic content: branches on `clip.kind` to surface only the
  * controls that apply. Audio clips show volume + fades; visual clips
@@ -72,6 +81,11 @@ export default function Inspector() {
     const clip = useEditor((s) =>
         selectedClipId ? s.clips[selectedClipId] : null,
     );
+    /* Whether the project has *any* clip on the timeline. Drives the
+       visibility contract: an empty timeline hides the panel entirely
+       (no dead space), the moment a clip lands the panel mounts and
+       stays put through every later selection / deselection. */
+    const hasAnyClip = useEditor((s) => s.clipOrder.length > 0);
     const updateClip = useEditor((s) => s.updateClip);
     const updateClipTransform = useEditor((s) => s.updateClipTransform);
 
@@ -91,11 +105,78 @@ export default function Inspector() {
         persistCollapsed(value);
     }, []);
 
-    if (!clip) return null;
+    /* Empty timeline → nothing to inspect, no column. */
+    if (!hasAnyClip) return null;
 
     if (collapsed) {
         return (
             <CollapsedRail onExpand={() => setCollapsed(false)} />
+        );
+    }
+
+    /* Expanded but no selection — render the panel chrome with an empty
+       state so the column width stays consistent. Selecting a clip then
+       only changes the panel body, not the editor's overall layout. */
+    if (!clip) {
+        return (
+            <aside
+                style={{
+                    width: PANEL_W,
+                    flexShrink: 0,
+                    boxSizing: "border-box",
+                    background: "var(--color-ae-lane, #101212)",
+                    borderLeft:
+                        "1px solid var(--color-ae-border, rgba(255,255,255,0.06))",
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                    color: "rgba(255,255,255,0.85)",
+                    display: "flex",
+                    flexDirection: "column",
+                }}
+                className="scrollbar-dark"
+                aria-label="Clip properties"
+            >
+                <header
+                    style={{
+                        padding: "12px 16px",
+                        borderBottom: "1px solid rgba(255,255,255,0.06)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                        boxSizing: "border-box",
+                    }}
+                >
+                    <h2
+                        style={{
+                            margin: 0,
+                            fontSize: 14,
+                            fontWeight: 600,
+                        }}
+                    >
+                        Properties
+                    </h2>
+                    <CollapseToggle
+                        direction="collapse"
+                        onClick={() => setCollapsed(true)}
+                    />
+                </header>
+                <div
+                    style={{
+                        flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "24px 20px",
+                        textAlign: "center",
+                        fontSize: 12,
+                        lineHeight: 1.5,
+                        color: "rgba(255,255,255,0.4)",
+                    }}
+                >
+                    Select a clip on the timeline to edit its properties.
+                </div>
+            </aside>
         );
     }
 
