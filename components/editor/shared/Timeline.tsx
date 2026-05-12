@@ -158,12 +158,32 @@ function DesktopTimeline({
   const bodyScrollRef = useRef<HTMLDivElement | null>(null);
   const rulerScrollRef = useRef<HTMLDivElement | null>(null);
 
+  /* Cooperative-scrolling refs:
+     • `isAutoScrollingRef` — flipped true while the playback auto-scroll
+       writes `scrollLeft`. The scroll event fires asynchronously after
+       the write, so it would otherwise look identical to a user scroll
+       and reset the grace period below into a self-feeding loop.
+     • `lastUserScrollAt` — wall-clock timestamp of the most recent
+       user-initiated scroll. The auto-scroll handler checks this and
+       skips the playhead-follow while the user is actively scrubbing
+       through the timeline, so manual scroll during playback no longer
+       fights the playhead. */
+  const isAutoScrollingRef = useRef(false);
+  const lastUserScrollAt = useRef(0);
+
   useEffect(() => {
     const lane = scrollRef.current;
     const ruler = rulerScrollRef.current;
     if (!lane || !ruler) return;
     const onLaneScroll = () => {
       if (ruler.scrollLeft !== lane.scrollLeft) ruler.scrollLeft = lane.scrollLeft;
+      /* Treat any scroll that wasn't driven by the auto-follow as user
+         input. The flag clears one frame after the auto-scroll write
+         (see the auto-scroll effect below), so a real user scroll
+         arriving immediately afterwards still gets credited. */
+      if (!isAutoScrollingRef.current) {
+        lastUserScrollAt.current = performance.now();
+      }
     };
     onLaneScroll();
     lane.addEventListener("scroll", onLaneScroll, { passive: true });
@@ -425,18 +445,40 @@ function DesktopTimeline({
     }
   };
 
-  /* Auto-scroll: direct clock subscription — no React re-render needed. */
+  /* Auto-scroll: direct clock subscription — no React re-render needed.
+     Skipped while the user is actively scrolling so manual scrubbing
+     during playback doesn't fight the playhead-follow logic. After
+     `USER_SCROLL_GRACE_MS` of idle the follow resumes and pulls the
+     playhead back into view. 800 ms is long enough to flick the
+     scrollbar without snap-back and short enough that the user
+     doesn't feel like the playhead "got stuck". */
   useEffect(() => {
+    const USER_SCROLL_GRACE_MS = 800;
+    const writeScrollLeft = (el: HTMLDivElement, x: number) => {
+      isAutoScrollingRef.current = true;
+      el.scrollLeft = x;
+      /* Clear the flag on the next frame so the scroll event the
+         browser fires as a result of our write doesn't get mistaken
+         for a user scroll. Any real user scroll arriving immediately
+         after this frame still updates `lastUserScrollAt` correctly. */
+      requestAnimationFrame(() => {
+        isAutoScrollingRef.current = false;
+      });
+    };
+
     const unsub = clock.subscribe(() => {
       const el = scrollRef.current;
       if (!el || !clock.playing()) return;
+      if (performance.now() - lastUserScrollAt.current < USER_SCROLL_GRACE_MS) {
+        return;
+      }
       const playheadX = clock.time() * zoomRef.current;
       const visStart = el.scrollLeft;
       const visEnd = el.scrollLeft + el.clientWidth;
       if (playheadX > visEnd - el.clientWidth * 0.2) {
-        el.scrollLeft = Math.max(0, playheadX - el.clientWidth * 0.5);
+        writeScrollLeft(el, Math.max(0, playheadX - el.clientWidth * 0.5));
       } else if (playheadX < visStart) {
-        el.scrollLeft = Math.max(0, playheadX - el.clientWidth * 0.1);
+        writeScrollLeft(el, Math.max(0, playheadX - el.clientWidth * 0.1));
       }
     });
     return unsub;
