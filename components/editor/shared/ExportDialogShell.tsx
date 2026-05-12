@@ -53,13 +53,21 @@ export type ExportDialogShellProps = {
   error?: string | null;
   /**
    * Optional callback that returns the dialog to its form state without
-   * closing it — used to power an "Export again" affordance after a
-   * successful render. The consumer is responsible for clearing its own
+   * closing it — used to power an "Adjust settings" affordance in the
+   * result panel. The consumer is responsible for clearing its own
    * `result` / `progress` / `error` state (and revoking the blob URL if
    * it should not survive the next export). Form inputs (filename,
    * resolution, quality) are kept so the user can tweak and re-export.
    */
   onReset?: () => void;
+  /**
+   * Optional callback wired to a secondary button in the *form* footer
+   * — "View last export". Consumers pass this only when they have a
+   * cached prior render to surface; the button is hidden otherwise.
+   * Clicking it should flip the consumer's view into the result panel
+   * (no re-rendering involved).
+   */
+  onShowLastExport?: () => void;
 };
 
 export default function ExportDialogShell({
@@ -74,6 +82,7 @@ export default function ExportDialogShell({
   children,
   error,
   onReset,
+  onShowLastExport,
 }: ExportDialogShellProps) {
   useEffect(() => {
     if (!open) return;
@@ -162,6 +171,7 @@ export default function ExportDialogShell({
           showResult={!!result && !progress}
           onClose={onClose}
           onReset={onReset}
+          onShowLastExport={onShowLastExport}
         />
       </form>
     </div>
@@ -308,6 +318,7 @@ function ShellFooter({
   showResult,
   onClose,
   onReset,
+  onShowLastExport,
 }: {
   formIdle: boolean;
   showResult: boolean;
@@ -316,6 +327,10 @@ function ShellFooter({
    *  action that drops the user back to the form so they can tweak
    *  resolution / quality / filename and render again. */
   onReset?: () => void;
+  /** When provided in the form state, exposes a "View last export"
+   *  action so the user can revisit a previously cached render
+   *  without re-running it. */
+  onShowLastExport?: () => void;
 }) {
   /* During progress the footer is hidden entirely. In the result state
      it is only useful when there is an "Adjust settings" affordance to
@@ -339,7 +354,14 @@ function ShellFooter({
            key already cover dismissal. Keeping the footer focused on
            the primary action removes a redundant exit path and matches
            the result-state footer. */
-        <DialogBtn variant="primary" type="submit">Export</DialogBtn>
+        <>
+          {onShowLastExport && (
+            <DialogBtn variant="secondary" onClick={onShowLastExport}>
+              View last export
+            </DialogBtn>
+          )}
+          <DialogBtn variant="primary" type="submit">Export</DialogBtn>
+        </>
       ) : (
         /* `onReset` is guaranteed to be defined here by the early-return
            above; non-null assertion would clutter the JSX, so just call

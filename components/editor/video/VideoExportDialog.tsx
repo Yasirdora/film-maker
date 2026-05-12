@@ -10,12 +10,12 @@
  * Cached result behavior
  * ----------------------
  * The last successful render is held in a session-scoped cache (see
- * `lib/editor/last-export.ts`). When the dialog re-opens the user lands
- * directly on the result panel showing that render instead of an empty
- * form — re-rendering the same project from scratch on every reopen
- * would be slow and unexpected. "Adjust settings" drops them back to
- * the form (cache stays) so they can tweak resolution / quality /
- * filename and produce a new render that overwrites the cache.
+ * `lib/editor/last-export.ts`). The dialog always opens on the form
+ * (re-rendering would be wasted work; auto-skipping it would hide the
+ * primary action). When a cached render exists the form footer surfaces
+ * a "View last export" button so the user can opt-in to revisiting it
+ * — and from the result panel "Adjust settings" returns them to the
+ * form. A fresh Export always renders and replaces the cached blob.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -93,20 +93,20 @@ export default function VideoExportDialog({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* When the dialog opens, decide the initial view. A cached render
-     means the user wants to revisit the last result; otherwise we go
-     straight to the form. Done in an effect rather than at render time
-     so toggling `open` from false → true triggers the snapshot exactly
-     once per open. */
+  /* The dialog always opens on the form. The cached render (if any) is
+     reachable via the secondary "View last export" button rendered in
+     the form footer when `cachedResult` is non-null.
+     The setState calls are a one-shot reset to a known state when
+     `open` flips false → true; the rule's loop guard isn't relevant
+     because `open` only changes via external user action. */
   useEffect(() => {
     if (!open) return;
-    setView(cachedResult ? "result" : "form");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setView("form");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
-    // `cachedResult` is intentionally omitted: it would re-flip the view
-    // every time the cache changes (e.g. after a successful render),
-    // which is handled explicitly by the success path below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   /* Focus the filename field when the form is the current view. */
@@ -120,17 +120,23 @@ export default function VideoExportDialog({
   );
 
   /* "Adjust settings" — flip back to the form, keep the cached result
-     so the user can return to it via close + reopen if they change
-     their mind. Form inputs (filename / resolution / quality) persist
-     in local state across this transition. */
+     in place so the user can return to it via the "View last export"
+     button. Form inputs (filename / resolution / quality) persist in
+     local state across this transition. */
   const handleReset = useCallback(() => {
     setView("form");
     setProgress(null);
     setError(null);
   }, []);
 
-  /* Close — drop view-state but keep the cache. Reopening will show the
-     cached result. */
+  /* "View last export" — surface the cached render without re-rendering. */
+  const handleShowLastExport = useCallback(() => {
+    setView("result");
+    setProgress(null);
+    setError(null);
+  }, []);
+
+  /* Close — drop view-state but keep the cache. */
   const handleClose = useCallback(() => {
     setProgress(null);
     setError(null);
@@ -194,6 +200,7 @@ export default function VideoExportDialog({
       downloadFileName={fileName}
       onSubmit={handleExport}
       onReset={handleReset}
+      onShowLastExport={cachedResult ? handleShowLastExport : undefined}
       error={error}
     >
       <FormRow label="File Name">

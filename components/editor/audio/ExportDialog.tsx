@@ -10,12 +10,11 @@
  * Cached result behavior
  * ----------------------
  * The last successful render is held in a session-scoped cache (see
- * `lib/editor/last-export.ts`). When the dialog re-opens the user lands
- * directly on the result panel showing that render instead of an empty
- * form — re-rendering the same project on every reopen would be slow
- * and unexpected. "Adjust settings" flips the view back to the form
- * (cache stays) so they can tweak format / quality / channels and
- * produce a new render that overwrites the cache.
+ * `lib/editor/last-export.ts`). The dialog always opens on the form;
+ * when a cached render exists, the form footer surfaces a "View last
+ * export" button the user can click to revisit it without re-running
+ * the encoder. From the result panel, "Adjust settings" returns to the
+ * form. A fresh Export always renders and replaces the cached blob.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -68,15 +67,18 @@ export default function ExportDialog({
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* Pick the initial view when the dialog opens — cached result short
-     -circuits the form. `cachedResult` is intentionally excluded from
-     the dependency list (see VideoExportDialog for the rationale). */
+  /* The dialog always opens on the form; the cached render is reachable
+     via the "View last export" button in the form footer when present.
+     One-shot reset to a known state on `open` flipping false → true;
+     the rule's loop guard is not relevant here. */
   useEffect(() => {
     if (!open) return;
-    setView(cachedResult ? "result" : "form");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setView("form");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProgress(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   /* Focus the filename field when the form is showing. */
@@ -87,6 +89,13 @@ export default function ExportDialog({
   /* "Adjust settings" — flip to form, keep cache. */
   const handleReset = useCallback(() => {
     setView("form");
+    setProgress(null);
+    setError(null);
+  }, []);
+
+  /* "View last export" — surface the cached render without re-rendering. */
+  const handleShowLastExport = useCallback(() => {
+    setView("result");
     setProgress(null);
     setError(null);
   }, []);
@@ -154,6 +163,7 @@ export default function ExportDialog({
       downloadFileName={fileName}
       onSubmit={handleExport}
       onReset={handleReset}
+      onShowLastExport={cachedResult ? handleShowLastExport : undefined}
       error={error}
     >
       <FormRow label="File Name">
