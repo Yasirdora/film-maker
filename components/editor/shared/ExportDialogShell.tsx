@@ -336,8 +336,12 @@ function ShellFooter({
         <>
           <DialogBtn variant="secondary" onClick={onClose}>Close</DialogBtn>
           {onReset && (
+            /* Reopens the form so the user can tweak resolution /
+               quality / filename and render again. Not labeled "Export
+               again" because re-doing the same render verbatim has no
+               value — the value is in adjusting something first. */
             <DialogBtn variant="primary" onClick={onReset}>
-              Export again
+              Adjust settings
             </DialogBtn>
           )}
         </>
