@@ -60,24 +60,27 @@ function VideoFilmstripBody({
     return <Placeholder label="loading…" />;
   }
 
+  /* Render the strip like physical film frames: each tile is sized at
+     the thumbnail's native aspect (matching the lane height), and tiles
+     pack edge-to-edge across the clip. The number of visible tiles is
+     a function of the clip's rendered width — denser at high zoom,
+     sparser at low zoom — so each tile is shown at (or below) its
+     native pixel size and never stretches.
+     This is the pattern CapCut Web / Premiere / DaVinci use, in
+     contrast with our previous "one stretched thumbnail per source-
+     time-segment" approach which made thumbs blocky at high zoom and
+     squished at low zoom. */
+  const tileWidth = (height / strip.frameHeight) * strip.frameWidth;
+  if (tileWidth <= 0) return null;
+
+  /* `ceil` lets the last tile spill off the right edge — `overflow:
+     hidden` on the wrapper clips the partial frame, which mirrors how
+     a physical filmstrip looks at a cut. */
+  const tileCount = Math.max(1, Math.ceil(width / tileWidth));
+
   const speed = clip.speed || 1;
   const sourceStart = clip.inPoint;
-  const sourceEnd = clip.inPoint + clip.duration * speed;
-  const sourceSpan = Math.max(0.001, sourceEnd - sourceStart);
-  /* Pixels per second of source video, in clip coordinates. */
-  const pxPerSourceSec = width / sourceSpan;
-
-  /* The filmstrip generator samples a fixed number of frames (8 by
-     default — see lib/editor/filmstrip.ts). Anchoring each frame at its
-     source time and rendering at native aspect leaves visible gaps when
-     the clip is wider than the frames collectively cover. Instead, lay
-     out each frame as a *segment* spanning from its time anchor to the
-     next frame's time anchor (the last frame fills the trailing slice
-     to the clip's right edge, the first starts at the left edge). With
-     `object-fit: cover` the source aspect ratio is preserved — the
-     edges crop a hair rather than stretching — so the lane reads as a
-     continuous strip at every zoom level. */
-  const frames = strip.frames;
+  const sourceSpan = Math.max(0.001, clip.duration * speed);
 
   return (
     <div
@@ -89,33 +92,30 @@ function VideoFilmstripBody({
       }}
       aria-hidden="true"
     >
-      {frames.map((frame, i) => {
-        const segmentStart =
-          i === 0
-            ? 0
-            : (frame.time - sourceStart) * pxPerSourceSec;
-        const segmentEnd =
-          i === frames.length - 1
-            ? width
-            : (frames[i + 1].time - sourceStart) * pxPerSourceSec;
-        const segmentWidth = Math.max(0, segmentEnd - segmentStart);
-        if (segmentWidth <= 0 || segmentEnd < 0 || segmentStart > width) {
-          return null;
-        }
-        /* `next/image` can't optimise data: URLs (no static dimensions, no
-           CDN to round-trip through), so the warning is irrelevant here. */
+      {Array.from({ length: tileCount }, (_, i) => {
+        const x = i * tileWidth;
+        /* Anchor each tile by its *centre* so the thumb represents the
+           midpoint of the slice of source video that tile covers — the
+           same convention the filmstrip generator uses internally. */
+        const centreFraction = (x + tileWidth / 2) / width;
+        const sourceTime = sourceStart + centreFraction * sourceSpan;
+        const frame = pickClosestFrame(strip.frames, sourceTime);
+        if (!frame) return null;
+        /* `next/image` can't optimise data: URLs (no static dimensions,
+           no CDN to round-trip through), so the warning is irrelevant
+           here. */
         return (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={frame.time}
+            key={i}
             src={frame.url}
             alt=""
             draggable={false}
             style={{
               position: "absolute",
-              left: segmentStart,
+              left: x,
               top: 0,
-              width: segmentWidth,
+              width: tileWidth,
               height,
               objectFit: "cover",
               pointerEvents: "none",
@@ -126,6 +126,31 @@ function VideoFilmstripBody({
       })}
     </div>
   );
+}
+
+/**
+ * Binary-friendly closest-frame lookup. Frames are produced in
+ * monotonically increasing `time` order by the generator, so a linear
+ * scan from the previous tile's hit would also work — but the simple
+ * `reduce` keeps the code trivial and the cost (8–64 ops per tile, a
+ * couple dozen tiles at most) is negligible against everything else
+ * the timeline does per frame.
+ */
+function pickClosestFrame(
+  frames: ReadonlyArray<{ time: number; url: string }>,
+  target: number,
+): { time: number; url: string } | undefined {
+  if (frames.length === 0) return undefined;
+  let best = frames[0];
+  let bestDist = Math.abs(best.time - target);
+  for (let i = 1; i < frames.length; i++) {
+    const d = Math.abs(frames[i].time - target);
+    if (d < bestDist) {
+      best = frames[i];
+      bestDist = d;
+    }
+  }
+  return best;
 }
 
 /* ── Image ───────────────────────────────────────────────────────────── */
