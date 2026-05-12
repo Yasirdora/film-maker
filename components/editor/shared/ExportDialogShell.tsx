@@ -51,6 +51,15 @@ export type ExportDialogShellProps = {
   children: ReactNode;
   /** Optional inline error shown above the footer. */
   error?: string | null;
+  /**
+   * Optional callback that returns the dialog to its form state without
+   * closing it — used to power an "Export again" affordance after a
+   * successful render. The consumer is responsible for clearing its own
+   * `result` / `progress` / `error` state (and revoking the blob URL if
+   * it should not survive the next export). Form inputs (filename,
+   * resolution, quality) are kept so the user can tweak and re-export.
+   */
+  onReset?: () => void;
 };
 
 export default function ExportDialogShell({
@@ -64,6 +73,7 @@ export default function ExportDialogShell({
   onSubmit,
   children,
   error,
+  onReset,
 }: ExportDialogShellProps) {
   useEffect(() => {
     if (!open) return;
@@ -151,6 +161,7 @@ export default function ExportDialogShell({
           formIdle={formIdle}
           showResult={!!result && !progress}
           onClose={onClose}
+          onReset={onReset}
         />
       </form>
     </div>
@@ -296,10 +307,14 @@ function ShellFooter({
   formIdle,
   showResult,
   onClose,
+  onReset,
 }: {
   formIdle: boolean;
   showResult: boolean;
   onClose: () => void;
+  /** When provided in the result state, exposes an "Export again" action
+   *  that drops the user back to the form without closing the dialog. */
+  onReset?: () => void;
 }) {
   if (!formIdle && !showResult) return null;
   return (
@@ -318,7 +333,14 @@ function ShellFooter({
           <DialogBtn variant="primary" type="submit">Export</DialogBtn>
         </>
       ) : (
-        <DialogBtn variant="secondary" onClick={onClose}>Close</DialogBtn>
+        <>
+          <DialogBtn variant="secondary" onClick={onClose}>Close</DialogBtn>
+          {onReset && (
+            <DialogBtn variant="primary" onClick={onReset}>
+              Export again
+            </DialogBtn>
+          )}
+        </>
       )}
     </div>
   );

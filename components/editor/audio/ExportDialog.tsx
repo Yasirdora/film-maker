@@ -7,7 +7,7 @@
  * progress + result panels; this file owns the format-specific form.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
 import { exportAudioProject, type AudioExportFormat } from "@/lib/audio/export";
 import ExportDialogShell, {
@@ -54,9 +54,36 @@ export default function ExportDialog({
     if (open && !progress && !result) inputRef.current?.focus();
   }, [open, progress, result]);
 
+  /* Revoke the current result's object URL so the browser can release
+     the underlying blob. Safe to call when `result` is null. */
+  const revokeResultUrl = useCallback(() => {
+    if (result?.url) URL.revokeObjectURL(result.url);
+  }, [result]);
+
+  /* Reset back to the form without closing — powers "Export again".
+     Format/quality/channels/filename intentionally persist so the user
+     can tweak and re-render in one click. */
+  const handleReset = useCallback(() => {
+    revokeResultUrl();
+    setResult(null);
+    setProgress(null);
+    setError(null);
+  }, [revokeResultUrl]);
+
+  /* Closing the dialog revokes any outstanding URL so the blob doesn't
+     leak into the next mount. */
+  const handleClose = useCallback(() => {
+    revokeResultUrl();
+    setResult(null);
+    setProgress(null);
+    setError(null);
+    onClose();
+  }, [revokeResultUrl, onClose]);
+
   async function handleExport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    revokeResultUrl();
     setResult(null);
     setProgress({ pct: 0, message: "Preparing…" });
     try {
@@ -81,7 +108,7 @@ export default function ExportDialog({
   return (
     <ExportDialogShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Export Audio"
       progress={progress}
       result={result}
@@ -102,6 +129,7 @@ export default function ExportDialog({
       }
       downloadFileName={fileName}
       onSubmit={handleExport}
+      onReset={handleReset}
       error={error}
     >
       <FormRow label="File Name">

@@ -8,7 +8,7 @@
  * preset table.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
 import { exportProject } from "@/lib/editor/export";
 import ExportDialogShell, {
@@ -77,9 +77,36 @@ export default function VideoExportDialog({
     [presetId],
   );
 
+  /* Revoke the current result's object URL so the browser can release
+     the underlying blob. Safe to call when `result` is null. */
+  const revokeResultUrl = useCallback(() => {
+    if (result?.url) URL.revokeObjectURL(result.url);
+  }, [result]);
+
+  /* Reset the dialog back to its form state without closing it. Form
+     inputs (filename, resolution, quality) intentionally persist so the
+     user can tweak and re-render in one click. */
+  const handleReset = useCallback(() => {
+    revokeResultUrl();
+    setResult(null);
+    setProgress(null);
+    setError(null);
+  }, [revokeResultUrl]);
+
+  /* Revoke any outstanding URL on close so a stale blob can't survive
+     into the next mount and leak. */
+  const handleClose = useCallback(() => {
+    revokeResultUrl();
+    setResult(null);
+    setProgress(null);
+    setError(null);
+    onClose();
+  }, [revokeResultUrl, onClose]);
+
   async function handleExport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    revokeResultUrl();
     setResult(null);
     setProgress({ pct: 0, message: "Preparing…" });
     try {
@@ -107,7 +134,7 @@ export default function VideoExportDialog({
   return (
     <ExportDialogShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title="Export Video"
       progress={progress}
       result={result}
@@ -120,6 +147,7 @@ export default function VideoExportDialog({
       )}
       downloadFileName={fileName}
       onSubmit={handleExport}
+      onReset={handleReset}
       error={error}
     >
       <FormRow label="File Name">
