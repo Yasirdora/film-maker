@@ -1,16 +1,30 @@
 "use client";
 
 /**
- * Video export dialog. Composes the shared <ExportDialogShell> with a small
- * preset list (1080p / 720p / 480p) and the existing exportProject helper.
- * Stays under 200 lines because all chrome (modal, progress, result, footer)
- * lives in the shell and the format-specific shape is driven by a single
- * preset table.
+ * Video export dialog. Composes the shared <ExportDialogShell> with a
+ * small preset list (1080p / 720p / 480p) and the existing exportProject
+ * helper. Stays under 200 lines because all chrome (modal, progress,
+ * result, footer) lives in the shell and the format-specific shape is
+ * driven by a single preset table.
+ *
+ * Cached result behavior
+ * ----------------------
+ * The last successful render is held in a session-scoped cache (see
+ * `lib/editor/last-export.ts`). When the dialog re-opens the user lands
+ * directly on the result panel showing that render instead of an empty
+ * form — re-rendering the same project from scratch on every reopen
+ * would be slow and unexpected. "Adjust settings" drops them back to
+ * the form (cache stays) so they can tweak resolution / quality /
+ * filename and produce a new render that overwrites the cache.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
 import { exportProject } from "@/lib/editor/export";
+import {
+  setLastExport,
+  useLastExport,
+} from "@/lib/editor/last-export";
 import ExportDialogShell, {
   FileNameInput,
   FormDivider,
@@ -18,7 +32,6 @@ import ExportDialogShell, {
   SegmentedControl,
   SelectControl,
   type ExportProgress,
-  type ExportResult,
 } from "@/components/editor/shared/ExportDialogShell";
 
 const DEFAULT_FILE_NAME = "video-export";
@@ -42,6 +55,12 @@ const PRESETS: Preset[] = [
 type Quality = "high" | "medium" | "low";
 const QUALITY_TO_CRF: Record<Quality, number> = { high: 20, medium: 23, low: 28 };
 
+/**
+ * View state of the dialog body. Decoupled from the cache so the user
+ * can flip between the form and the cached result without altering it.
+ */
+type View = "form" | "progress" | "result";
+
 export default function VideoExportDialog({
   open,
   onClose,
@@ -61,53 +80,67 @@ export default function VideoExportDialog({
   const [presetId, setPresetId] = useState<PresetId>("1080p");
   const [quality, setQuality] = useState<Quality>("high");
 
+  /* The cached render (or null). When non-null the dialog opens straight
+     into the result panel; "Adjust settings" flips the view back to the
+     form without touching the cache. */
+  const cachedResult = useLastExport("video");
+
+  /* Local view state — independent of the cache so "Adjust settings"
+     can hide the result without discarding it. */
+  const [view, setView] = useState<View>("form");
   const [progress, setProgress] = useState<ExportProgress | null>(null);
-  const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* Focus the filename field when there's no progress/result panel showing. */
+  /* When the dialog opens, decide the initial view. A cached render
+     means the user wants to revisit the last result; otherwise we go
+     straight to the form. Done in an effect rather than at render time
+     so toggling `open` from false → true triggers the snapshot exactly
+     once per open. */
   useEffect(() => {
-    if (open && !progress && !result) inputRef.current?.focus();
-  }, [open, progress, result]);
+    if (!open) return;
+    setView(cachedResult ? "result" : "form");
+    setProgress(null);
+    setError(null);
+    // `cachedResult` is intentionally omitted: it would re-flip the view
+    // every time the cache changes (e.g. after a successful render),
+    // which is handled explicitly by the success path below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  /* Focus the filename field when the form is the current view. */
+  useEffect(() => {
+    if (open && view === "form") inputRef.current?.focus();
+  }, [open, view]);
 
   const preset = useMemo(
     () => PRESETS.find((p) => p.id === presetId)!,
     [presetId],
   );
 
-  /* Revoke the current result's object URL so the browser can release
-     the underlying blob. Safe to call when `result` is null. */
-  const revokeResultUrl = useCallback(() => {
-    if (result?.url) URL.revokeObjectURL(result.url);
-  }, [result]);
-
-  /* Reset the dialog back to its form state without closing it. Form
-     inputs (filename, resolution, quality) intentionally persist so the
-     user can tweak and re-render in one click. */
+  /* "Adjust settings" — flip back to the form, keep the cached result
+     so the user can return to it via close + reopen if they change
+     their mind. Form inputs (filename / resolution / quality) persist
+     in local state across this transition. */
   const handleReset = useCallback(() => {
-    revokeResultUrl();
-    setResult(null);
+    setView("form");
     setProgress(null);
     setError(null);
-  }, [revokeResultUrl]);
+  }, []);
 
-  /* Revoke any outstanding URL on close so a stale blob can't survive
-     into the next mount and leak. */
+  /* Close — drop view-state but keep the cache. Reopening will show the
+     cached result. */
   const handleClose = useCallback(() => {
-    revokeResultUrl();
-    setResult(null);
     setProgress(null);
     setError(null);
     onClose();
-  }, [revokeResultUrl, onClose]);
+  }, [onClose]);
 
   async function handleExport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    revokeResultUrl();
-    setResult(null);
+    setView("progress");
     setProgress({ pct: 0, message: "Preparing…" });
     try {
       const state = useEditor.getState();
@@ -122,22 +155,35 @@ export default function VideoExportDialog({
         },
         (p) => setProgress(p),
       );
-      setResult({ url: URL.createObjectURL(blob), size: blob.size, ext: "mp4" });
+      /* Writing to the cache automatically revokes the previous blob URL
+         (see last-export.ts), so we never accumulate stale blobs across
+         repeated exports. */
+      setLastExport("video", {
+        url: URL.createObjectURL(blob),
+        size: blob.size,
+        ext: "mp4",
+      });
+      setView("result");
       setProgress(null);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
+      setView("form");
       setProgress(null);
     }
   }
+
+  /* What the shell renders for the result panel. When view !== "result"
+     we hand it null so it falls back to the form / progress body. */
+  const shellResult = view === "result" ? cachedResult : null;
 
   return (
     <ExportDialogShell
       open={open}
       onClose={handleClose}
       title="Export Video"
-      progress={progress}
-      result={result}
+      progress={view === "progress" ? progress : null}
+      result={shellResult}
       renderPreview={(r) => (
         <video
           src={r.url}

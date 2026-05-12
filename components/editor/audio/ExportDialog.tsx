@@ -2,14 +2,29 @@
 
 /**
  * Audio export dialog. Composes the shared <ExportDialogShell> with audio
- * format options (MP3 / WAV / FLAC, quality, channels) and the audio export
- * function. The shell owns lifecycle (open/close/Escape/animation) and the
- * progress + result panels; this file owns the format-specific form.
+ * format options (MP3 / WAV / FLAC, quality, channels) and the audio
+ * export function. The shell owns lifecycle (open/close/Escape/animation)
+ * and the progress + result panels; this file owns the format-specific
+ * form.
+ *
+ * Cached result behavior
+ * ----------------------
+ * The last successful render is held in a session-scoped cache (see
+ * `lib/editor/last-export.ts`). When the dialog re-opens the user lands
+ * directly on the result panel showing that render instead of an empty
+ * form — re-rendering the same project on every reopen would be slow
+ * and unexpected. "Adjust settings" flips the view back to the form
+ * (cache stays) so they can tweak format / quality / channels and
+ * produce a new render that overwrites the cache.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
 import { exportAudioProject, type AudioExportFormat } from "@/lib/audio/export";
+import {
+  setLastExport,
+  useLastExport,
+} from "@/lib/editor/last-export";
 import ExportDialogShell, {
   FileNameInput,
   FormDivider,
@@ -17,10 +32,12 @@ import ExportDialogShell, {
   SegmentedControl,
   SelectControl,
   type ExportProgress,
-  type ExportResult,
 } from "@/components/editor/shared/ExportDialogShell";
 
 const DEFAULT_FILE_NAME = "audio-export";
+
+/** View state — see the matching comment in VideoExportDialog. */
+type View = "form" | "progress" | "result";
 
 export default function ExportDialog({
   open,
@@ -43,48 +60,47 @@ export default function ExportDialog({
   const [channels, setChannels] = useState<1 | 2>(2);
   const [range, setRange] = useState<"whole" | "in_out">("whole");
 
+  const cachedResult = useLastExport("audio");
+
+  const [view, setView] = useState<View>("form");
   const [progress, setProgress] = useState<ExportProgress | null>(null);
-  const [result, setResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /* Focus the filename input on open (skip when showing progress/result). */
+  /* Pick the initial view when the dialog opens — cached result short
+     -circuits the form. `cachedResult` is intentionally excluded from
+     the dependency list (see VideoExportDialog for the rationale). */
   useEffect(() => {
-    if (open && !progress && !result) inputRef.current?.focus();
-  }, [open, progress, result]);
-
-  /* Revoke the current result's object URL so the browser can release
-     the underlying blob. Safe to call when `result` is null. */
-  const revokeResultUrl = useCallback(() => {
-    if (result?.url) URL.revokeObjectURL(result.url);
-  }, [result]);
-
-  /* Reset back to the form without closing — powers "Export again".
-     Format/quality/channels/filename intentionally persist so the user
-     can tweak and re-render in one click. */
-  const handleReset = useCallback(() => {
-    revokeResultUrl();
-    setResult(null);
+    if (!open) return;
+    setView(cachedResult ? "result" : "form");
     setProgress(null);
     setError(null);
-  }, [revokeResultUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
-  /* Closing the dialog revokes any outstanding URL so the blob doesn't
-     leak into the next mount. */
+  /* Focus the filename field when the form is showing. */
+  useEffect(() => {
+    if (open && view === "form") inputRef.current?.focus();
+  }, [open, view]);
+
+  /* "Adjust settings" — flip to form, keep cache. */
+  const handleReset = useCallback(() => {
+    setView("form");
+    setProgress(null);
+    setError(null);
+  }, []);
+
   const handleClose = useCallback(() => {
-    revokeResultUrl();
-    setResult(null);
     setProgress(null);
     setError(null);
     onClose();
-  }, [revokeResultUrl, onClose]);
+  }, [onClose]);
 
   async function handleExport(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    revokeResultUrl();
-    setResult(null);
+    setView("progress");
     setProgress({ pct: 0, message: "Preparing…" });
     try {
       const state = useEditor.getState();
@@ -93,11 +109,17 @@ export default function ExportDialog({
         { format, quality, channels },
         (p) => setProgress(p),
       );
-      setResult({ url: URL.createObjectURL(blob), size: blob.size, ext: format });
+      setLastExport("audio", {
+        url: URL.createObjectURL(blob),
+        size: blob.size,
+        ext: format,
+      });
+      setView("result");
       setProgress(null);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : String(err));
+      setView("form");
       setProgress(null);
     }
   }
@@ -105,13 +127,15 @@ export default function ExportDialog({
   /* WAV/FLAC are lossless — bitrate is meaningless and the row is greyed out. */
   const isQualityDisabled = format === "wav" || format === "flac";
 
+  const shellResult = view === "result" ? cachedResult : null;
+
   return (
     <ExportDialogShell
       open={open}
       onClose={handleClose}
       title="Export Audio"
-      progress={progress}
-      result={result}
+      progress={view === "progress" ? progress : null}
+      result={shellResult}
       renderPreview={(r) =>
         r.ext === "mp4" ? (
           <video
