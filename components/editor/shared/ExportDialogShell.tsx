@@ -335,10 +335,11 @@ function ShellFooter({
       }}
     >
       {formIdle ? (
-        <>
-          <DialogBtn variant="secondary" onClick={onClose}>Cancel</DialogBtn>
-          <DialogBtn variant="primary" type="submit">Export</DialogBtn>
-        </>
+        /* No Cancel button — the header X, backdrop click, and Escape
+           key already cover dismissal. Keeping the footer focused on
+           the primary action removes a redundant exit path and matches
+           the result-state footer. */
+        <DialogBtn variant="primary" type="submit">Export</DialogBtn>
       ) : (
         /* `onReset` is guaranteed to be defined here by the early-return
            above; non-null assertion would clutter the JSX, so just call
