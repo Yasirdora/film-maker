@@ -37,7 +37,7 @@ import { useEditor } from "@/lib/editor/store";
 import type { Clip, TextClip } from "@/lib/editor/types";
 
 const PANEL_W = 280;
-const COLLAPSED_W = 28;
+const COLLAPSED_W = 40;
 const COLLAPSE_STORAGE_KEY = "film-maker:editor.inspector.collapsed";
 
 /* ─── Persistence helpers ─────────────────────────────────────────────── */
