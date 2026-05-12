@@ -88,6 +88,7 @@ export default function Inspector() {
     const hasAnyClip = useEditor((s) => s.clipOrder.length > 0);
     const updateClip = useEditor((s) => s.updateClip);
     const updateClipTransform = useEditor((s) => s.updateClipTransform);
+    const setClipSpeed = useEditor((s) => s.setClipSpeed);
 
     /* Start collapsed=false on the server so SSR markup is deterministic;
        hydrate the persisted value in a layout effect to avoid a paint
@@ -292,9 +293,7 @@ export default function Inspector() {
                         unit="x"
                         defaultValue={1}
                         value={clip.speed}
-                        onChange={(v) =>
-                            updateClip(clip.id, { speed: v } as Partial<Clip>)
-                        }
+                        onChange={(v) => setClipSpeed(clip.id, v)}
                     />
                 </Section>
             )}

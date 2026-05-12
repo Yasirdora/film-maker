@@ -172,6 +172,19 @@ type Actions = {
 
   updateClip: (id: string, patch: Partial<Clip>) => void;
   updateClipTransform: (id: string, patch: Partial<Transform>) => void;
+  /**
+   * Change a video/audio clip's playback speed while preserving the
+   * range of source content the clip covers. The timeline `duration`
+   * is recomputed as `(oldDuration * oldSpeed) / newSpeed` so that
+   *
+   *     clip.duration * clip.speed === sourceSpanCovered  // invariant
+   *
+   * stays true across the edit. This is the model every major NLE
+   * uses — a 10s clip played at 2× becomes 5s on the timeline, not a
+   * 10s clip that races through 20s of source. Image and text clips
+   * have no meaningful "speed", so the call is a no-op for them.
+   */
+  setClipSpeed: (id: string, speed: number) => void;
   trimClipStart: (id: string, newStart: number) => void;
   trimClipEnd: (id: string, newEnd: number) => void;
   splitSelectedAtPlayhead: () => void;
@@ -744,6 +757,35 @@ export const useEditor = create<InternalState & Actions>((set, get) => ({
       transform: { ...(c as Exclude<Clip, { kind: "audio" }>).transform, ...patch },
     } as Clip;
     set({ clips: { ...get().clips, [id]: next } });
+  },
+
+  setClipSpeed: (id, speed) => {
+    const s = get();
+    const c = s.clips[id];
+    if (!c) return;
+    /* Speed is meaningless for image / text clips — they have no time-
+       varying source — so silently no-op rather than corrupting their
+       duration via the invariant below. */
+    if (c.kind !== "video" && c.kind !== "audio") return;
+    /* Guard against division by zero and against negative speeds.
+       The Inspector slider already clamps to [0.25, 4], so callers
+       won't normally hit this — defensive only. */
+    const nextSpeed = Math.max(0.01, speed);
+    const oldSpeed = c.speed || 1;
+    if (nextSpeed === oldSpeed) return;
+    if (needsPush("setClipSpeed:" + id)) get()._pushHistory();
+    /* Preserve the source-time span the clip covers:
+         newDuration * newSpeed === oldDuration * oldSpeed
+       Without this, the on-screen clip width would stay constant
+       while playback rate changed — which feels broken because every
+       other NLE shrinks the clip on speed-up. */
+    const newDuration = (c.duration * oldSpeed) / nextSpeed;
+    set({
+      clips: {
+        ...s.clips,
+        [id]: { ...c, speed: nextSpeed, duration: newDuration },
+      },
+    });
   },
 
   trimClipStart: (id, newStart) => {
