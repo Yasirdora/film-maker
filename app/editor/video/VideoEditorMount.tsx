@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useLayoutEffect, useRef, useState } from "react";
 import PageBar from "@/components/editor/PageBar";
 import VideoEditorPageActions, {
+  VideoEditorCanvasButton,
   VideoEditorExport,
   VideoEditorUndoRedo,
 } from "./VideoEditorPageActions";
@@ -52,6 +53,12 @@ export default function VideoEditorMount() {
         leadingActions={<VideoEditorPageActions />}
         actions={
           <>
+            <VideoEditorCanvasButton />
+            <span
+              aria-hidden
+              className="self-center w-px h-4 mx-1.5"
+              style={{ backgroundColor: "rgba(255, 255, 255, 0.10)" }}
+            />
             <VideoEditorUndoRedo />
             <span
               aria-hidden
