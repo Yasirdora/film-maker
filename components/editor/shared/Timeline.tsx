@@ -725,7 +725,11 @@ function DesktopTimeline({
               onClick={() => useEditor.getState().addTrack(config.kind)}
               className="flex items-center justify-center transition-colors"
               style={{
-                height: 30,
+                /* Collapsed state shrinks both vertically and
+                   horizontally so the icon-only pill sits proportionate
+                   to the narrowed header column; expanded state keeps
+                   the original chip height so the label reads cleanly. */
+                height: isHeaderCollapsed ? 26 : 30,
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.06)",
                 borderRadius: 6,
@@ -734,7 +738,7 @@ function DesktopTimeline({
                 fontSize: 12,
                 fontWeight: 500,
                 gap: 5,
-                padding: isHeaderCollapsed ? "0 8px" : "0 16px",
+                padding: isHeaderCollapsed ? "0 6px" : "0 16px",
                 letterSpacing: 0.1,
               }}
               title="Add track"
