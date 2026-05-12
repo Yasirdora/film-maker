@@ -97,8 +97,8 @@ const DEFAULT_MAX = 0.85;
 const DEFAULT_STEP = 0.02;
 const DEFAULT_LARGE_STEP = 0.1;
 
-/** Thickness of the handle hit area in pixels; visible line is narrower. */
-const HANDLE_THICKNESS = 6;
+/** Thickness of the handle hit area in pixels. */
+const HANDLE_THICKNESS = 2;
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
