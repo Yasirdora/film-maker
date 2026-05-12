@@ -55,6 +55,22 @@ const PRESETS: Preset[] = [
   { id: "source", label: "Custom", width: null, height: null },
 ];
 
+/**
+ * Picks the preset that matches the current canvas dimensions exactly,
+ * or "Custom" (`"source"`) when no preset matches. Used as the initial
+ * selection on every dialog open so the user lands on the option that
+ * preserves their canvas at 1:1 — they can still manually downsample
+ * (e.g. pick "720p" on a 1080p canvas) without further configuration.
+ */
+function matchPresetFromCanvas(
+  canvas: { width: number; height: number },
+): PresetId {
+  const match = PRESETS.find(
+    (p) => p.width === canvas.width && p.height === canvas.height,
+  );
+  return match?.id ?? "source";
+}
+
 type Quality = "high" | "medium" | "low";
 const QUALITY_TO_CRF: Record<Quality, number> = { high: 20, medium: 23, low: 28 };
 
@@ -80,7 +96,12 @@ export default function VideoExportDialog({
   const [customFileName, setCustomFileName] = useState<string | null>(null);
   const fileName = customFileName ?? projectName ?? DEFAULT_FILE_NAME;
 
-  const [presetId, setPresetId] = useState<PresetId>("1080p");
+  /* Seeded from the current canvas size so the dialog opens on whichever
+     preset preserves the project at 1:1 (or "Custom" for non-standard
+     ratios). Re-synced on every reopen — see the effect below. */
+  const [presetId, setPresetId] = useState<PresetId>(() =>
+    matchPresetFromCanvas(canvas),
+  );
   const [quality, setQuality] = useState<Quality>("high");
 
   /* The cached render (or null). When non-null the dialog opens straight
@@ -101,7 +122,12 @@ export default function VideoExportDialog({
      the form footer when `cachedResult` is non-null.
      The setState calls are a one-shot reset to a known state when
      `open` flips false → true; the rule's loop guard isn't relevant
-     because `open` only changes via external user action. */
+     because `open` only changes via external user action.
+     The preset is also re-synced from the current canvas: a 1280×720
+     canvas should land on "720p" on every reopen, etc. The user can
+     still override the auto-selection within a session — the override
+     persists until the dialog is closed and reopened with a (possibly
+     different) canvas. */
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -110,6 +136,13 @@ export default function VideoExportDialog({
     setProgress(null);
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPresetId(matchPresetFromCanvas(canvas));
+    // `canvas` intentionally omitted: the resync runs only when `open`
+    // transitions false → true, not whenever the canvas changes (which
+    // can't happen while the modal is mounted anyway, since the canvas
+    // dropdown is in the PageBar behind the backdrop).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   /* Focus the filename field when the form is the current view. */
