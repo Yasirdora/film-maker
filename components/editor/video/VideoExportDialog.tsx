@@ -49,7 +49,10 @@ const PRESETS: Preset[] = [
   { id: "1080p", label: "1080p", width: 1920, height: 1080 },
   { id: "720p", label: "720p", width: 1280, height: 720 },
   { id: "480p", label: "480p", width: 854, height: 480 },
-  { id: "source", label: "Match canvas", width: null, height: null },
+  /* "Custom" inherits whatever dimensions the editor's canvas is set to
+     — the actual values are surfaced as a hint below the segmented
+     control so the user doesn't have to leave the dialog to check them. */
+  { id: "source", label: "Custom", width: null, height: null },
 ];
 
 type Quality = "high" | "medium" | "low";
@@ -222,6 +225,18 @@ export default function VideoExportDialog({
         />
       </FormRow>
 
+      {/* When the user picks "Custom" the actual dimensions live on the
+          canvas, not in the preset table — surface them inline so the
+          user knows what they're about to render at without bouncing
+          back to the PageBar's canvas pill. The label is left-padded
+          to align with the controls column above. */}
+      {presetId === "source" && (
+        <CustomResolutionHint
+          width={canvas.width}
+          height={canvas.height}
+        />
+      )}
+
       <FormRow label="Quality">
         <SelectControl
           value={quality}
@@ -234,5 +249,34 @@ export default function VideoExportDialog({
         />
       </FormRow>
     </ExportDialogShell>
+  );
+}
+
+/**
+ * Inline hint that mirrors the canvas dimensions back to the user when
+ * "Custom" is selected. Pinned to the controls column with a 72px +
+ * 16px left inset so it visually attaches to the row above without
+ * mimicking the row's label / value split (which would make it look
+ * like an editable field).
+ */
+function CustomResolutionHint({
+  width,
+  height,
+}: {
+  width: number;
+  height: number;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: -8,
+        paddingLeft: 88, // 72px label column + 16px gap
+        fontSize: 11,
+        color: "rgba(255,255,255,0.45)",
+        fontVariantNumeric: "tabular-nums",
+      }}
+    >
+      Will render at {width}×{height} (canvas size).
+    </div>
   );
 }
