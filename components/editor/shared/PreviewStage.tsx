@@ -97,10 +97,17 @@ export default function PreviewStage() {
   /* Pinch-to-zoom on trackpads, Cmd/Ctrl + wheel on mice. Both come
      through as `WheelEvent` with `ctrlKey === true` — the browser sets
      it automatically for pinch gestures even when the physical Ctrl
-     key isn't pressed. Plain wheel (no modifier, no pinch) bubbles up
-     so any parent scroll behaviour still works. */
-  const onWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
+     key isn't pressed.
+     React attaches `onWheel` as a *passive* listener by default, which
+     means `preventDefault()` inside a React handler does nothing — the
+     browser still page-zooms on pinch. Subscribe through native DOM
+     with `{ passive: false }` so the call actually intercepts the
+     gesture before the browser acts on it. */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       /* `deltaY` is positive for "scroll down" / pinch-in (zoom out).
@@ -113,14 +120,34 @@ export default function PreviewStage() {
         return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, next));
       });
       showBadge();
-    },
-    [showBadge],
-  );
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [showBadge]);
+
+  /* Some browsers fire the legacy `gesturestart` / `gesturechange` /
+     `gestureend` events for trackpad pinch in addition to the wheel
+     stream above (notably Safari on macOS). Suppress those too so the
+     gesture doesn't double-fire as a page-level zoom on top of our
+     own canvas zoom. */
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const suppress = (e: Event) => e.preventDefault();
+    el.addEventListener("gesturestart", suppress);
+    el.addEventListener("gesturechange", suppress);
+    el.addEventListener("gestureend", suppress);
+    return () => {
+      el.removeEventListener("gesturestart", suppress);
+      el.removeEventListener("gesturechange", suppress);
+      el.removeEventListener("gestureend", suppress);
+    };
+  }, []);
 
   return (
     <div
       ref={containerRef}
-      onWheel={onWheel}
       className="flex-1 min-h-0 bg-[#101114] flex items-center justify-center overflow-hidden relative"
     >
       {effectiveScale > 0 && (
