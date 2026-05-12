@@ -1,18 +1,23 @@
 /**
  * Editor layout — shared shell for /editor/* routes.
  *
- * Provides the always-dark workspace background and renders the global
- * `<AppNav />` so the site nav is consistent across the product. Each
- * child page mounts its own `<PageBar>` for breadcrumbs and toolbar
- * actions (see PageBar.tsx).
+ * Renders the editor's own top bar (`EditorHeader`) with its full nav
+ * dropdown set (Artistic Intelligence, Video, Image, Audio, Media
+ * Converter), and injects an auth-aware right cluster — sign in /
+ * get started for anonymous visitors, profile menu for signed-in users.
+ *
+ * The header replaces the global `<AppNav />` only on `/editor/*` — the
+ * rest of the site keeps the standard nav. Each child page mounts its
+ * own `<PageBar>` for breadcrumbs and toolbar actions.
  *
  * Public route family — no auth guard. The editor runs entirely
  * client-side and persists nothing server-side, so anonymous use is
- * intentional. Signed-in users still get the profile menu via AppNav.
+ * intentional.
  */
 
 import type { Metadata } from "next";
-import { AppNav } from "@/components/app-nav";
+import { EditorHeader } from "@/components/editor/EditorHeader";
+import { EditorHeaderAuthSlot } from "@/components/editor/EditorHeaderAuthSlot";
 
 export const metadata: Metadata = {
     title: {
@@ -27,8 +32,8 @@ export default function EditorLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <div className="min-h-dvh bg-ws-canvas text-white pb-[66px] sm:pb-0">
-            <AppNav />
+        <div className="min-h-dvh bg-ws-canvas text-white">
+            <EditorHeader rightSlot={<EditorHeaderAuthSlot />} />
             {children}
         </div>
     );
