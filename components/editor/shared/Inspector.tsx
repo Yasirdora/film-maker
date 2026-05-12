@@ -1,15 +1,16 @@
 "use client";
 
 /**
- * Inspector — right-docked properties panel for the selected clip.
+ * Inspector — properties panel for the selected clip.
  *
- * Mode-agnostic: branches on `clip.kind` to surface only the controls that
- * apply to that clip. Audio clips show volume + fades; visual clips
- * (video/image) add transform + opacity + speed; text clips add font/color.
+ * Mounted as a sibling of `<PreviewStage>` inside the preview pane so
+ * the panel docks beside the canvas (not the whole editor). Returns
+ * `null` until the user selects a clip — the parent flex row reclaims
+ * the freed width and the preview canvas grows accordingly.
  *
- * Renders nothing until the user selects a clip — `<aside>` collapses to
- * width 0 — so it never steals horizontal space from the timeline /
- * preview when there's no work to do.
+ * Mode-agnostic: branches on `clip.kind` to surface only the controls
+ * that apply. Audio clips show volume + fades; visual clips (video /
+ * image) add transform + opacity + speed; text clips add font / color.
  */
 
 import { useEditor } from "@/lib/editor/store";

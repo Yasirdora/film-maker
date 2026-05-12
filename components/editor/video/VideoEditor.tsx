@@ -149,7 +149,17 @@ export default function VideoEditor() {
               maxRatio={0.85}
               handleLabel="Resize video preview and timeline"
             >
-              <PreviewStage />
+              {/* Top pane: preview canvas + properties panel side-by-side.
+                  Inspector docks to the right of the canvas only while a
+                  clip is selected (it returns null otherwise), so the
+                  preview reclaims the full width when there is nothing
+                  to configure. */}
+              <div className="flex flex-row min-w-0 min-h-0 h-full w-full">
+                <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+                  <PreviewStage />
+                </div>
+                <Inspector />
+              </div>
               <Timeline
                 config={videoTimelineConfig}
                 mode={mode}
@@ -163,10 +173,6 @@ export default function VideoEditor() {
           <FloatingDock />
         </div>
       </main>
-
-      {/* Right-docked properties panel — desktop only. Renders nothing
-          (collapses to width 0) until a clip is selected. */}
-      {!isMobile && <Inspector />}
 
       <VideoExportDialog
         open={isExporting}
