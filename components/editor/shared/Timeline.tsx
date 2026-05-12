@@ -158,18 +158,31 @@ function DesktopTimeline({
   const bodyScrollRef = useRef<HTMLDivElement | null>(null);
   const rulerScrollRef = useRef<HTMLDivElement | null>(null);
 
-  /* Cooperative-scrolling refs:
-     • `isAutoScrollingRef` — flipped true while the playback auto-scroll
-       writes `scrollLeft`. The scroll event fires asynchronously after
-       the write, so it would otherwise look identical to a user scroll
-       and reset the grace period below into a self-feeding loop.
-     • `lastUserScrollAt` — wall-clock timestamp of the most recent
-       user-initiated scroll. The auto-scroll handler checks this and
-       skips the playhead-follow while the user is actively scrubbing
-       through the timeline, so manual scroll during playback no longer
-       fights the playhead. */
+  /* Cooperative-scrolling state for the playhead-follow during playback.
+     The follow is a *sticky* opt-in: a user scroll during playback
+     disengages it for the rest of the playback session, and the
+     `<JumpToPlayheadPill>` overlay offers an explicit re-engage. The
+     follow re-engages automatically on the next play-from-pause, which
+     matches the user's intent ("watch from where I am now").
+     • `isAutoScrollingRef` — flipped true while the auto-scroll writes
+       `scrollLeft`. The scroll event the browser fires afterwards
+       would otherwise look identical to a user scroll and disengage
+       follow against itself.
+     • `autoFollowRef` — the sticky flag. False = follow disengaged.
+       Read every clock tick by the auto-scroll handler; written by the
+       scroll handler (false on user scroll) and the play-transition
+       handler (true on play-from-pause).
+     • `setFollowEnabled` — state setter that mirrors `autoFollowRef`
+       so the overlay pill re-renders when visibility flips. Kept in
+       sync with the ref so the auto-scroll handler (which reads on
+       every tick) doesn't depend on React reconciliation. */
   const isAutoScrollingRef = useRef(false);
-  const lastUserScrollAt = useRef(0);
+  const autoFollowRef = useRef(true);
+  const [followEnabled, setFollowEnabled] = useState(true);
+  const setAutoFollow = useCallback((value: boolean) => {
+    autoFollowRef.current = value;
+    setFollowEnabled(value);
+  }, []);
 
   useEffect(() => {
     const lane = scrollRef.current;
@@ -181,14 +194,15 @@ function DesktopTimeline({
          input. The flag clears one frame after the auto-scroll write
          (see the auto-scroll effect below), so a real user scroll
          arriving immediately afterwards still gets credited. */
-      if (!isAutoScrollingRef.current) {
-        lastUserScrollAt.current = performance.now();
+      if (isAutoScrollingRef.current) return;
+      if (clock.playing() && autoFollowRef.current) {
+        setAutoFollow(false);
       }
     };
     onLaneScroll();
     lane.addEventListener("scroll", onLaneScroll, { passive: true });
     return () => lane.removeEventListener("scroll", onLaneScroll);
-  }, []);
+  }, [setAutoFollow]);
   /* One ref slot per visible lane (aligned by index to visibleTracks). */
   const laneRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [panelWidth, setPanelWidth] = useState(0);
@@ -445,22 +459,19 @@ function DesktopTimeline({
     }
   };
 
-  /* Auto-scroll: direct clock subscription — no React re-render needed.
-     Skipped while the user is actively scrolling so manual scrubbing
-     during playback doesn't fight the playhead-follow logic. After
-     `USER_SCROLL_GRACE_MS` of idle the follow resumes and pulls the
-     playhead back into view. 800 ms is long enough to flick the
-     scrollbar without snap-back and short enough that the user
-     doesn't feel like the playhead "got stuck". */
+  /* Playhead auto-follow: subscribes directly to the clock so the
+     follow runs at clock cadence without producing React renders.
+     Behaviour mirrors Premiere / Final Cut: follow only runs while
+     `autoFollowRef` is true; a user scroll during playback disengages
+     it (handled in the scroll listener above), and the `<JumpToPlayheadPill>`
+     overlay offers the explicit re-engage. Play-from-pause also
+     re-engages automatically — see the play-transition effect below. */
   useEffect(() => {
-    const USER_SCROLL_GRACE_MS = 800;
     const writeScrollLeft = (el: HTMLDivElement, x: number) => {
       isAutoScrollingRef.current = true;
       el.scrollLeft = x;
-      /* Clear the flag on the next frame so the scroll event the
-         browser fires as a result of our write doesn't get mistaken
-         for a user scroll. Any real user scroll arriving immediately
-         after this frame still updates `lastUserScrollAt` correctly. */
+      /* Clear on the next frame so the scroll event the browser fires
+         in response to our write doesn't get mistaken for user input. */
       requestAnimationFrame(() => {
         isAutoScrollingRef.current = false;
       });
@@ -468,10 +479,7 @@ function DesktopTimeline({
 
     const unsub = clock.subscribe(() => {
       const el = scrollRef.current;
-      if (!el || !clock.playing()) return;
-      if (performance.now() - lastUserScrollAt.current < USER_SCROLL_GRACE_MS) {
-        return;
-      }
+      if (!el || !clock.playing() || !autoFollowRef.current) return;
       const playheadX = clock.time() * zoomRef.current;
       const visStart = el.scrollLeft;
       const visEnd = el.scrollLeft + el.clientWidth;
@@ -483,6 +491,23 @@ function DesktopTimeline({
     });
     return unsub;
   }, []);
+
+  /* Re-engage follow on every play-from-pause transition. When the
+     user presses Play (whether from the dock, spacebar, or a
+     programmatic transport call), their intent is to watch from where
+     the playhead currently is — re-asserting the follow gives them
+     that without needing to click the jump-to-playhead pill first. */
+  useEffect(() => {
+    let wasPlaying = clock.playing();
+    const unsub = clock.subscribe(() => {
+      const playing = clock.playing();
+      if (playing && !wasPlaying) {
+        setAutoFollow(true);
+      }
+      wasPlaying = playing;
+    });
+    return unsub;
+  }, [setAutoFollow]);
 
   const contentWidth = Math.max(panelWidth || 800, total * zoom + 200);
 
@@ -994,6 +1019,40 @@ function DesktopTimeline({
       >
         <TimelinePlayhead zoom={zoom} seek={seek} xToTime={xToTime} scrollRef={scrollRef} />
       </div>
+
+      {/* ── JUMP-TO-PLAYHEAD — visible only when auto-follow is
+             disengaged (user scrolled during playback) and the playhead
+             has drifted outside the visible range. Clicking smooth-
+             scrolls back and re-engages follow. ── */}
+      <JumpToPlayheadPill
+        scrollRef={scrollRef}
+        zoomRef={zoomRef}
+        headerWidth={HEADER_W}
+        followEnabled={followEnabled}
+        onJump={() => {
+          const el = scrollRef.current;
+          if (!el) return;
+          const playheadX = clock.time() * zoomRef.current;
+          /* Centre the playhead in the viewport, the same offset the
+             auto-follow uses when it pulls the view forward. */
+          const target = Math.max(0, playheadX - el.clientWidth * 0.5);
+          isAutoScrollingRef.current = true;
+          el.scrollTo({ left: target, behavior: "smooth" });
+          /* `scrollTo` with smooth behaviour fires scroll events as it
+             animates — those events would otherwise count as user
+             scrolls and disengage follow before we've even re-engaged
+             it. Keep the auto-scroll flag set for a longer window so
+             every interim scroll event is suppressed. 250 ms covers
+             the smooth-scroll animation on every browser we care
+             about; if a real user scroll arrives within that window
+             it's effectively absorbed, which is the right outcome
+             (the user just clicked "follow"). */
+          setTimeout(() => {
+            isAutoScrollingRef.current = false;
+          }, 250);
+          setAutoFollow(true);
+        }}
+      />
 
       {/* Clip right-click context menu */}
       {ctxMenu && (
@@ -3122,6 +3181,124 @@ function TimelineToolBtn({
       {children}
     </button>
   );
+}
+
+/* ─── JumpToPlayheadPill ──────────────────────────────────────────────
+ *
+ * Overlay shown only while:
+ *   • a playback is in progress, AND
+ *   • the user has disengaged auto-follow (by scrolling), AND
+ *   • the playhead is currently outside the visible scroll range.
+ *
+ * Renders on the edge the playhead has drifted past — pointing right
+ * when the playhead is ahead of the viewport, pointing left when it's
+ * behind — so the user can tell at a glance which way to look. Click
+ * smooth-scrolls to the playhead and re-engages auto-follow.
+ *
+ * Subscribes directly to the clock so visibility updates at clock
+ * cadence without provoking a re-render every frame: a local
+ * `direction` state only mutates when the on/off-screen status of the
+ * playhead actually flips. The button is a portal of one element
+ * positioned via `position: absolute` against the Timeline's outer
+ * wrapper (which is already `relative`).
+ */
+function JumpToPlayheadPill({
+    scrollRef,
+    zoomRef,
+    headerWidth,
+    followEnabled,
+    onJump,
+}: {
+    scrollRef: React.RefObject<HTMLDivElement | null>;
+    zoomRef: React.RefObject<number>;
+    headerWidth: number;
+    followEnabled: boolean;
+    onJump: () => void;
+}) {
+    /* "none" → hidden; "left" / "right" → visible on the chosen edge. */
+    const [direction, setDirection] = useState<"left" | "right" | "none">("none");
+
+    useEffect(() => {
+        /* When follow is engaged the pill must be hidden regardless of
+           where the playhead is. Snap the state to "none" rather than
+           leaving stale data behind from the previous disengaged run.
+           The setState is a deliberate sync to an external signal
+           (`followEnabled`), not a render-loop trigger. */
+        if (followEnabled) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setDirection("none");
+            return;
+        }
+        const compute = (): "left" | "right" | "none" => {
+            const el = scrollRef.current;
+            if (!el || !clock.playing()) return "none";
+            const playheadX = clock.time() * (zoomRef.current ?? 0);
+            const visStart = el.scrollLeft;
+            const visEnd = el.scrollLeft + el.clientWidth;
+            if (playheadX > visEnd) return "right";
+            if (playheadX < visStart) return "left";
+            return "none";
+        };
+
+        /* Seed state on engage so we don't briefly render the wrong
+           direction before the first clock tick. */
+        setDirection(compute());
+
+        const unsub = clock.subscribe(() => {
+            const next = compute();
+            /* Skip the setState round-trip when nothing changes —
+               the clock fires up to 60 times per second. */
+            setDirection((prev) => (prev === next ? prev : next));
+        });
+        return unsub;
+    }, [followEnabled, scrollRef, zoomRef]);
+
+    if (direction === "none") return null;
+
+    const isLeft = direction === "left";
+    const label = isLeft ? "← Jump to playhead" : "Jump to playhead →";
+
+    return (
+        <button
+            type="button"
+            onClick={onJump}
+            aria-label="Jump to playhead and follow"
+            style={{
+                position: "absolute",
+                bottom: 16,
+                /* `headerWidth + 12` keeps the pill clear of the track-header
+                   column on the left side; on the right we just inset 12px
+                   from the timeline's right edge. */
+                left: isLeft ? headerWidth + 12 : undefined,
+                right: isLeft ? undefined : 12,
+                height: 28,
+                padding: "0 12px",
+                borderRadius: 999,
+                background: "rgba(20, 20, 22, 0.92)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                color: "rgba(255, 255, 255, 0.92)",
+                fontSize: 12,
+                fontWeight: 500,
+                letterSpacing: 0.1,
+                cursor: "pointer",
+                boxShadow: "0 8px 20px rgba(0, 0, 0, 0.45)",
+                zIndex: 90,
+                transition: "background-color 120ms, transform 120ms",
+            }}
+            onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor =
+                    "rgba(32, 32, 36, 0.96)";
+            }}
+            onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.backgroundColor =
+                    "rgba(20, 20, 22, 0.92)";
+            }}
+        >
+            {label}
+        </button>
+    );
 }
 
 function EmptyState() {
