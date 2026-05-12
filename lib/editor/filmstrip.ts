@@ -74,9 +74,12 @@ export type FilmstripOptions = {
  */
 
 /** Target source-time interval between thumbnails (seconds). One frame
- *  every ~2s mirrors CapCut Web's default and reads well at typical
- *  zoom levels. Lower = denser strips, more seeks. */
-export const FRAME_INTERVAL_SEC = 2;
+ *  per source-second keeps segment widths small enough that the
+ *  rendered strip stays crisp at high timeline zoom (each thumbnail
+ *  only needs to cover ~zoom-px-per-second on screen, not 2× that).
+ *  Lower = denser strips, more seeks at import time; higher = sparser
+ *  strips that get soft when zoomed in. */
+export const FRAME_INTERVAL_SEC = 1;
 
 /** Floor on the strip length. Below this, very short clips would
  *  render as a single image which loses the "this is a video" cue. */
@@ -93,9 +96,9 @@ export const MAX_FRAME_COUNT = 64;
  * clamped to [MIN_FRAME_COUNT, MAX_FRAME_COUNT] — so the behaviour is
  * predictable and easy to tune without rebalancing a curve.
  *
- * Examples (with the current defaults):
+ * Examples (with the current defaults — interval 1s, floor 4, ceiling 64):
  *   • 1 s  → 4 frames  (clamped to the floor)
- *   • 30 s → 15 frames
+ *   • 30 s → 30 frames
  *   • 5 m  → 64 frames (clamped to the ceiling)
  *   • 2 h  → 64 frames (clamped; each thumb covers ~2 min)
  *
@@ -116,9 +119,14 @@ const cache = new Map<string, Promise<Filmstrip>>();
  *  caches never collide. */
 const ADAPTIVE_KEY = "auto";
 
-/** Default frame width when the caller doesn't override. 160px reads
- *  cleanly on retina lanes; trade-off explained in the module header. */
-const DEFAULT_FRAME_WIDTH = 160;
+/** Default frame width when the caller doesn't override. 320px gives
+ *  enough resolution headroom for retina (DPR ≥ 2) lanes and for the
+ *  high end of the timeline zoom range — at lower zoom the browser
+ *  downsamples (sharp); at high zoom the upscale factor stays below
+ *  ~2× for any sensible clip duration / zoom combination, which reads
+ *  as "soft" rather than "blocky". Larger sizes were tried and add
+ *  storage cost without a visible win at typical lane heights. */
+const DEFAULT_FRAME_WIDTH = 320;
 
 /**
  * Returns a cached filmstrip if one exists, or kicks off generation.
