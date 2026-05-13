@@ -1,25 +1,28 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import PageBar from "@/components/editor/PageBar";
+import { ClapperboardLoader } from "@/components/landing-hero/clapperboard-loader";
+import { useBootLoader } from "@/lib/editor/useBootLoader";
 import AudioEditorPageActions, {
   AudioEditorExport,
   AudioEditorKebab,
   AudioEditorUndoRedo,
 } from "./AudioEditorPageActions";
 
-const AudioEditor = dynamic(
-  () => import("@/components/editor/audio/AudioEditor"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="h-screen w-screen flex items-center justify-center bg-black text-[#95979c] text-sm">
-        Loading audio editor…
-      </div>
-    ),
-  },
-);
+/* Hoisted so both the `dynamic()` proxy and the boot-loader effect
+   share the same import promise. `import()` is module-cached, so the
+   second call is free and just resolves with the already-loaded chunk. */
+const importAudioEditor = () => import("@/components/editor/audio/AudioEditor");
+
+const AudioEditor = dynamic(importAudioEditor, {
+  ssr: false,
+  /* Render nothing in the dynamic slot — the boot-loader overlay below
+     covers the viewport while the chunk loads, then fades out via the
+     clap animation when the chunk resolves. */
+  loading: () => null,
+});
 
 export default function AudioEditorMount() {
   /* Lock the editor to the remaining viewport height so its lanes scroll
@@ -28,6 +31,22 @@ export default function AudioEditorMount() {
      and PageBar) so the height calc adapts to whatever sits above. */
   const editorRef = useRef<HTMLDivElement | null>(null);
   const [topOffset, setTopOffset] = useState(0);
+
+  /* Watch the editor chunk's import promise; flip `chunkReady` true on
+     resolve so `useBootLoader` can run the clap-and-fade sequence. The
+     `dynamic()` above triggered the same import, so this `.then` lands
+     against the cached promise — no duplicate network work. */
+  const [chunkReady, setChunkReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    importAudioEditor().then(() => {
+      if (!cancelled) setChunkReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const loaderPhase = useBootLoader(chunkReady);
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -78,6 +97,11 @@ export default function AudioEditorMount() {
       >
         <AudioEditor />
       </div>
+      {/* Kept mounted through every phase — including `finished` — so
+          the CSS opacity transition has a node to animate against. The
+          overlay sits as a fixed-position sibling, so removing it from
+          the document flow has no effect on the editor layout. */}
+      <ClapperboardLoader phase={loaderPhase} />
     </div>
   );
 }
