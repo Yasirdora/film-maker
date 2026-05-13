@@ -1,10 +1,25 @@
 "use client";
 
 import { Combinator, OffscreenSprite, MP4Clip, AudioClip } from "@webav/av-cliper";
+import { getFFmpeg } from "./ffmpeg";
 import type { Clip, EditorState } from "./types";
 
+/**
+ * Output containers supported by the video editor:
+ *   • `mp4` — WebAV's native H.264/AAC output. No post-processing, fastest.
+ *   • `mov` — same H.264/AAC streams in a QuickTime container. FFmpeg
+ *             `-c copy` rewrap, so it's only marginally slower than mp4.
+ *
+ * WebM was tried but pulled: the default `@ffmpeg/core@0.12.10` UMD
+ * build doesn't reliably ship the libvpx encoder, so attempting a VP8
+ * encode crashed wasm with "memory access out of bounds". Re-adding it
+ * would require either swapping to `core-mt` (which requires
+ * COOP/COEP headers) or going the MediaRecorder route for VP8/Opus.
+ */
+export type ExportFormat = "mp4" | "mov";
+
 export type ExportOptions = {
-  format: "mp4" | "webm";
+  format: ExportFormat;
   width: number;
   height: number;
   fps: number;
@@ -13,6 +28,20 @@ export type ExportOptions = {
 };
 
 export type ExportProgress = { pct: number; message: string };
+
+/** MIME type for the final blob, picked from the chosen container. */
+export function mimeTypeFor(format: ExportFormat): string {
+  switch (format) {
+    case "mp4":
+      return "video/mp4";
+    case "mov":
+      /* `video/quicktime` is the registered MIME for .mov, but many
+         servers and download dialogs only recognise the historical
+         `video/mp4` alias. We use the registered one and let the file
+         extension carry the rest. */
+      return "video/quicktime";
+  }
+}
 
 export async function exportProject(
   state: Pick<EditorState, "assets" | "clips" | "clipOrder" | "tracks" | "canvas">,
@@ -170,8 +199,68 @@ export async function exportProject(
   let off = 0;
   for (const chunk of chunks) { merged.set(chunk, off); off += chunk.byteLength; }
 
-  onProgress({ pct: 100, message: "Done" });
-  return new Blob([merged], { type: "video/mp4" });
+  /* MP4 is the native WebAV output — we're done. MOV needs a quick
+     pass through FFmpeg.wasm to rewrap the same H.264/AAC streams in
+     a QuickTime container (`-c copy -f mov`, no re-encode). */
+  if (opts.format === "mp4") {
+    onProgress({ pct: 100, message: "Done" });
+    return new Blob([merged], { type: mimeTypeFor("mp4") });
+  }
+
+  return rewrapAsMov(merged, onProgress);
+}
+
+/**
+ * Pipe the WebAV-produced MP4 stream through FFmpeg.wasm to rewrap the
+ * same H.264/AAC streams in a QuickTime (.mov) container. `-c copy`
+ * means no re-encode, so this completes in roughly the time it takes
+ * to read and write the bytes — typically a fraction of a second even
+ * for multi-minute exports.
+ */
+async function rewrapAsMov(
+  mp4Bytes: Uint8Array,
+  onProgress: (p: ExportProgress) => void,
+): Promise<Blob> {
+  onProgress({ pct: 99, message: "Repackaging as QuickTime (.mov)…" });
+
+  const ff = await getFFmpeg();
+  const inputName = "in.mp4";
+  const outputName = "out.mov";
+  await ff.writeFile(inputName, mp4Bytes);
+
+  let logs = "";
+  const onLog = ({ message }: { message: string }) => {
+    logs += message + "\n";
+  };
+  ff.on("log", onLog);
+
+  try {
+    const exitCode = await ff.exec([
+      "-i", inputName, "-c", "copy", "-f", "mov", outputName,
+    ]);
+    if (exitCode !== 0) {
+      throw new Error(
+        `FFmpeg failed to produce QuickTime (.mov) (exit ${exitCode}).\n${logs.slice(-2000)}`,
+      );
+    }
+
+    const data = await ff.readFile(outputName);
+    /* `readFile` returns a Uint8Array on a possibly-SharedArrayBuffer;
+       copy into a fresh ArrayBuffer so the Blob constructor accepts it
+       under strict TS typing (matches the reverseMediaFile pattern). */
+    const bytes =
+      typeof data === "string"
+        ? new TextEncoder().encode(data)
+        : new Uint8Array(data);
+    onProgress({ pct: 100, message: "Done" });
+    return new Blob([bytes], { type: mimeTypeFor("mov") });
+  } finally {
+    ff.off("log", onLog);
+    /* Always clean up the virtual filesystem so subsequent exports
+       start from a known empty state. Failures here are non-fatal. */
+    try { await ff.deleteFile(inputName); } catch { /* ignore */ }
+    try { await ff.deleteFile(outputName); } catch { /* ignore */ }
+  }
 }
 
 function crfToBitrate(crf: number): number {

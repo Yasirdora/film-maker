@@ -20,7 +20,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
-import { exportProject } from "@/lib/editor/export";
+import { exportProject, type ExportFormat } from "@/lib/editor/export";
 import {
   setLastExport,
   useLastExport,
@@ -103,6 +103,11 @@ export default function VideoExportDialog({
     matchPresetFromCanvas(canvas),
   );
   const [quality, setQuality] = useState<Quality>("high");
+  /* Output container. MP4 is the fast WebAV-native path; MOV is a
+     cheap FFmpeg rewrap; WebM is a full re-encode (slow). The hint
+     below the select surfaces the WebM trade-off so the user isn't
+     surprised by the longer wait. */
+  const [format, setFormat] = useState<ExportFormat>("mp4");
 
   /* The cached render (or null). When non-null the dialog opens straight
      into the result panel; "Adjust settings" flips the view back to the
@@ -189,7 +194,7 @@ export default function VideoExportDialog({
       const blob = await exportProject(
         state,
         {
-          format: "mp4",
+          format,
           width: preset.width ?? canvas.width,
           height: preset.height ?? canvas.height,
           fps: canvas.fps,
@@ -203,7 +208,7 @@ export default function VideoExportDialog({
       setLastExport("video", {
         url: URL.createObjectURL(blob),
         size: blob.size,
-        ext: "mp4",
+        ext: format,
       });
       setView("result");
       setProgress(null);
@@ -244,11 +249,22 @@ export default function VideoExportDialog({
           value={fileName}
           onChange={setCustomFileName}
           inputRef={inputRef}
-          ext="mp4"
+          ext={format}
         />
       </FormRow>
 
       <FormDivider />
+
+      <FormRow label="Format">
+        <SelectControl
+          value={format}
+          onChange={(v) => setFormat(v as ExportFormat)}
+          options={[
+            { value: "mp4", label: "MP4 — H.264 / AAC" },
+            { value: "mov", label: "MOV — QuickTime (H.264 / AAC)" },
+          ]}
+        />
+      </FormRow>
 
       <FormRow label="Resolution">
         <SegmentedControl<PresetId>
@@ -284,6 +300,7 @@ export default function VideoExportDialog({
     </ExportDialogShell>
   );
 }
+
 
 /**
  * Inline hint that mirrors the canvas dimensions back to the user when
