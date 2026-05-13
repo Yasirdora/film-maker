@@ -36,41 +36,14 @@ export default function LoopContextMenu({ x, y, onClose }: LoopContextMenuProps)
       <div
         role="menu"
         onKeyDown={onMenuKeyDown}
-        style={{
-          minWidth: 160,
-          background: "#161616",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 12,
-          padding: 4,
-          boxShadow:
-            "0 16px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
-          color: "white",
-          fontSize: 13,
-          display: "flex",
-          flexDirection: "column",
-          outline: "none",
-        }}
+        className="ui-menu"
+        style={{ minWidth: 160, display: "flex", flexDirection: "column" }}
         tabIndex={0}
       >
-
         <button
           role="menuitem"
-          className="ae-ctx-item"
+          className="ui-menu-item"
           onClick={handleClearLoop}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            width: "100%",
-            background: "transparent",
-            border: "none",
-            color: "inherit",
-            padding: "8px 10px",
-            borderRadius: 6,
-            cursor: "pointer",
-            textAlign: "left",
-            fontFamily: "inherit",
-            fontSize: "inherit",
-          }}
         >
           Clear Selection
         </button>

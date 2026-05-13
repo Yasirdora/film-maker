@@ -59,75 +59,35 @@
 
 /* ── Layout ── */
 
-/* Unified top bar spanning sidebar + main + auth columns. Replaces
- * the per-column headers (the old sidebarHeader brand row and the
- * .chatTopBar in the main area) so the top reads as a single row:
- *
- *   [logo] Artistic Intelligence | History & Search / ← Chat title | Get Started · profile
- */
-.pageTopBar {
+/* Top bar inside the main column. Holds the chat title (History &
+ * Search or back + active chat title) on the left and the auth
+ * cluster (Launchpad + profile / Sign-in / Get Started) on the right.
+ * The sidebar owns its own brand row to the left of this. */
+.mainTopBar {
     display: flex;
     align-items: center;
     flex-shrink: 0;
     height: var(--header-height, 64px);
-    background: transparent;
+    /* Top inset so the chat title doesn't sit flush against the viewport
+       edge. The .main container itself still reaches the top, so any
+       column strokes/borders extend to the page top. */
+    padding: 10px 16px 0 24px;
+    gap: 12px;
 }
 
-.pageTopBarBrand {
-    width: 260px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 14px;
-    box-sizing: border-box;
-    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* When the sidebar collapses (64px wide), shrink the brand column to
- * match so the unified top bar's leftmost region keeps lining up with
- * the sidebar below. The label hides; only the brand mark stays. */
-.pageTopBar[data-sidebar-collapsed] .pageTopBarBrand {
-    width: 64px;
-}
-.pageTopBar[data-sidebar-collapsed] .pageTopBarBrand .headerSectionLabel {
-    display: none;
-}
-
-.pageTopBarMain {
+.mainTopBarTitle {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 24px;
 }
 
-.pageTopBarAuth {
+.mainTopBarAuth {
     flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 16px;
-}
-
-/* Collapse toggle pinned to the right of the brand column so it sits
- * where the old sidebarHeaderCollapse used to live, but in the unified
- * top bar. Hidden when the sidebar is already collapsed (the collapsed
- * brand mark itself is the expand affordance). */
-.pageTopBarCollapseBtn {
-    margin-left: auto;
-}
-.pageTopBar[data-sidebar-collapsed] .pageTopBarCollapseBtn {
-    display: none;
-}
-
-/* Mobile: the brand column collapses (the sidebar is off-screen via
- * mobile open state), so let the chat title region claim that space. */
-@media (max-width: 767px) {
-    .pageTopBarBrand {
-        display: none;
-    }
 }
 
 .layout {
@@ -156,11 +116,17 @@
 /* ── Sidebar header (brand mark) ── */
 
 .sidebarHeader {
-    height: 48px;
+    /* Same outer height as `.mainTopBar` so the sidebar brand row and
+       the chat title sit on the same line. The sidebar container
+       itself reaches the top of the page, so its right border /
+       background paints flush to the viewport edge — only the
+       header's content is inset by the shared top padding. */
+    height: var(--header-height, 64px);
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 14px;
+    padding: 10px 14px 0;
     flex-shrink: 0;
 }
 
@@ -258,18 +224,21 @@
 
     .sidebarCollapsed .sidebarHeader {
         justify-content: center;
-        padding: 0 10px;
+        /* Match the expanded header's top inset so the logo stays at
+           the same vertical position when the user toggles collapse. */
+        padding: 10px 10px 0;
     }
 
     .headerLogoCollapsed {
         cursor: pointer;
-        width: 44px;
-        height: 44px;
+        width: 36px;
+        height: 36px;
         justify-content: center;
         padding: 0;
         margin: 0;
-        /* Scale the logo down on collapse so it fits the 44px bar elegantly */
-        transform: scale(0.65);
+        /* Render the logo at its natural `xs` size (matching the
+           global top-nav clapperboard) so the brand stays put
+           across collapse toggles — same size, same y. */
     }
 
     .headerLogoCollapsed:hover {
@@ -611,65 +580,13 @@
     z-index: 100;
 }
 
+/* Auteur context / title menus — *positioning only*. The visual
+ * surface comes from the global `.ui-menu` class (see globals.css).
+ * Items use `.ui-menu-item` / `.ui-menu-item-danger`; dividers use
+ * `.ui-menu-divider`. */
 .contextMenu {
     position: fixed;
     z-index: 101;
-    min-width: 160px;
-    padding: 4px;
-    border-radius: 12px;
-    background: var(--auteur-sidebar-bg);
-    border: 1px solid var(--auteur-sidebar-border);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
-    animation: contextIn 0.12s ease-out;
-}
-
-@media (prefers-color-scheme: dark) {
-    .contextMenu {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4),
-            0 0 0 1px rgba(255, 255, 255, 0.04) inset;
-    }
-}
-
-@keyframes contextIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.contextMenuItem {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 8px 10px;
-    border: none;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--auteur-text);
-    font-size: 13px;
-    font-weight: 500;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background 0.1s ease;
-}
-
-.contextMenuItem:hover {
-    background: var(--auteur-sidebar-hover);
-}
-
-.contextMenuItemDanger {
-    color: var(--auteur-danger);
-}
-
-.contextMenuItemDanger:hover {
-    background: rgba(239, 68, 68, 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-    .contextMenuItemDanger:hover {
-        background: rgba(239, 68, 68, 0.12);
-    }
 }
 
 /* ── Main area ── */
@@ -684,10 +601,9 @@
 /* ── Chat top bar ── */
 
 /* `.chatTopBar` is no longer rendered — its content (History & Search,
- * back button, chat title) now lives in the unified `.pageTopBar` at
- * the top of the page. Selectors below were tuned for that old bar
- * (icon button, title styles) and are still referenced from
- * `.pageTopBarMain`, so the rules themselves stay. */
+ * back button, chat title) lives in `.mainTopBarTitle` inside the main
+ * column. Descendant selectors below (`.topBarIconBtn`, `.topBarTitle`,
+ * `.backBtn`) are still referenced from there, so the rules stay. */
 
 .topBarIconBtn {
     display: none; /* Hidden on desktop */
@@ -738,6 +654,16 @@
     background: color-mix(in srgb, var(--foreground), transparent 94%);
 }
 
+/* The anchor that the absolutely-positioned .titleMenu uses for
+ * placement. Without `position: relative` here the menu falls back to
+ * a far ancestor and renders offscreen — that's why it "wasn't
+ * working". */
+.titleAnchor {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
 .titleTrigger {
     background: none;
     border: none;
@@ -748,38 +674,34 @@
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     cursor: pointer;
 }
 
 .titleDots {
-    opacity: 0.3;
-    margin-left: 2px;
+    opacity: 0.55;
+    margin-left: 4px;
     transition: opacity 0.2s;
+    /* Render the dots vertically — the shared DotsIcon is drawn
+       horizontally and used that way in other pages; rotating with
+       CSS lets us flip just this instance without touching them. */
+    transform: rotate(90deg);
 }
 
 .titleTrigger:hover .titleDots {
     opacity: 0.8;
 }
 
+/* Title kebab menu — *positioning only*. The visual surface comes
+ * from the global `.ui-menu` class (see globals.css). Anchored to
+ * the right edge of the title trigger so the menu drops down from
+ * the kebab dots, not from the start of the title text. */
 .titleMenu {
     position: absolute;
     top: 100%;
-    left: 0;
+    right: 0;
     margin-top: 4px;
-    background: var(--background);
-    border: 1px solid color-mix(in srgb, var(--foreground), transparent 85%);
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    min-width: 180px;
     z-index: 1000;
-    overflow: hidden;
-    animation: menuIn 0.2s ease-out;
-}
-
-@keyframes menuIn {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 

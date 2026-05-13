@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import ContextMenuPortal from "./ContextMenuPortal";
 import ColorSwatchRow from "./ColorSwatchRow";
 import { useEditor } from "@/lib/editor/store";
@@ -92,19 +92,8 @@ export default function ClipContextMenu({ clipId, x, y, onClose }: ClipContextMe
       <div
         role="menu"
         onKeyDown={onMenuKeyDown}
-        style={{
-          minWidth: 220,
-          background: "#161616",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 12,
-          padding: 4,
-          boxShadow:
-            "0 16px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
-          color: "white",
-          fontSize: 13,
-          userSelect: "none",
-          outline: "none",
-        }}
+        className="ui-menu"
+        style={{ minWidth: 220 }}
       >
         {/* ── Edit ── */}
         <CtxMenuItem onSelect={act(cutClip)} shortcut={`${MOD}X`}>
@@ -179,16 +168,7 @@ export default function ClipContextMenu({ clipId, x, y, onClose }: ClipContextMe
 /* ── Primitives — styled identically to TrackKebabMenu ─────────────── */
 
 function CtxDivider() {
-  return (
-    <div
-      role="separator"
-      style={{
-        height: 1,
-        margin: "4px 6px",
-        background: "rgba(255,255,255,0.07)",
-      }}
-    />
-  );
+  return <div role="separator" className="ui-menu-divider" />;
 }
 
 type CtxMenuItemProps = {
@@ -200,14 +180,6 @@ type CtxMenuItemProps = {
 };
 
 function CtxMenuItem({ onSelect, shortcut, disabled, danger, children }: CtxMenuItemProps) {
-  const [hovered, setHovered] = useState(false);
-
-  const color = disabled
-    ? "rgba(255,255,255,0.3)"
-    : danger
-      ? "#ff453a"
-      : "white";
-
   return (
     <button
       role="menuitem"
@@ -215,41 +187,11 @@ function CtxMenuItem({ onSelect, shortcut, disabled, danger, children }: CtxMenu
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onSelect}
-      onMouseEnter={() => !disabled && setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-        gap: 16,
-        padding: "7px 10px",
-        borderRadius: 7,
-        border: "none",
-        background: hovered ? "rgba(255,255,255,0.09)" : "transparent",
-        color,
-        textAlign: "left",
-        cursor: disabled ? "default" : "pointer",
-        font: "inherit",
-        fontSize: 13,
-        outline: "none",
-        transition: "background 0.08s",
-        boxSizing: "border-box",
-      }}
+      className={`ui-menu-item${danger ? " ui-menu-item-danger" : ""}`}
     >
       <span>{children}</span>
       {shortcut && (
-        <span
-          style={{
-            fontFamily: "monospace",
-            fontSize: 11,
-            letterSpacing: 0.3,
-            color: danger
-              ? "rgba(255, 80, 60, 0.6)"
-              : "rgba(255,255,255,0.4)",
-            flexShrink: 0,
-          }}
-        >
+        <span className="ui-menu-shortcut" style={{ fontFamily: "monospace", fontSize: 11 }}>
           {shortcut}
         </span>
       )}

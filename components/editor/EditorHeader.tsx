@@ -310,27 +310,17 @@ function NavMenu({
             )}
 
             {isOpen && (
+                /* Outer wrapper carries the transparent 8px hover bridge
+                   so the cursor can travel from label → menu without
+                   tripping the close-on-leave. The inner `.ui-menu`
+                   paints the actual surface and matches every other
+                   menu across the product. */
                 <div
-                    role="menu"
-                    /* `pt-2` reaches up into the 8px label-to-menu gap so
-                       a transparent hover bridge keeps the cursor "inside"
-                       the menu while travelling from label to items. */
-                    className="absolute left-0 top-full min-w-[260px] rounded-xl pt-2 pb-1.5 z-30 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
-                    style={{
-                        /* Bridge area is transparent; only the inner
-                           card paints the menu background. */
-                        background: "transparent",
-                    }}
+                    className="absolute left-0 top-full pt-2 z-30"
                     onMouseEnter={section.href ? cancelClose : undefined}
                     onMouseLeave={section.href ? scheduleClose : undefined}
                 >
-                    <div
-                        className="rounded-xl py-1.5"
-                        style={{
-                            backgroundColor: "#121214",
-                            border: "1px solid #1f1f22",
-                        }}
-                    >
+                    <div role="menu" className="ui-menu" style={{ minWidth: 260 }}>
                         {section.items.map((item, i) => (
                             <NavDropdownItem
                                 key={`${item.label}-${i}`}
@@ -352,8 +342,11 @@ function NavDropdownItem({
     item: NavItem;
     onNavigate: () => void;
 }) {
+    /* Two-line variant of `.ui-menu-item` (label + description). The
+       hover background matches the canonical menu hover so this row
+       reads the same as a single-line menu item visually. */
     const inner = (
-        <div className="px-3 py-2.5 rounded-md transition-colors hover:bg-white/[0.04]">
+        <div className="px-3 py-2.5 rounded-lg transition-colors hover:bg-white/[0.08]">
             <div className="flex items-center gap-2">
                 <span
                     className={`text-[14px] font-medium ${
@@ -377,7 +370,7 @@ function NavDropdownItem({
                 href={item.href}
                 role="menuitem"
                 onClick={onNavigate}
-                className="block px-1"
+                className="block"
             >
                 {inner}
             </Link>
@@ -387,7 +380,7 @@ function NavDropdownItem({
         <div
             role="menuitem"
             aria-disabled
-            className="block px-1 cursor-default opacity-70"
+            className="block cursor-default opacity-70"
         >
             {inner}
         </div>

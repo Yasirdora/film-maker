@@ -76,13 +76,15 @@ export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {})
                 </button>
             )}
 
-            {/* Desktop — white "Get Started" pill. Solid surface makes it
-                the unmistakable primary CTA in the nav. Clicking opens the
-                Launchpad modal; the search input lives inside the modal. */}
+            {/* Desktop — amber "Get Started" pill matching the
+                landing page's primary hero CTA (#fbbf24, near-black
+                text, #fcd34d on hover). Same colour story across the
+                product so the primary action reads identically on the
+                marketing site and inside the app. */}
             <button
                 type="button"
                 onClick={openLaunchpad}
-                className="hidden sm:inline-flex items-center gap-2 h-10 px-3.5 rounded-[10px] bg-white text-black hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/[0.35] transition-colors"
+                className="hidden sm:inline-flex items-center gap-2 h-10 px-3.5 rounded-[10px] bg-[#fbbf24] text-[#0a0a0a] hover:bg-[#fcd34d] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fcd34d]/60 transition-colors"
                 aria-label="Open Launchpad"
                 title="Open Launchpad"
             >
@@ -96,7 +98,7 @@ export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {})
                     strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className={`${shouldAnimate ? "nav-star-twinkle " : ""}text-black flex-shrink-0`}
+                    className={`${shouldAnimate ? "nav-star-twinkle " : ""}text-[#0a0a0a] flex-shrink-0`}
                     aria-hidden="true"
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />

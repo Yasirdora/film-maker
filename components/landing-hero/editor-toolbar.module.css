@@ -1,8 +1,10 @@
 /* ============================================================================
-   Editor toolbar — decorative right rail on the hero.
+   Editor toolbar — right-edge product rail on the hero.
    ----------------------------------------------------------------------------
-   Purely visual flavour suggesting tooling depth. Hidden on narrow
-   viewports because the rail stops adding signal once the hero stacks.
+   Each slot is a real product destination (Auteur, Studio, Video / Audio
+   editors, Media Converter) or a coming-soon marker (Apps, Academy).
+   Hidden on narrow viewports because the rail stops adding signal once
+   the hero stacks.
    ========================================================================= */
 
 .editorToolbar {
@@ -13,8 +15,8 @@
     z-index: 15;
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    padding: 14px 8px;
+    gap: 14px;
+    padding: 12px 8px;
     /* Translucent dark glass — derived from --lp-surface so it stays
        in the same near-black family as the hero shell, with 65% alpha
        so the bright video frames bleed through subtly. */
@@ -27,22 +29,51 @@
 }
 
 .toolIcon {
-    width: 32px;
-    height: 32px;
+    position: relative;
+    width: 36px;
+    height: 36px;
     display: grid;
     place-items: center;
     color: var(--lp-text-muted);
-    border-radius: 6px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition:
+        background-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
 }
 
-.toolIconDim {
-    opacity: 0.35;
+/* Interactive (Link) variant — brighten + tint on hover/focus, with a
+ * subtle lift so the rail feels clickable without overpowering the
+ * surrounding hero copy. */
+a.toolIcon:hover,
+a.toolIcon:focus-visible {
+    color: #fff;
+    background: rgb(255 255 255 / 0.08);
+    transform: translateY(-1px);
+    outline: none;
+}
+a.toolIcon:active {
+    transform: translateY(0);
 }
 
-.toolLabel {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
+/* Coming-soon variant — dimmed and non-interactive. The tiny status
+ * dot in the top-right corner signals "this exists but isn't ready",
+ * mirroring the "Coming soon" badge in the launchpad. */
+.toolIconSoon {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.toolDot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--lp-text-muted);
+    box-shadow: 0 0 0 1.5px var(--lp-surface);
 }
 
 @media (max-width: 900px) {

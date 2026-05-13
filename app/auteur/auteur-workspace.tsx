@@ -892,93 +892,6 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
 
     return (
         <div className={styles.page}>
-            {/* Unified top bar: brand identity (sidebar column) +
-                chat top bar content (main column) + auth slot. Spans
-                the full width so the three regions sit on a single
-                row at the top of the page. */}
-            <div className={styles.pageTopBar} data-sidebar-collapsed={sidebarCollapsed || undefined}>
-                {/* Brand identity is owned by the sidebar header (it
-                    already had the small clapperboard there). The
-                    top-bar's brand column carries only the section
-                    label + the collapse toggle so there's no second
-                    logo on the page. */}
-                <div className={styles.pageTopBarBrand}>
-                    <span className={styles.headerSectionLabel}>
-                        Artistic Intelligence
-                    </span>
-                    <button
-                        type="button"
-                        className={`${styles.sidebarHeaderCollapse} ${styles.pageTopBarCollapseBtn}`}
-                        onClick={() => {
-                            if (sidebarOpenMobile) {
-                                setSidebarOpenMobile(false);
-                            } else {
-                                setSidebarCollapsed((v) => !v);
-                            }
-                        }}
-                        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    >
-                        <svg
-                            width="18"
-                            height="18"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.75"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden
-                        >
-                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                            <line x1="9" x2="9" y1="3" y2="21" />
-                        </svg>
-                    </button>
-                </div>
-                <div className={styles.pageTopBarMain}>
-                    <button
-                        type="button"
-                        className={styles.topBarIconBtn}
-                        onClick={() => setSidebarOpenMobile(true)}
-                        aria-label="Open chat history"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                            <path d="M4 6h16" />
-                            <path d="M4 12h16" />
-                            <path d="M4 18h16" />
-                        </svg>
-                    </button>
-                    {!activeId ? (
-                        <span className={styles.topBarTitle}>History & Search</span>
-                    ) : (
-                        <>
-                            <button
-                                type="button"
-                                className={styles.backBtn}
-                                onClick={() => setActiveId(null)}
-                                title="Back to history"
-                            >
-                                <ArrowLeftIcon />
-                            </button>
-                            {active && (
-                                <ChatTopBarTitle
-                                    conversation={active}
-                                    isAuthenticated={viewer.type === "authenticated"}
-                                    onRename={renameConversation}
-                                    onDelete={handleDelete}
-                                    confirmingDeleteId={confirmingDeleteId}
-                                    onPin={handlePin}
-                                    onArchive={handleArchive}
-                                    onExport={handleExport}
-                                />
-                            )}
-                        </>
-                    )}
-                </div>
-                {authSlot && (
-                    <div className={styles.pageTopBarAuth}>{authSlot}</div>
-                )}
-            </div>
-
             <div className={styles.layout}>
                 {/* Mobile sidebar scrim */}
                 {sidebarOpenMobile && (
@@ -1017,6 +930,56 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                 />
 
                 <div className={styles.main}>
+                    {/* Main-column top bar: chat title / History & Search
+                        on the left, auth cluster (Launchpad + profile or
+                        Sign-in / Get Started) on the right. The sidebar
+                        owns its own brand row to its left. */}
+                    <div className={styles.mainTopBar}>
+                        <div className={styles.mainTopBarTitle}>
+                            <button
+                                type="button"
+                                className={styles.topBarIconBtn}
+                                onClick={() => setSidebarOpenMobile(true)}
+                                aria-label="Open chat history"
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                    <path d="M4 6h16" />
+                                    <path d="M4 12h16" />
+                                    <path d="M4 18h16" />
+                                </svg>
+                            </button>
+                            {!activeId ? (
+                                <span className={styles.topBarTitle}>History & Search</span>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        className={styles.backBtn}
+                                        onClick={() => setActiveId(null)}
+                                        title="Back to history"
+                                    >
+                                        <ArrowLeftIcon />
+                                    </button>
+                                    {active && (
+                                        <ChatTopBarTitle
+                                            conversation={active}
+                                            isAuthenticated={viewer.type === "authenticated"}
+                                            onRename={renameConversation}
+                                            onDelete={handleDelete}
+                                            confirmingDeleteId={confirmingDeleteId}
+                                            onPin={handlePin}
+                                            onArchive={handleArchive}
+                                            onExport={handleExport}
+                                        />
+                                    )}
+                                </>
+                            )}
+                        </div>
+                        {authSlot && (
+                            <div className={styles.mainTopBarAuth}>{authSlot}</div>
+                        )}
+                    </div>
+
                     {!activeId ? (
                         <HistoryView
                             conversations={sidebarConversations}
@@ -1199,15 +1162,15 @@ function ChatTopBarTitle({
                 aria-label={`Conversation: ${conversation.title}`}
             >
                 {conversation.title}
-                <DotsIcon size={14} className={styles.titleDots} />
+                <DotsIcon size={20} className={styles.titleDots} />
             </button>
 
             {menuOpen && (
                 <>
                     <div className={styles.contextBackdrop} onClick={() => setMenuOpen(false)} />
-                    <div className={styles.titleMenu}>
+                    <div className={`${styles.titleMenu} ui-menu`}>
                         <button
-                            className={styles.contextMenuItem}
+                            className="ui-menu-item"
                             onClick={() => {
                                 setMenuOpen(false);
                                 setIsRenaming(true);
@@ -1217,7 +1180,7 @@ function ChatTopBarTitle({
                             Rename
                         </button>
                         <button
-                            className={styles.contextMenuItem}
+                            className="ui-menu-item"
                             onClick={() => {
                                 setMenuOpen(false);
                                 onPin(conversation.id);
@@ -1227,7 +1190,7 @@ function ChatTopBarTitle({
                             {conversation.pinnedAt ? "Unpin" : "Pin"}
                         </button>
                         <button
-                            className={confirmingDeleteId === conversation.id ? `${styles.contextMenuItem} ${styles.contextMenuItemDanger}` : styles.contextMenuItem}
+                            className={confirmingDeleteId === conversation.id ? "ui-menu-item ui-menu-item-danger" : "ui-menu-item"}
                             onClick={() => {
                                 if (confirmingDeleteId === conversation.id) {
                                     setMenuOpen(false);
@@ -1244,9 +1207,9 @@ function ChatTopBarTitle({
                             </svg>
                             {confirmingDeleteId === conversation.id ? "Confirm delete?" : "Delete"}
                         </button>
-                        <div className={styles.contextMenuDivider} />
+                        <div className="ui-menu-divider" role="separator" />
                         <button
-                            className={styles.contextMenuItem}
+                            className="ui-menu-item"
                             onClick={() => {
                                 setMenuOpen(false);
                                 onExport();
@@ -1256,7 +1219,7 @@ function ChatTopBarTitle({
                             Export PDF
                         </button>
                         <button
-                            className={styles.contextMenuItem}
+                            className="ui-menu-item"
                             onClick={() => {
                                 setMenuOpen(false);
                                 onArchive(conversation.id);

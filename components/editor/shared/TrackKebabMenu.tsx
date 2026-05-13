@@ -90,19 +90,8 @@ export default function TrackKebabMenu(props: TrackKebabMenuProps) {
           ref={focusFirst}
           role="menu"
           onKeyDown={onMenuKeyDown}
-          style={{
-            minWidth: 240,
-            background: "#161616",
-            border: "1px solid rgba(255,255,255,0.10)",
-            borderRadius: 12,
-            padding: 4,
-            boxShadow:
-              "0 16px 40px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)",
-            color: "white",
-            fontSize: 13,
-            userSelect: "none",
-            outline: "none",
-          }}
+          className="ui-menu"
+          style={{ minWidth: 240 }}
         >
           <MenuItem onSelect={act(props.onRename)}>Rename</MenuItem>
 
@@ -143,16 +132,7 @@ export default function TrackKebabMenu(props: TrackKebabMenuProps) {
 /* ── Primitives ───────────────────────────────────────────────────── */
 
 function Divider() {
-  return (
-    <div
-      role="separator"
-      style={{
-        height: 1,
-        margin: "4px 6px",
-        background: "rgba(255,255,255,0.07)",
-      }}
-    />
-  );
+  return <div role="separator" className="ui-menu-divider" />;
 }
 
 type MenuItemProps = {
@@ -164,14 +144,6 @@ type MenuItemProps = {
 };
 
 function MenuItem({ onSelect, shortcut, disabled, danger, children }: MenuItemProps) {
-  const [hovered, setHovered] = useState(false);
-
-  const color = disabled
-    ? "rgba(255,255,255,0.3)"
-    : danger
-      ? "#ff453a"
-      : "white";
-
   return (
     <button
       role="menuitem"
@@ -179,27 +151,7 @@ function MenuItem({ onSelect, shortcut, disabled, danger, children }: MenuItemPr
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
       onClick={disabled ? undefined : onSelect}
-      onMouseEnter={() => !disabled && setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        width: "100%",
-        gap: 16,
-        padding: "7px 10px",
-        borderRadius: 7,
-        border: "none",
-        background: hovered ? "rgba(255,255,255,0.09)" : "transparent",
-        color,
-        textAlign: "left",
-        cursor: disabled ? "default" : "pointer",
-        font: "inherit",
-        fontSize: 13,
-        outline: "none",
-        transition: "background 0.08s",
-        boxSizing: "border-box",
-      }}
+      className={`ui-menu-item${danger ? " ui-menu-item-danger" : ""}`}
     >
       <span>{children}</span>
       {shortcut && <Shortcut value={shortcut} danger={danger} />}
@@ -213,20 +165,17 @@ function MenuItem({ onSelect, shortcut, disabled, danger, children }: MenuItemPr
    etc. are missing from most fonts and the browser substitutes a
    poorly-weighted symbol-font fallback. */
 
-function Shortcut({ value, danger }: { value: string; danger?: boolean }) {
+function Shortcut({ value, danger: _danger }: { value: string; danger?: boolean }) {
   const tokens = parseShortcut(value);
   return (
     <span
       aria-hidden="true"
+      className="ui-menu-shortcut"
       style={{
         display: "inline-flex",
         alignItems: "center",
         gap: 2,
         flexShrink: 0,
-        color: danger ? "rgba(255, 120, 100, 0.75)" : "rgba(255,255,255,0.45)",
-        fontSize: 12,
-        fontWeight: 500,
-        letterSpacing: 0.3,
       }}
     >
       {tokens.map((tok, i) =>

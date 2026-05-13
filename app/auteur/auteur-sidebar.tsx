@@ -76,11 +76,12 @@ export function AuteurSidebar({
             data-mobile-open={mobileOpen || undefined}
             className={`${styles.sidebar}${collapsed ? ` ${styles.sidebarCollapsed}` : ""}`}
         >
-            {/* Sidebar brand row. Always present so the page only ever
-                has one logo (the unified top bar's brand column owns the
-                label + collapse toggle, never a logo). In the collapsed
-                state the brand mark doubles as the expand affordance
-                (a chevron fades in on hover via CSS). */}
+            {/* Sidebar header: [logo] Artistic Intelligence [toggle].
+                Owns the brand identity for the whole /auteur surface so
+                the main area's top bar can carry just the chat title +
+                auth cluster. When collapsed the label hides and the
+                brand mark doubles as the expand affordance (chevron
+                fades in on hover via CSS). */}
             <div className={styles.sidebarHeader}>
                 <div
                     className={`${styles.headerLogo} ${collapsed ? styles.headerLogoCollapsed : ""}`}
@@ -88,7 +89,14 @@ export function AuteurSidebar({
                     role={collapsed ? "button" : undefined}
                     tabIndex={collapsed ? 0 : undefined}
                 >
-                    <AppBrandMark href={collapsed ? undefined : "/studio"} size="sm" />
+                    {/* `xs` (32/36px) matches the global top-nav
+                        clapperboard exactly, in both states. */}
+                    <AppBrandMark href={collapsed ? undefined : "/studio"} size="xs" />
+                    {!collapsed && (
+                        <span className={`${styles.sidebarLabel} ${styles.headerSectionLabel}`}>
+                            Artistic Intelligence
+                        </span>
+                    )}
                     {collapsed && (
                         <svg
                             className={styles.expandChevron}
@@ -106,6 +114,29 @@ export function AuteurSidebar({
                         </svg>
                     )}
                 </div>
+                {onToggleCollapse && !collapsed && (
+                    <button
+                        type="button"
+                        className={`${styles.sidebarHeaderCollapse} ${styles.sidebarLabel}`}
+                        onClick={onToggleCollapse}
+                        aria-label="Collapse sidebar"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                        >
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                            <line x1="9" x2="9" y1="3" y2="21" />
+                        </svg>
+                    </button>
+                )}
             </div>
 
             <div className={styles.sidebarNewChat}>
@@ -304,7 +335,7 @@ function ConversationMenu({
                 role="presentation"
             />
             <div
-                className={styles.contextMenu}
+                className={`${styles.contextMenu} ui-menu`}
                 style={{ top, left: Math.max(16, left) }}
                 role="menu"
             >
@@ -312,7 +343,7 @@ function ConversationMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className={styles.contextMenuItem}
+                        className="ui-menu-item"
                         onClick={onRename}
                     >
                         <svg
@@ -336,7 +367,7 @@ function ConversationMenu({
                     <button
                         type="button"
                         role="menuitem"
-                        className={isConfirming ? `${styles.contextMenuItem} ${styles.contextMenuItemDanger}` : styles.contextMenuItem}
+                        className={isConfirming ? "ui-menu-item ui-menu-item-danger" : "ui-menu-item"}
                         onClick={() => {
                             if (isConfirming) {
                                 onClose();

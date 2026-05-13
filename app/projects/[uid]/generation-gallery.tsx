@@ -727,9 +727,9 @@ function GalleryCardMenu({
                             ),
                             zIndex: 80,
                         }}
-                        className="min-w-[180px] overflow-hidden rounded-xl border border-white/[0.06] bg-[rgba(22,22,24,0.92)] shadow-[0_1px_2px_rgba(0,0,0,0.4),0_8px_18px_-4px_rgba(0,0,0,0.5),0_24px_56px_-12px_rgba(0,0,0,0.6)] backdrop-blur-xl"
+                        className="ui-menu"
                     >
-                        <ul className="flex flex-col p-1">
+                        <ul className="flex flex-col gap-px">
                             <MenuItem
                                 label="Reuse prompt"
                                 icon={<EditIcon />}
@@ -804,11 +804,7 @@ function MenuItem({
                 tabIndex={-1}
                 onClick={onClick}
                 disabled={disabled}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                    destructive
-                        ? "text-[var(--destructive)] hover:bg-[var(--destructive)]/10"
-                        : "text-white/85 hover:bg-white/[0.06] hover:text-white"
-                }`}
+                className={`ui-menu-item${destructive ? " ui-menu-item-danger" : ""}`}
             >
                 <span className="shrink-0 text-ws-icon">{icon}</span>
                 <span className="truncate">{label}</span>
@@ -818,9 +814,7 @@ function MenuItem({
 }
 
 function MenuDivider() {
-    return (
-        <li aria-hidden className="my-1 h-px bg-white/[0.06]" />
-    );
+    return <li aria-hidden className="ui-menu-divider" />;
 }
 
 // Menu icons are now imported from @/components/icons/action-icons.

@@ -28,14 +28,19 @@ interface AppBrandMarkProps {
      *  itself so clicking just replays the clap. */
     href?: string;
     /** Visual size. `default` pairs with the big welcome heading on
-     *  /studio; `sm` is tuned for dense headers like the project
-     *  workspace that carry smaller surrounding text. */
-    size?: "default" | "sm";
+     *  /studio; `md` sits between default and sm for surfaces like
+     *  the auteur sidebar header that want a slightly bolder brand
+     *  presence; `sm` is tuned for dense headers like the project
+     *  workspace; `xs` matches the global top-nav clapperboard
+     *  (32 / 36 px) so brand marks across surfaces stay consistent. */
+    size?: "default" | "md" | "sm" | "xs";
 }
 
 const SIZE_CLASSES: Record<NonNullable<AppBrandMarkProps["size"]>, string> = {
     default: "w-11 sm:w-[3.25rem]",
+    md: "w-10 sm:w-12",
     sm: "w-9 sm:w-11",
+    xs: "w-8 sm:w-9",
 };
 
 export function AppBrandMark({ href, size = "default" }: AppBrandMarkProps) {

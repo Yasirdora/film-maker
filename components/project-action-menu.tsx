@@ -70,7 +70,7 @@ export function ProjectActionMenu({
                 width: MENU_WIDTH,
                 zIndex: 60,
             }}
-            className="overflow-hidden rounded-xl bg-ws-surface/95 p-1 shadow-[0_12px_32px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.08] backdrop-blur-xl"
+            className="ui-menu"
         >
             <MenuItem onClick={onTogglePin} icon={<PinIcon size={14} />}>
                 {isPinned ? "Unpin" : "Pin"}
@@ -78,7 +78,7 @@ export function ProjectActionMenu({
             <MenuItem onClick={onRename} icon={<EditIcon size={14} />}>
                 Rename
             </MenuItem>
-            <div className="my-1 h-px bg-white/[0.06]" role="separator" />
+            <div className="ui-menu-divider" role="separator" />
             <MenuItem
                 onClick={onArchive}
                 icon={<ArchiveIcon size={14} />}
@@ -107,9 +107,7 @@ function MenuItem({
             type="button"
             role="menuitem"
             onClick={onClick}
-            className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-white/[0.06] ${
-                destructive ? "text-[var(--destructive)]" : "text-white"
-            }`}
+            className={`ui-menu-item${destructive ? " ui-menu-item-danger" : ""}`}
         >
             <span className="flex h-4 w-4 shrink-0 items-center justify-center">
                 {icon}
