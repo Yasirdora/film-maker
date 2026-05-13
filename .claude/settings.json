@@ -7,7 +7,9 @@
       "Edit",
       "WebSearch",
       "WebFetch(domain:stripe.com)",
-      "Read(//Users/x/Documents/Antigravity/AI/ConveX/app/**)"
+      "Read(//Users/x/Documents/Antigravity/AI/ConveX/app/**)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.cloud.google.com)"
     ],
     "additionalDirectories": [
       "/tmp"
