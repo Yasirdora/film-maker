@@ -25,6 +25,7 @@ import {
     SOLO_ALLOWED_VIDEO_MODEL_IDS,
 } from "@/lib/constants";
 import { AppNav } from "@/components/app-nav";
+import { ProjectViewTabs } from "./project-view-tabs";
 import { ProjectWorkspace } from "./project-workspace";
 import { ProjectSettings } from "./project-settings";
 
@@ -132,6 +133,8 @@ export default async function ProjectPage({ params }: PageProps) {
                     pinnedAt={project.pinnedAt}
                 />
             </AppNav>
+
+            <ProjectViewTabs projectUid={project.uid} />
 
             <ProjectWorkspace
                 projectUid={project.uid}
