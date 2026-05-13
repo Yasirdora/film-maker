@@ -60,53 +60,33 @@ const NAV: NavSection[] = [
         ],
     },
     {
-        label: "Video",
+        label: "Studio",
         items: [
             {
-                label: "Video Editor",
-                href: "/editor/video",
-                description: "Cut, trim, and arrange clips on a timeline.",
+                label: "Photo",
+                href: "/studio",
+                description: "Generate images with Nano Banana Pro.",
             },
             {
-                label: "Video Converter",
-                href: "/editor/converter/video",
-                description: "MP4, MOV, WEBM, AVI, MKV.",
-            },
-        ],
-    },
-    {
-        label: "Image",
-        items: [
-            {
-                label: "Image Converter",
-                href: "/editor/converter/image",
-                description: "PNG, JPG, WEBP, AVIF, BMP.",
+                label: "Video",
+                description: "Generate clips and cinematic shots.",
+                badge: "soon",
             },
             {
-                label: "Image Editor",
-                description: "Crop, adjust, remove backgrounds.",
+                label: "Audio",
+                description: "Music, voice, and sound effects.",
                 badge: "soon",
             },
         ],
     },
     {
-        label: "Audio",
-        items: [
-            {
-                label: "Audio Editor",
-                href: "/editor/audio",
-                description: "Multi-track timeline editing.",
-            },
-            {
-                label: "Audio Converter",
-                href: "/editor/converter/audio",
-                description: "MP3, WAV, FLAC, AAC, OGG, M4A.",
-            },
-        ],
+        label: "Tools",
+        href: "/editor",
+        items: [],
     },
     {
-        label: "Media Converter",
-        href: "/editor/converter",
+        label: "Plan",
+        href: "/pricing",
         items: [],
     },
 ];
@@ -170,8 +150,15 @@ export function EditorHeader({
     }, [pathname]);
 
     return (
-        <header className="w-full border-b border-white/[0.04]">
-            <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-8 py-3 sm:py-4">
+        <header
+            id="app-nav-root"
+            className="sticky top-0 z-50 w-full border-b border-white/[0.04] bg-ws-canvas"
+        >
+            {/* Inner row height pinned to --header-height so the landing
+                page's StickyNav can tuck under it cleanly and translate
+                up by exactly that amount when the bar auto-hides. The
+                value lives in globals.css (56px <850, 64px ≥850). */}
+            <div className="flex h-[var(--header-height)] items-center gap-2 sm:gap-3 px-4 sm:px-8">
                 <Link
                     href={brandHref}
                     aria-label="Film-maker — home"

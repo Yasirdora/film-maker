@@ -24,7 +24,6 @@ import {
     RESOLUTIONS,
     SOLO_ALLOWED_VIDEO_MODEL_IDS,
 } from "@/lib/constants";
-import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
 import { ProjectWorkspace } from "./project-workspace";
 import { ProjectSettings } from "./project-settings";
@@ -125,16 +124,14 @@ export default async function ProjectPage({ params }: PageProps) {
 
     return (
         <div className="flex h-dvh flex-col bg-ws-canvas pb-[66px] sm:pb-0">
-            <AppNav />
-
-            <AppHeader brandHref="/studio">
+            <AppNav brandHref="/studio">
                 <ProjectSettings
                     uid={project.uid}
                     name={project.name}
                     description={project.description}
                     pinnedAt={project.pinnedAt}
                 />
-            </AppHeader>
+            </AppNav>
 
             <ProjectWorkspace
                 projectUid={project.uid}

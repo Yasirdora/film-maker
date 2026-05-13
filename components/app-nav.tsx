@@ -1,26 +1,30 @@
 /**
- * AppNav — app-wide navigation.
+ * AppNav — global app shell nav.
  *
- * Mobile: fixed bottom tab bar (Auteur, Apps, Projects, Profile).
- * Desktop: fixed top-right cluster (Auteur icon, Apps pill, Profile avatar).
+ *   • Desktop & tablet: editor-style horizontal top bar (brand + nav
+ *     dropdowns at lg+, right-cluster auth + Launchpad pill at sm+).
+ *   • Mobile (< sm): bottom tab bar with Auteur, Apps (Launchpad),
+ *     Projects, and Profile/Sign-in.
  *
- * The "Apps" button opens the Launchpad (Spotlight-style command
- * palette) for quick navigation to any destination.
- *
- * Renders on every page — authenticated or not — so the shell looks
- * identical everywhere. Anonymous visitors get a Sign-in affordance
- * in place of the profile menu; auth-gated destinations rely on
- * per-page redirects (requireOnboardedUser) to bounce them to /login.
+ * Mounts on every interior page (studio, projects, pricing, auteur,
+ * editor/*) so the chrome reads identically across the product. The
+ * Launchpad itself is mounted once at the root by `LaunchpadHost`; all
+ * trigger surfaces here just call into its context.
  *
  * Server component — reads session and balance for the profile menu.
- * Client interactivity delegated to NavAppsButton and NavProfileMenu.
+ * Client interactivity is delegated to `EditorHeader` (dropdowns) and
+ * `NavAppsButton` / `NavProfileMenu` (trigger UIs).
  */
 
 import Link from "next/link";
+import type { ReactNode } from "react";
+
 import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
 import { CreditHydrator } from "@/lib/credit-store";
+import { EditorHeader } from "./editor/EditorHeader";
+import { EditorHeaderAuthSlot } from "./editor/EditorHeaderAuthSlot";
 import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
 import { NavScrollState } from "./nav-scroll-state";
@@ -28,7 +32,20 @@ import { AuteurIcon } from "./icons/auteur-icon";
 
 import styles from "./app-nav.module.css";
 
-export async function AppNav({ hideAuteurIcon = false }: { hideAuteurIcon?: boolean } = {}) {
+interface AppNavProps {
+    /** Hide the bottom-tab Auteur icon — used on /auteur itself. */
+    hideAuteurIcon?: boolean;
+    /** Where the brand mark links to. Defaults to `/`. */
+    brandHref?: string;
+    /** Inline content rendered in the top bar between brand and nav. */
+    children?: ReactNode;
+}
+
+export async function AppNav({
+    hideAuteurIcon = false,
+    brandHref,
+    children,
+}: AppNavProps = {}) {
     const session = await getSession();
     const user = session?.user ?? null;
 
@@ -47,108 +64,55 @@ export async function AppNav({ hideAuteurIcon = false }: { hideAuteurIcon?: bool
                 (nav menu, workspace, composer) starts with the DB value. */}
             {balance && <CreditHydrator credits={totalCredits} />}
 
-            {/* Gradient blur scrims — fixed to the viewport so content
-                scrolling underneath the nav is subtly blurred, fading
-                into the page via a mask gradient. Ported from ConveX. */}
+            {/* Mobile bottom-tab scrim — fades content scrolling
+                under the tab bar, gives the monochrome icons a legible
+                backdrop. Desktop no longer needs a top scrim because
+                the new horizontal top bar provides its own surface. */}
             <div
                 className={`${styles.scrim} ${styles.scrimMobile}`}
-                aria-hidden="true"
-            />
-            <div
-                className={`${styles.scrim} ${styles.scrimDesktop}`}
                 aria-hidden="true"
             />
 
             <NavScrollState />
 
+            {/* Top bar (always rendered). Brand + dropdowns + right
+                cluster. The cluster's NavAppsButton uses
+                `showMobileTab={false}` because mobile gets its launchpad
+                trigger from the bottom tab bar below. */}
+            <EditorHeader
+                brandHref={brandHref}
+                rightSlot={<EditorHeaderAuthSlot />}
+            >
+                {children}
+            </EditorHeader>
+
+            {/* Mobile bottom tab bar — sm:hidden. Provides flat
+                top-level destinations + a Launchpad opener. */}
             <nav
-                id="app-nav-root"
-                className="fixed bottom-0 left-0 right-0 z-50 flex h-[calc(66px+env(safe-area-inset-bottom,0px))] shrink-0 items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)] sm:bottom-auto sm:left-auto sm:top-0 sm:right-0 sm:h-auto sm:w-auto sm:justify-end sm:gap-1.5 sm:px-6 sm:pt-4 sm:pb-4"
+                className="fixed bottom-0 left-0 right-0 z-50 flex h-[calc(66px+env(safe-area-inset-bottom,0px))] shrink-0 items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)] sm:hidden"
                 aria-label="Main Navigation"
             >
-            {/* Auteur — mobile only */}
-            {!hideAuteurIcon && (
-            <Link
-                href="/auteur"
-                className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group text-[#e5e7eb] transition-colors hover:text-white"
-                aria-label="Auteur"
-            >
-                <AuteurIcon />
-                <span className="text-[11px] font-medium">Auteur</span>
-            </Link>
-            )}
+                {!hideAuteurIcon && (
+                    <Link
+                        href="/auteur"
+                        className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 group text-[#e5e7eb] transition-colors hover:text-white"
+                        aria-label="Auteur"
+                    >
+                        <AuteurIcon />
+                        <span className="text-[11px] font-medium">Auteur</span>
+                    </Link>
+                )}
 
-            {/* Auteur — desktop only (mobile tab is above) */}
-            {user && !hideAuteurIcon && (
+                <NavAppsButton />
+
                 <Link
-                    href="/auteur"
-                    className="relative hidden sm:flex items-center justify-center w-10 h-10 rounded-[10px] text-[#e5e7eb] transition-colors hover:bg-white/5 hover:text-white group"
-                    aria-label="Auteur"
+                    href="/studio"
+                    className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 group"
+                    aria-label="Projects"
                 >
-                    <AuteurIcon />
-                </Link>
-            )}
-
-            {/* Apps — opens Launchpad (client component) */}
-            <NavAppsButton />
-
-            {/* Projects — mobile only */}
-            <Link
-                href="/studio"
-                className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group"
-                aria-label="Projects"
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#e5e7eb"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="group-hover:stroke-white transition-colors"
-                >
-                    <rect x="3" y="3" width="7" height="18" rx="1.5" />
-                    <rect x="14" y="3" width="7" height="8" rx="1.5" />
-                    <rect x="14" y="15" width="7" height="6" rx="1.5" />
-                </svg>
-                <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
-                    Projects
-                </span>
-            </Link>
-
-            {/* Profile (signed in) — mobile bottom sheet, desktop dropdown.
-                Sign-in CTA (signed out) — same slot, same shape, links to /login. */}
-            {user ? (
-                <NavProfileMenu
-                    name={user.name ?? ""}
-                    email={user.email}
-                    credits={totalCredits}
-                    planName={planLabel}
-                    isFreePlan={onFreePlan}
-                />
-            ) : (
-                <SignInSlot />
-            )}
-            </nav>
-        </>
-    );
-}
-
-function SignInSlot() {
-    return (
-        <>
-            {/* Mobile tab */}
-            <Link
-                href="/login"
-                className="flex flex-col items-center justify-center w-[25%] h-full gap-1 sm:hidden group"
-                aria-label="Sign in"
-            >
-                <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08] group-hover:bg-white/[0.12] transition-colors">
                     <svg
-                        width="16"
-                        height="16"
+                        width="24"
+                        height="24"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="#e5e7eb"
@@ -157,24 +121,58 @@ function SignInSlot() {
                         strokeLinejoin="round"
                         className="group-hover:stroke-white transition-colors"
                     >
-                        <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
-                        <polyline points="10 17 15 12 10 7" />
-                        <line x1="15" y1="12" x2="3" y2="12" />
+                        <rect x="3" y="3" width="7" height="18" rx="1.5" />
+                        <rect x="14" y="3" width="7" height="8" rx="1.5" />
+                        <rect x="14" y="15" width="7" height="6" rx="1.5" />
                     </svg>
-                </div>
-                <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
-                    Sign in
-                </span>
-            </Link>
+                    <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
+                        Projects
+                    </span>
+                </Link>
 
-            {/* Desktop button */}
-            <Link
-                href="/login"
-                className="hidden sm:flex items-center justify-center h-10 px-4 rounded-xl bg-white text-black hover:bg-neutral-200 transition-colors text-sm font-semibold"
-                aria-label="Sign in"
-            >
-                Sign in
-            </Link>
+                {user ? (
+                    <NavProfileMenu
+                        name={user.name ?? ""}
+                        email={user.email}
+                        credits={totalCredits}
+                        planName={planLabel}
+                        isFreePlan={onFreePlan}
+                    />
+                ) : (
+                    <MobileSignInTab />
+                )}
+            </nav>
         </>
+    );
+}
+
+function MobileSignInTab() {
+    return (
+        <Link
+            href="/login"
+            className="flex flex-col items-center justify-center w-[25%] h-full gap-1 group"
+            aria-label="Sign in"
+        >
+            <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-white/[0.07] border border-white/[0.08] group-hover:bg-white/[0.12] transition-colors">
+                <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="group-hover:stroke-white transition-colors"
+                >
+                    <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+                    <polyline points="10 17 15 12 10 7" />
+                    <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
+            </div>
+            <span className="text-[11px] font-medium text-[#e5e7eb] group-hover:text-white transition-colors">
+                Sign in
+            </span>
+        </Link>
     );
 }

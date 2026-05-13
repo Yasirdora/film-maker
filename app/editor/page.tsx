@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 import EditorLanding from "@/components/editor/EditorLanding";
 
 export const metadata: Metadata = {
-    title: "Editor",
+    title: "Tools",
     description:
         "Choose a browser-side editing tool: video editor, audio editor, or media converter.",
 };

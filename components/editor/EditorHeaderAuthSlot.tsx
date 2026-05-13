@@ -1,18 +1,15 @@
 /**
- * EditorHeaderAuthSlot — auth-aware right cluster for the editor header.
+ * EditorHeaderAuthSlot — auth-aware right cluster for the global top bar.
  *
  * Server component. Reads the session once at request time and renders
- * one of two states:
+ * one of two states (sm+ only — the mobile bottom tab bar in AppNav
+ * carries the same actions at < sm):
  *
- *   • Anonymous → "Sign in" link + "Get started" pill, mirroring the
- *     Film-maker landing CTAs (links to /login and /pricing respectively).
- *   • Signed-in → "Studio" link + an avatar pill that opens the standard
- *     profile menu via NavProfileMenu.
+ *   • Anonymous → "Sign in" link + "Get started" pill.
+ *   • Signed-in → Launchpad pill + avatar dropdown.
  *
- * Lives next to EditorHeader.tsx (its only consumer) rather than the
- * shared components/ root because the markup is editor-header-specific
- * (the pill shape, spacing, and border treatment match the rest of the
- * editor's chrome).
+ * The Launchpad and profile triggers render only at `sm+` so they
+ * don't double up with the mobile bottom tab's entries.
  */
 
 import Link from "next/link";
@@ -20,7 +17,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { isFreePlan } from "@/lib/constants";
-import { CreditHydrator } from "@/lib/credit-store";
+import { NavAppsButton } from "@/components/nav-apps-button";
 import { NavProfileMenu } from "@/components/nav-profile-menu";
 
 export async function EditorHeaderAuthSlot() {
@@ -38,24 +35,24 @@ export async function EditorHeaderAuthSlot() {
 
     return (
         <>
-            {/* Seed the credit store so any client consumer in the editor
-                (e.g. future credit-gated export) sees the canonical value. */}
-            <CreditHydrator credits={totalCredits} />
+            {/* Launchpad pill — `showMobileTab={false}` so the mobile
+                tab variant isn't rendered inside the header (the bottom
+                tab bar already provides it). The desktop pill is
+                `hidden sm:flex` internally, so nothing shows at <sm. */}
+            <NavAppsButton showMobileTab={false} />
 
-            <Link
-                href="/studio"
-                className="hidden sm:inline-flex items-center rounded-md border border-white/[0.18] px-4 py-1.5 text-[13px] sm:text-[14px] font-medium text-white hover:bg-white/[0.05] transition-colors"
-            >
-                Studio
-            </Link>
-
-            <NavProfileMenu
-                name={user.name ?? ""}
-                email={user.email}
-                credits={totalCredits}
-                planName={planLabel}
-                isFreePlan={onFreePlan}
-            />
+            {/* Profile avatar — `hidden sm:block` keeps the mobile tab
+                bar's profile entry from being doubled at <sm. */}
+            <div className="hidden sm:block">
+                <NavProfileMenu
+                    name={user.name ?? ""}
+                    email={user.email}
+                    credits={totalCredits}
+                    planName={planLabel}
+                    isFreePlan={onFreePlan}
+                    variant="avatar"
+                />
+            </div>
         </>
     );
 }
@@ -65,13 +62,13 @@ function AnonymousCtas() {
         <>
             <Link
                 href="/login"
-                className="inline-flex items-center rounded-md border border-white/[0.18] px-3 py-1.5 sm:px-5 sm:py-2 text-[13px] sm:text-[14px] font-medium text-white hover:bg-white/[0.05] transition-colors"
+                className="hidden sm:inline-flex items-center rounded-md border border-white/[0.18] px-3 py-1.5 sm:px-5 sm:py-2 text-[13px] sm:text-[14px] font-medium text-white hover:bg-white/[0.05] transition-colors"
             >
                 Sign in
             </Link>
             <Link
                 href="/pricing"
-                className="inline-flex items-center rounded-md bg-white px-3 py-1.5 sm:px-5 sm:py-2 text-[13px] sm:text-[14px] font-semibold text-black hover:bg-neutral-200 transition-colors"
+                className="hidden sm:inline-flex items-center rounded-md bg-white px-3 py-1.5 sm:px-5 sm:py-2 text-[13px] sm:text-[14px] font-semibold text-black hover:bg-neutral-200 transition-colors"
             >
                 Get started
             </Link>

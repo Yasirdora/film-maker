@@ -9,7 +9,7 @@
 
 import type { Metadata } from "next";
 
-import { LandingHeader } from "@/components/landing-header";
+import { AppNav } from "@/components/app-nav";
 import { LandingPage } from "@/components/landing-hero/landing-hero";
 
 // ─── SEO ──────────────────────────────────────────────────────────────────────
@@ -44,7 +44,14 @@ if (!turnstileSiteKey) {
 export default function HomePage() {
     return (
         <>
-            <LandingHeader />
+            {/* Same global nav as every interior page (top bar + mobile
+                bottom tab). NavScrollState (mounted inside AppNav) toggles
+                `y:scrolled` / `dir:down` classes on `#app-nav-root`; the
+                landing-page auto-hide rule in `globals.css` (gated on
+                `body:has(.jumplinks.sticky:active)`) drives the slide-up
+                when the StickyNav pill is pinned and the user scrolls
+                downward. */}
+            <AppNav />
             <LandingPage turnstileSiteKey={turnstileSiteKey} />
         </>
     );

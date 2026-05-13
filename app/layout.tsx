@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Google_Sans, Newsreader } from "next/font/google";
 import { Toaster } from "sonner";
+import { LaunchpadHost } from "@/components/launchpad-host";
 import "./globals.css";
 
 const googleSans = Google_Sans({
@@ -63,7 +64,7 @@ export default function RootLayout({
     return (
         <html lang="en" className={`${googleSans.variable} ${newsreader.variable}`} data-theme="dark">
             <body className="min-h-dvh">
-                {children}
+                <LaunchpadHost>{children}</LaunchpadHost>
                 <Toaster position="top-center" theme="dark" richColors closeButton />
             </body>
         </html>

@@ -25,7 +25,6 @@ import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { cn } from "@/lib/utils";
 import { AppNav } from "@/components/app-nav";
-import { AppHeader } from "@/components/app-header";
 
 import { UpgradeButton } from "./upgrade-button";
 import { PlanFeatures } from "./plan-features";
@@ -63,12 +62,7 @@ export default async function PricingPage() {
             )}
             style={{ background: "var(--brand-gradient)" }}
         >
-            <AppNav />
-
-            <AppHeader
-                brandHref={isAuthenticated ? "/studio" : "/"}
-                reserveNavSpace
-            />
+            <AppNav brandHref={isAuthenticated ? "/studio" : "/"} />
 
             <section className="mx-auto max-w-5xl px-6 pt-12 pb-12 text-center sm:pt-20">
                 <h1 className="text-balance text-[clamp(2rem,5vw,4rem)] font-semibold leading-[1.1] tracking-tight">

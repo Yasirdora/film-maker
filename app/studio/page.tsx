@@ -18,7 +18,6 @@ import Link from "next/link";
 import { requireOnboardedUser } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { listProjects, listArchivedProjects } from "@/lib/projects";
-import { AppHeader } from "@/components/app-header";
 import { AppNav } from "@/components/app-nav";
 import { NewProjectButton } from "./new-project-dialog";
 import { ArchivedProjects } from "./archived-projects";
@@ -45,8 +44,6 @@ export default async function StudioPage() {
     return (
         <div className="min-h-dvh bg-ws-canvas text-white pb-[66px] sm:pb-0">
             <AppNav />
-
-            <AppHeader />
 
             <main className="mx-auto max-w-[85rem] px-4 pb-8 sm:px-6">
                 {/* Welcome */}
