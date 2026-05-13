@@ -76,33 +76,33 @@ export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {})
                 </button>
             )}
 
-            {/* Desktop — search-field-style trigger. Clicking opens the
-                Launchpad modal; typing happens inside the modal once it's
-                open. */}
+            {/* Desktop — white "Get Started" pill. Solid surface makes it
+                the unmistakable primary CTA in the nav. Clicking opens the
+                Launchpad modal; the search input lives inside the modal. */}
             <button
                 type="button"
                 onClick={openLaunchpad}
-                className="hidden sm:flex items-center gap-2.5 h-10 w-[240px] px-3 rounded-[10px] border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] hover:border-white/[0.12] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/[0.18] transition-colors text-left"
+                className="hidden sm:inline-flex items-center gap-2 h-10 px-3.5 rounded-[10px] bg-white text-black hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/[0.35] transition-colors"
                 aria-label="Open Launchpad"
                 title="Open Launchpad"
             >
                 <svg
                     key={starKey}
-                    width="18"
-                    height="18"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className={`${shouldAnimate ? "nav-star-twinkle " : ""}text-white/60 flex-shrink-0`}
+                    className={`${shouldAnimate ? "nav-star-twinkle " : ""}text-black flex-shrink-0`}
                     aria-hidden="true"
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />
                 </svg>
-                <span className="flex-1 text-sm text-white/45 truncate">
-                    Search apps & destinations…
+                <span className="text-sm font-semibold">
+                    Get Started
                 </span>
             </button>
         </>

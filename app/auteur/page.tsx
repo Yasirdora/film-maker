@@ -14,6 +14,7 @@ import type { Metadata } from "next";
 import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { AppNav } from "@/components/app-nav";
+import { EditorHeaderAuthSlot } from "@/components/editor/EditorHeaderAuthSlot";
 import { AuteurWorkspace } from "./auteur-workspace";
 
 export const metadata: Metadata = {
@@ -28,8 +29,11 @@ export default async function AuteurPage() {
     if (!session?.user) {
         return (
             <>
-                <AppNav hideAuteurIcon />
-                <AuteurWorkspace viewer={{ type: "anonymous" }} />
+                <AppNav hideAuteurIcon hideTopBar />
+                <AuteurWorkspace
+                    viewer={{ type: "anonymous" }}
+                    authSlot={<EditorHeaderAuthSlot />}
+                />
             </>
         );
     }
@@ -40,13 +44,14 @@ export default async function AuteurPage() {
 
     return (
         <>
-            <AppNav hideAuteurIcon />
+            <AppNav hideAuteurIcon hideTopBar />
             <AuteurWorkspace
                 viewer={{
                     type: "authenticated",
                     planId: balance.plan,
                     totalCredits,
                 }}
+                authSlot={<EditorHeaderAuthSlot />}
             />
         </>
     );

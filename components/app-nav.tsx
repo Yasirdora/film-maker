@@ -35,6 +35,14 @@ import styles from "./app-nav.module.css";
 interface AppNavProps {
     /** Hide the bottom-tab Auteur icon — used on /auteur itself. */
     hideAuteurIcon?: boolean;
+    /**
+     * Skip rendering the desktop top bar entirely. The page is expected
+     * to provide its own chrome (e.g. /auteur, which has a full-height
+     * sidebar with its own branding and section nav). CreditHydrator
+     * and the mobile bottom tab bar are still rendered so data seeding
+     * and mobile-only navigation aren't lost.
+     */
+    hideTopBar?: boolean;
     /** Where the brand mark links to. Defaults to `/`. */
     brandHref?: string;
     /** Inline content rendered in the top bar between brand and nav. */
@@ -43,6 +51,7 @@ interface AppNavProps {
 
 export async function AppNav({
     hideAuteurIcon = false,
+    hideTopBar = false,
     brandHref,
     children,
 }: AppNavProps = {}) {
@@ -75,16 +84,18 @@ export async function AppNav({
 
             <NavScrollState />
 
-            {/* Top bar (always rendered). Brand + dropdowns + right
-                cluster. The cluster's NavAppsButton uses
-                `showMobileTab={false}` because mobile gets its launchpad
-                trigger from the bottom tab bar below. */}
-            <EditorHeader
-                brandHref={brandHref}
-                rightSlot={<EditorHeaderAuthSlot />}
-            >
-                {children}
-            </EditorHeader>
+            {/* Top bar. Pages that own their full-screen chrome (e.g.
+                /auteur with its sidebar + unified top bar) pass
+                `hideTopBar` to suppress this entirely. Those pages are
+                responsible for rendering their own auth slot. */}
+            {!hideTopBar && (
+                <EditorHeader
+                    brandHref={brandHref}
+                    rightSlot={<EditorHeaderAuthSlot />}
+                >
+                    {children}
+                </EditorHeader>
+            )}
 
             {/* Mobile bottom tab bar — sm:hidden. Provides flat
                 top-level destinations + a Launchpad opener. */}

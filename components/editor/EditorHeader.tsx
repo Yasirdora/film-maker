@@ -46,49 +46,37 @@ interface NavSection {
 const NAV: NavSection[] = [
     {
         label: "Artistic Intelligence",
+        href: "/studio",
         items: [
             {
                 label: "AI Studio",
                 href: "/studio",
                 description: "Generate, refine, and direct.",
             },
+        ],
+    },
+    {
+        label: "Auteur",
+        items: [
             {
-                label: "Auteur",
+                label: "AI Assistant",
                 href: "/auteur",
                 description: "Chat with the AI filmmaker.",
             },
-        ],
-    },
-    {
-        label: "Studio",
-        items: [
             {
-                label: "Photo",
-                href: "/studio",
-                description: "Generate images with Nano Banana Pro.",
-            },
-            {
-                label: "Video",
-                description: "Generate clips and cinematic shots.",
+                label: "Script",
+                description: "Draft scenes, beats, and dialogue.",
                 badge: "soon",
             },
             {
-                label: "Audio",
-                description: "Music, voice, and sound effects.",
+                label: "Storyboard",
+                description: "Sketch shots and sequence them.",
                 badge: "soon",
             },
         ],
     },
-    {
-        label: "Tools",
-        href: "/editor",
-        items: [],
-    },
-    {
-        label: "Plan",
-        href: "/pricing",
-        items: [],
-    },
+    { label: "Tools", href: "/editor", items: [] },
+    { label: "Plan", href: "/pricing", items: [] },
 ];
 
 // ─── Header ─────────────────────────────────────────────────────────────────
@@ -152,7 +140,11 @@ export function EditorHeader({
     return (
         <header
             id="app-nav-root"
-            className="sticky top-0 z-50 w-full border-b border-white/[0.04] bg-ws-canvas"
+            /* z-[60] so dropdowns clear sibling chrome that also sits at
+               z-50 with its own stacking context (e.g. the auteur sidebar
+               which uses backdrop-filter). Still well below modals
+               (launchpad z-200, in-sidebar popovers z-1000). */
+            className="sticky top-0 z-[60] w-full border-b border-white/[0.04] bg-ws-canvas"
         >
             {/* Inner row height pinned to --header-height so the landing
                 page's StickyNav can tuck under it cleanly and translate
@@ -183,10 +175,8 @@ export function EditorHeader({
                             key={section.label}
                             section={section}
                             isOpen={openSection === section.label}
-                            onToggle={() =>
-                                setOpenSection((cur) =>
-                                    cur === section.label ? null : section.label,
-                                )
+                            onSetOpen={(open) =>
+                                setOpenSection(open ? section.label : null)
                             }
                             onItemNavigate={() => setOpenSection(null)}
                         />
@@ -212,20 +202,40 @@ export function EditorHeader({
 function NavMenu({
     section,
     isOpen,
-    onToggle,
+    onSetOpen,
     onItemNavigate,
 }: {
     section: NavSection;
     isOpen: boolean;
-    onToggle: () => void;
+    onSetOpen: (open: boolean) => void;
     onItemNavigate: () => void;
 }) {
     // The "Artistic Intelligence" section anchors the brand experience —
     // always-underlined as a visual cue. Other sections show an indicator
     // only when their dropdown is open.
     const isPrimary = section.label === "Artistic Intelligence";
+    const hasDropdown = section.items.length > 0;
 
-    if (section.href) {
+    /* Hover-open dropdowns suffer from an 8px gap between the label and
+       the menu — crossing it fires mouseleave on the parent before the
+       mouse reaches the dropdown, which would close the menu underfoot.
+       A short close delay (cancelled if the cursor re-enters either the
+       label or the dropdown) is the standard fix. */
+    const closeTimer = useRef<number | null>(null);
+    const cancelClose = useCallback(() => {
+        if (closeTimer.current !== null) {
+            window.clearTimeout(closeTimer.current);
+            closeTimer.current = null;
+        }
+    }, []);
+    const scheduleClose = useCallback(() => {
+        cancelClose();
+        closeTimer.current = window.setTimeout(() => onSetOpen(false), 140);
+    }, [cancelClose, onSetOpen]);
+    useEffect(() => () => cancelClose(), [cancelClose]);
+
+    // Plain link, no dropdown.
+    if (section.href && !hasDropdown) {
         return (
             <Link
                 href={section.href}
@@ -237,57 +247,98 @@ function NavMenu({
         );
     }
 
+    // Either a click-toggle dropdown (no href) or a hover-to-open dropdown
+    // whose label itself is a navigating link (href + items).
+    const labelClasses = `relative inline-flex items-center gap-1 px-3 py-2 text-[14px] font-medium transition-colors ${
+        isPrimary ? "text-white" : "text-[#8e8e93] hover:text-white"
+    }`;
+
+    const chevron = !isPrimary && (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`w-3 h-3 transition-transform ${
+                isOpen ? "rotate-180" : ""
+            }`}
+        >
+            <polyline points="6 9 12 15 18 9" />
+        </svg>
+    );
+
+    const underline = isPrimary && (
+        <span
+            aria-hidden
+            className="absolute left-3 right-3 -bottom-[1px] h-[2px] bg-white"
+        />
+    );
+
     return (
-        <div className="relative">
-            <button
-                type="button"
-                onClick={onToggle}
-                aria-haspopup="menu"
-                aria-expanded={isOpen}
-                className={`relative inline-flex items-center gap-1 px-3 py-2 text-[14px] font-medium transition-colors ${
-                    isPrimary ? "text-white" : "text-[#8e8e93] hover:text-white"
-                }`}
-            >
-                {section.label}
-                {!isPrimary && (
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`w-3 h-3 transition-transform ${
-                            isOpen ? "rotate-180" : ""
-                        }`}
-                    >
-                        <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                )}
-                {isPrimary && (
-                    <span
-                        aria-hidden
-                        className="absolute left-3 right-3 -bottom-[1px] h-[2px] bg-white"
-                    />
-                )}
-            </button>
+        <div
+            className="relative"
+            onMouseEnter={section.href ? () => { cancelClose(); onSetOpen(true); } : undefined}
+            onMouseLeave={section.href ? scheduleClose : undefined}
+        >
+            {section.href ? (
+                <Link
+                    href={section.href}
+                    onClick={() => { cancelClose(); onItemNavigate(); }}
+                    onFocus={() => { cancelClose(); onSetOpen(true); }}
+                    aria-haspopup="menu"
+                    aria-expanded={isOpen}
+                    className={labelClasses}
+                >
+                    {section.label}
+                    {chevron}
+                    {underline}
+                </Link>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => onSetOpen(!isOpen)}
+                    aria-haspopup="menu"
+                    aria-expanded={isOpen}
+                    className={labelClasses}
+                >
+                    {section.label}
+                    {chevron}
+                    {underline}
+                </button>
+            )}
 
             {isOpen && (
                 <div
                     role="menu"
-                    className="absolute left-0 top-full mt-2 min-w-[260px] rounded-xl py-1.5 z-30 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
+                    /* `pt-2` reaches up into the 8px label-to-menu gap so
+                       a transparent hover bridge keeps the cursor "inside"
+                       the menu while travelling from label to items. */
+                    className="absolute left-0 top-full min-w-[260px] rounded-xl pt-2 pb-1.5 z-30 shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
                     style={{
-                        backgroundColor: "#121214",
-                        border: "1px solid #1f1f22",
+                        /* Bridge area is transparent; only the inner
+                           card paints the menu background. */
+                        background: "transparent",
                     }}
+                    onMouseEnter={section.href ? cancelClose : undefined}
+                    onMouseLeave={section.href ? scheduleClose : undefined}
                 >
-                    {section.items.map((item, i) => (
-                        <NavDropdownItem
-                            key={`${item.label}-${i}`}
-                            item={item}
-                            onNavigate={onItemNavigate}
-                        />
-                    ))}
+                    <div
+                        className="rounded-xl py-1.5"
+                        style={{
+                            backgroundColor: "#121214",
+                            border: "1px solid #1f1f22",
+                        }}
+                    >
+                        {section.items.map((item, i) => (
+                            <NavDropdownItem
+                                key={`${item.label}-${i}`}
+                                item={item}
+                                onNavigate={onItemNavigate}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

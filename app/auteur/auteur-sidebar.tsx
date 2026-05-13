@@ -76,6 +76,11 @@ export function AuteurSidebar({
             data-mobile-open={mobileOpen || undefined}
             className={`${styles.sidebar}${collapsed ? ` ${styles.sidebarCollapsed}` : ""}`}
         >
+            {/* Sidebar brand row. Always present so the page only ever
+                has one logo (the unified top bar's brand column owns the
+                label + collapse toggle, never a logo). In the collapsed
+                state the brand mark doubles as the expand affordance
+                (a chevron fades in on hover via CSS). */}
             <div className={styles.sidebarHeader}>
                 <div
                     className={`${styles.headerLogo} ${collapsed ? styles.headerLogoCollapsed : ""}`}
@@ -101,31 +106,6 @@ export function AuteurSidebar({
                         </svg>
                     )}
                 </div>
-                {onToggleCollapse && (
-                    <div className={`${styles.sidebarLabel} ${styles.headerToggleWrap}`}>
-                        <button
-                            type="button"
-                            className={styles.sidebarHeaderCollapse}
-                            onClick={onToggleCollapse}
-                            aria-label="Collapse sidebar"
-                        >
-                            <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.75"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                aria-hidden
-                            >
-                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                                <line x1="9" x2="9" y1="3" y2="21" />
-                            </svg>
-                        </button>
-                    </div>
-                )}
             </div>
 
             <div className={styles.sidebarNewChat}>

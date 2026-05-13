@@ -91,6 +91,13 @@ interface WorkspaceProps {
               totalCredits: number;
           }
         | { type: "anonymous" };
+    /**
+     * Auth cluster (Launchpad pill + profile menu, or Sign-in / Get
+     * started CTAs for anonymous visitors) rendered at the right of
+     * the unified top bar. Provided by the server layout so it carries
+     * auth-aware UI without dragging the session into client code.
+     */
+    authSlot?: React.ReactNode;
 }
 
 interface Message {
@@ -149,7 +156,7 @@ const MODE_LABEL: Record<AuteurMode, string> = {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function AuteurWorkspace({ viewer }: WorkspaceProps) {
+export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     const [conversations, setConversations] = React.useState<
         Record<string, ConversationState>
     >({});
@@ -885,6 +892,93 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
 
     return (
         <div className={styles.page}>
+            {/* Unified top bar: brand identity (sidebar column) +
+                chat top bar content (main column) + auth slot. Spans
+                the full width so the three regions sit on a single
+                row at the top of the page. */}
+            <div className={styles.pageTopBar} data-sidebar-collapsed={sidebarCollapsed || undefined}>
+                {/* Brand identity is owned by the sidebar header (it
+                    already had the small clapperboard there). The
+                    top-bar's brand column carries only the section
+                    label + the collapse toggle so there's no second
+                    logo on the page. */}
+                <div className={styles.pageTopBarBrand}>
+                    <span className={styles.headerSectionLabel}>
+                        Artistic Intelligence
+                    </span>
+                    <button
+                        type="button"
+                        className={`${styles.sidebarHeaderCollapse} ${styles.pageTopBarCollapseBtn}`}
+                        onClick={() => {
+                            if (sidebarOpenMobile) {
+                                setSidebarOpenMobile(false);
+                            } else {
+                                setSidebarCollapsed((v) => !v);
+                            }
+                        }}
+                        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.75"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden
+                        >
+                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                            <line x1="9" x2="9" y1="3" y2="21" />
+                        </svg>
+                    </button>
+                </div>
+                <div className={styles.pageTopBarMain}>
+                    <button
+                        type="button"
+                        className={styles.topBarIconBtn}
+                        onClick={() => setSidebarOpenMobile(true)}
+                        aria-label="Open chat history"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M4 6h16" />
+                            <path d="M4 12h16" />
+                            <path d="M4 18h16" />
+                        </svg>
+                    </button>
+                    {!activeId ? (
+                        <span className={styles.topBarTitle}>History & Search</span>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className={styles.backBtn}
+                                onClick={() => setActiveId(null)}
+                                title="Back to history"
+                            >
+                                <ArrowLeftIcon />
+                            </button>
+                            {active && (
+                                <ChatTopBarTitle
+                                    conversation={active}
+                                    isAuthenticated={viewer.type === "authenticated"}
+                                    onRename={renameConversation}
+                                    onDelete={handleDelete}
+                                    confirmingDeleteId={confirmingDeleteId}
+                                    onPin={handlePin}
+                                    onArchive={handleArchive}
+                                    onExport={handleExport}
+                                />
+                            )}
+                        </>
+                    )}
+                </div>
+                {authSlot && (
+                    <div className={styles.pageTopBarAuth}>{authSlot}</div>
+                )}
+            </div>
+
             <div className={styles.layout}>
                 {/* Mobile sidebar scrim */}
                 {sidebarOpenMobile && (
@@ -923,47 +1017,6 @@ export function AuteurWorkspace({ viewer }: WorkspaceProps) {
                 />
 
                 <div className={styles.main}>
-                    <div className={styles.chatTopBar}>
-                        <button
-                            type="button"
-                            className={styles.topBarIconBtn}
-                            onClick={() => setSidebarOpenMobile(true)}
-                            aria-label="Open chat history"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                                <path d="M4 6h16" />
-                                <path d="M4 12h16" />
-                                <path d="M4 18h16" />
-                            </svg>
-                        </button>
-                        {!activeId ? (
-                            <span className={styles.topBarTitle}>History & Search</span>
-                        ) : (
-                            <>
-                                <button
-                                    type="button"
-                                    className={styles.backBtn}
-                                    onClick={() => setActiveId(null)}
-                                    title="Back to history"
-                                >
-                                    <ArrowLeftIcon />
-                                </button>
-                                {active && (
-                                    <ChatTopBarTitle
-                                        conversation={active}
-                                        isAuthenticated={viewer.type === "authenticated"}
-                                        onRename={renameConversation}
-                                        onDelete={handleDelete}
-                                        confirmingDeleteId={confirmingDeleteId}
-                                        onPin={handlePin}
-                                        onArchive={handleArchive}
-                                        onExport={handleExport}
-                                    />
-                                )}
-                            </>
-                        )}
-                    </div>
-
                     {!activeId ? (
                         <HistoryView
                             conversations={sidebarConversations}

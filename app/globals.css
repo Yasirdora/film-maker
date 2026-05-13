@@ -779,20 +779,66 @@ textarea:focus-visible,
     }
 }
 
-/* Dark themed scrollbar used by the editor's scrollable panels. */
-.scrollbar-dark::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+/* Global scrollbar styling — applied to every scrollable element so
+ * the chrome reads identically across editor, auteur, studio, the
+ * launchpad, etc. Idle: invisible thumb (no chrome creeps into
+ * content). Hover-over-scroller: thumb fades in. Hover-on-thumb:
+ * thumb brightens. Mirrored for light vs. dark schemes so it stays
+ * legible in both.
+ *
+ * To opt out (e.g. fully hidden overlays where any chrome is wrong),
+ * use `.ae-no-scrollbar`. Per-component overrides should be rare —
+ * unify here instead of forking per page.
+ */
+html {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
 }
-.scrollbar-dark::-webkit-scrollbar-track {
+*:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.14) transparent;
+}
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
     background: transparent;
 }
-.scrollbar-dark::-webkit-scrollbar-thumb {
-    background: #252629;
-    border-radius: 6px;
+::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+*:hover::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.12);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+    *:hover {
+        scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+    }
+    *:hover::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.12);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.22);
+    }
+}
+
+/* Editor surfaces are dark regardless of system theme. Force the
+ * dark-scheme thumb colors on them so the scrollbar doesn't go dark-
+ * on-dark when the user's OS is set to light. */
+.scrollbar-dark:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+.scrollbar-dark:hover::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
 }
 .scrollbar-dark::-webkit-scrollbar-thumb:hover {
-    background: #3a3b3f;
+    background: rgba(255, 255, 255, 0.22);
 }
 
 /* One-shot entrance for the nav Launchpad trigger's sparkle.

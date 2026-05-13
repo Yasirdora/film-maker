@@ -59,6 +59,77 @@
 
 /* ── Layout ── */
 
+/* Unified top bar spanning sidebar + main + auth columns. Replaces
+ * the per-column headers (the old sidebarHeader brand row and the
+ * .chatTopBar in the main area) so the top reads as a single row:
+ *
+ *   [logo] Artistic Intelligence | History & Search / ← Chat title | Get Started · profile
+ */
+.pageTopBar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    height: var(--header-height, 64px);
+    background: transparent;
+}
+
+.pageTopBarBrand {
+    width: 260px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* When the sidebar collapses (64px wide), shrink the brand column to
+ * match so the unified top bar's leftmost region keeps lining up with
+ * the sidebar below. The label hides; only the brand mark stays. */
+.pageTopBar[data-sidebar-collapsed] .pageTopBarBrand {
+    width: 64px;
+}
+.pageTopBar[data-sidebar-collapsed] .pageTopBarBrand .headerSectionLabel {
+    display: none;
+}
+
+.pageTopBarMain {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 24px;
+}
+
+.pageTopBarAuth {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px;
+}
+
+/* Collapse toggle pinned to the right of the brand column so it sits
+ * where the old sidebarHeaderCollapse used to live, but in the unified
+ * top bar. Hidden when the sidebar is already collapsed (the collapsed
+ * brand mark itself is the expand affordance). */
+.pageTopBarCollapseBtn {
+    margin-left: auto;
+}
+.pageTopBar[data-sidebar-collapsed] .pageTopBarCollapseBtn {
+    display: none;
+}
+
+/* Mobile: the brand column collapses (the sidebar is off-screen via
+ * mobile open state), so let the chat title region claim that space. */
+@media (max-width: 767px) {
+    .pageTopBarBrand {
+        display: none;
+    }
+}
+
 .layout {
     display: flex;
     flex: 1;
@@ -99,6 +170,39 @@
     position: relative;
     border-radius: 8px;
     transition: background 0.15s ease;
+    gap: 8px;
+    /* Don't let the row overflow the sidebar width — the label inside
+       can truncate before it pushes the toggle off-screen. */
+    min-width: 0;
+}
+
+/* "Artistic Intelligence" label sitting next to the brand mark.
+ * Underlined to signal the active product section, matching the same
+ * primary-section treatment in the top nav. */
+.headerSectionLabel {
+    position: relative;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--auteur-text, #fff);
+    line-height: 1.1;
+    padding-bottom: 6px;
+    white-space: nowrap;
+    /* If the sidebar ever shrinks further, truncate rather than wrap or
+       push siblings out of view. */
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.headerSectionLabel::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: currentColor;
+    opacity: 0.95;
 }
 
 .expandChevron {
@@ -387,45 +491,7 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-}
-
-.sidebarList:hover {
-    scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
-}
-
-.sidebarList::-webkit-scrollbar {
-    width: 5px;
-}
-
-.sidebarList::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.sidebarList::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 3px;
-}
-
-.sidebarList:hover::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.08);
-}
-
-.sidebarList::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.14);
-}
-
-@media (prefers-color-scheme: dark) {
-    .sidebarList:hover {
-        scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
-    }
-    .sidebarList:hover::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.12);
-    }
-    .sidebarList::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
+    /* Scrollbar look is unified globally — see globals.css. */
 }
 
 .sidebarItem {
@@ -617,16 +683,11 @@
 
 /* ── Chat top bar ── */
 
-.chatTopBar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 16px 24px 12px;
-    flex-shrink: 0;
-    position: sticky;
-    top: 0;
-    z-index: 45;
-}
+/* `.chatTopBar` is no longer rendered — its content (History & Search,
+ * back button, chat title) now lives in the unified `.pageTopBar` at
+ * the top of the page. Selectors below were tuned for that old bar
+ * (icon button, title styles) and are still referenced from
+ * `.pageTopBarMain`, so the rules themselves stay. */
 
 .topBarIconBtn {
     display: none; /* Hidden on desktop */
@@ -825,33 +886,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 0 0 24px;
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-}
-
-.messages:hover {
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-}
-
-.messages::-webkit-scrollbar {
-    width: 6px;
-}
-
-.messages::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.messages::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 3px;
-}
-
-.messages:hover::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.messages::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.18);
+    /* Scrollbar look is unified globally — see globals.css. */
 }
 
 .messagesInner {
