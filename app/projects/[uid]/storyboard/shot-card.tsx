@@ -3,10 +3,10 @@
 /**
  * ShotCard — a single shot inside a scene.
  *
- * Renders a 16:9 visual slot (placeholder until Slice 2 wires AI image
- * generation), a prompt textarea that auto-grows, the planned duration,
- * and a chip row for shot metadata. Hover/focus reveals a kebab menu
- * (delete, planned: duplicate, regenerate).
+ * Renders a 16:9 visual slot, a prompt textarea that auto-grows, the
+ * planned duration, and a chip row for shot metadata. The visual slot
+ * shows the selected image when one exists, or an "Upload" affordance
+ * + drag-drop target when empty.
  *
  * Editing model: changes commit on `blur` / Enter (for the duration
  * input). Optimistic update + server PATCH happens in the store; the
@@ -15,17 +15,23 @@
  * + memo can drop frames at scale.
  *
  * Drag handle: the entire card surface is the handle, except the
- * textarea, duration input, and menu (those swallow pointer-down so
- * the user can interact without starting a drag).
+ * textarea, duration input, image area, and menu (those swallow
+ * pointer-down so the user can interact without starting a drag).
+ *
+ * Image area drag-and-drop: dragging files from the OS onto the image
+ * slot uploads them. The dnd-kit drag-reorder uses pointer events, so
+ * a native HTML5 file drop happens in a separate channel — no conflict.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { Layers, MoreVertical, Trash2, Upload } from "lucide-react";
 
+import { getImageUrl } from "@/lib/image-url";
 import type { Shot } from "@/lib/storyboards";
 
+import { VariantTray } from "./variant-tray";
 import { useStoryboard } from "./workspace-context";
 
 interface Props {
@@ -37,6 +43,9 @@ interface Props {
 export function ShotCard({ shot, index }: Props) {
     const updateShot = useStoryboard((s) => s.updateShot);
     const deleteShot = useStoryboard((s) => s.deleteShot);
+    const uploadShotImage = useStoryboard((s) => s.uploadShotImage);
+
+    const [variantTrayOpen, setVariantTrayOpen] = useState(false);
 
     // dnd-kit hooks. `data` is what the workspace's onDragEnd reads to
     // know that the active item is a shot (vs a scene) and which scene
@@ -69,21 +78,15 @@ export function ShotCard({ shot, index }: Props) {
             {...attributes}
             {...listeners}
         >
-            {/* 16:9 visual placeholder. Will hold the generated frame in
-                Slice 2; until then, a quiet film-strip motif so the
-                empty card doesn't read as broken. */}
-            <div className="relative overflow-hidden rounded-md bg-black/40 aspect-video">
-                <div className="absolute inset-0 flex items-center justify-center text-ws-dim">
-                    <FilmStripGlyph />
-                </div>
-                <span className="absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">
-                    {index}
-                </span>
-                <DurationInput
-                    value={shot.durationMs}
-                    onCommit={(durationMs) => updateShot(shot.uid, { durationMs })}
-                />
-            </div>
+            <ImageSlot
+                shot={shot}
+                index={index}
+                onUpload={(file) => uploadShotImage(shot.uid, file)}
+                onOpenTray={() => setVariantTrayOpen(true)}
+                onCommitDuration={(durationMs) =>
+                    updateShot(shot.uid, { durationMs })
+                }
+            />
 
             <PromptField
                 initialValue={shot.prompt ?? ""}
@@ -109,8 +112,168 @@ export function ShotCard({ shot, index }: Props) {
             </div>
 
             <ShotMenu onDelete={() => deleteShot(shot.uid)} />
+
+            <VariantTray
+                open={variantTrayOpen}
+                onOpenChange={setVariantTrayOpen}
+                shotUid={shot.uid}
+                shotLabel={`Shot ${index}`}
+            />
         </div>
     );
+}
+
+// ─── Image slot ────────────────────────────────────────────────────────────
+
+/**
+ * 16:9 image area inside a shot card. Renders three states:
+ *
+ *   • A selected image — clicking opens the variant tray; +N badge
+ *     shows when alternates exist.
+ *   • A pending upload (busy === true) — dim overlay + spinner.
+ *   • Empty — film-strip glyph + an Upload affordance; OS file drop
+ *     uploads directly.
+ *
+ * Drag-and-drop here is the native HTML5 DataTransfer kind (OS files
+ * landing on the card), distinct from dnd-kit's pointer-driven
+ * reordering. The two coexist because they listen on different event
+ * channels.
+ */
+function ImageSlot({
+    shot,
+    index,
+    onUpload,
+    onOpenTray,
+    onCommitDuration,
+}: {
+    shot: Shot;
+    index: number;
+    onUpload: (file: File) => Promise<unknown>;
+    onOpenTray: () => void;
+    onCommitDuration: (durationMs: number) => void;
+}) {
+    const [busy, setBusy] = useState(false);
+    const [hovering, setHovering] = useState(false);
+    const fileRef = useRef<HTMLInputElement>(null);
+
+    async function handleFiles(files: FileList | null) {
+        if (!files || files.length === 0) return;
+        setBusy(true);
+        try {
+            // Upload sequentially so the UI doesn't try to render a
+            // dozen new variants at once and exhaust the card slot.
+            for (const file of Array.from(files)) {
+                await onUpload(file);
+            }
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    const selected = shot.selectedImage;
+    const alternateCount = Math.max(0, shot.imageCount - (selected ? 1 : 0));
+
+    return (
+        <div
+            className={`relative overflow-hidden rounded-md bg-black/40 aspect-video ${
+                hovering ? "ring-2 ring-inset ring-white/40" : ""
+            }`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onDragEnter={(e) => {
+                if (hasFiles(e)) {
+                    e.preventDefault();
+                    setHovering(true);
+                }
+            }}
+            onDragOver={(e) => {
+                if (hasFiles(e)) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                }
+            }}
+            onDragLeave={() => setHovering(false)}
+            onDrop={(e) => {
+                if (!hasFiles(e)) return;
+                e.preventDefault();
+                setHovering(false);
+                void handleFiles(e.dataTransfer.files);
+            }}
+        >
+            {selected ? (
+                <button
+                    type="button"
+                    onClick={onOpenTray}
+                    aria-label={`Open variants for shot ${index}`}
+                    className="block h-full w-full"
+                >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2-hosted, sized at card aspect ratio */}
+                    <img
+                        src={getImageUrl(selected.r2Key)}
+                        alt=""
+                        width={selected.width || undefined}
+                        height={selected.height || undefined}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                    />
+                </button>
+            ) : (
+                <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    aria-label="Upload an image"
+                    className="flex h-full w-full flex-col items-center justify-center gap-2 text-ws-dim transition-colors hover:text-ws-icon"
+                >
+                    <FilmStripGlyph />
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium">
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload or drop
+                    </span>
+                </button>
+            )}
+
+            <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                hidden
+                onChange={(e) => {
+                    void handleFiles(e.currentTarget.files);
+                    e.currentTarget.value = "";
+                }}
+            />
+
+            <span className="pointer-events-none absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums backdrop-blur-sm">
+                {index}
+            </span>
+
+            {alternateCount > 0 && (
+                <button
+                    type="button"
+                    onClick={onOpenTray}
+                    aria-label={`${alternateCount} alternates`}
+                    className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm hover:bg-black/80"
+                >
+                    <Layers className="h-3 w-3" />+{alternateCount}
+                </button>
+            )}
+
+            <DurationInput
+                value={shot.durationMs}
+                onCommit={onCommitDuration}
+            />
+
+            {busy && (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/60 text-[12px] font-medium text-white">
+                    Uploading…
+                </div>
+            )}
+        </div>
+    );
+}
+
+function hasFiles(e: React.DragEvent): boolean {
+    return Array.from(e.dataTransfer.types).includes("Files");
 }
 
 // ─── Pieces ────────────────────────────────────────────────────────────────

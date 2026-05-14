@@ -21,8 +21,11 @@ import { toast } from "sonner";
 import type {
     Scene,
     Shot,
+    ShotImage,
+    ShotImageSummary,
     StoryboardBoard,
 } from "@/lib/storyboards";
+import { convertToWebp } from "@/lib/storyboard-webp";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +75,24 @@ interface Actions {
         targetSceneUid: string,
         orderedShotUids: string[],
     ) => Promise<void>;
+
+    // ─── Shot images ───────────────────────────────────────────────
+    /**
+     * Converts the file to WebP client-side and uploads to the given
+     * shot. Returns the created image row (or null on failure). The
+     * first upload on a shot is auto-selected; subsequent uploads land
+     * as alternates the user can pick via the variant tray.
+     */
+    uploadShotImage: (
+        shotUid: string,
+        file: File,
+    ) => Promise<ShotImage | null>;
+    /** Mark a variant as the selected image for its shot. */
+    selectShotImage: (image: ShotImage) => Promise<void>;
+    /** Delete a variant. If it was selected, the most recent remaining
+     *  alternate is promoted server-side; we sync the new selection
+     *  optimistically. */
+    deleteShotImage: (image: ShotImage) => Promise<void>;
 }
 
 export type StoryboardStore = State & Actions;
@@ -86,6 +107,16 @@ class ApiError extends Error {
         super(message);
         this.name = "ApiError";
     }
+}
+
+function toSummary(image: ShotImage): ShotImageSummary {
+    return {
+        uid: image.uid,
+        r2Key: image.r2Key,
+        width: image.width,
+        height: image.height,
+        source: image.source,
+    };
 }
 
 async function api<T = unknown>(
@@ -258,6 +289,175 @@ export const createStoryboardStore = (initial: StoryboardBoard) =>
             }));
             try {
                 await api("DELETE", `/api/storyboards/shots/${shotUid}`);
+            } catch (err) {
+                set({ scenes: prev });
+                toast.error(err instanceof Error ? err.message : "Delete failed");
+            }
+        },
+
+        uploadShotImage: async (shotUid, file) => {
+            let webp;
+            try {
+                webp = await convertToWebp(file);
+            } catch (err) {
+                toast.error(
+                    err instanceof Error
+                        ? err.message
+                        : "Could not read that image",
+                );
+                return null;
+            }
+
+            const form = new FormData();
+            form.set(
+                "file",
+                new File([webp.blob], "upload.webp", { type: "image/webp" }),
+            );
+            form.set("width", String(webp.width));
+            form.set("height", String(webp.height));
+            form.set("originMime", webp.originMime);
+
+            try {
+                const res = await fetch(
+                    `/api/storyboards/shots/${shotUid}/upload`,
+                    { method: "POST", body: form },
+                );
+                if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as {
+                        error?: string;
+                    };
+                    throw new Error(data.error ?? `Upload failed (${res.status})`);
+                }
+                const { image } = (await res.json()) as { image: ShotImage };
+                // If this image is selected (first upload), promote it
+                // on the board card so the placeholder swaps out
+                // immediately.
+                if (image.isSelected) {
+                    set((s) => ({
+                        scenes: s.scenes.map((sc) => ({
+                            ...sc,
+                            shots: sc.shots.map((sh) =>
+                                sh.uid === shotUid
+                                    ? {
+                                          ...sh,
+                                          selectedImage: toSummary(image),
+                                          imageCount: sh.imageCount + 1,
+                                      }
+                                    : sh,
+                            ),
+                        })),
+                    }));
+                } else {
+                    // Just bump the count badge — the selection didn't
+                    // change.
+                    set((s) => ({
+                        scenes: s.scenes.map((sc) => ({
+                            ...sc,
+                            shots: sc.shots.map((sh) =>
+                                sh.uid === shotUid
+                                    ? { ...sh, imageCount: sh.imageCount + 1 }
+                                    : sh,
+                            ),
+                        })),
+                    }));
+                }
+                return image;
+            } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Upload failed");
+                return null;
+            }
+        },
+
+        selectShotImage: async (image) => {
+            const prev = get().scenes;
+            // Optimistically swap the card's selected image.
+            set((s) => ({
+                scenes: s.scenes.map((sc) => ({
+                    ...sc,
+                    shots: sc.shots.map((sh) =>
+                        sh.uid === image.shotUid
+                            ? { ...sh, selectedImage: toSummary(image) }
+                            : sh,
+                    ),
+                })),
+            }));
+            try {
+                await api("PATCH", `/api/storyboards/images/${image.uid}`, {
+                    selected: true,
+                });
+            } catch (err) {
+                set({ scenes: prev });
+                toast.error(
+                    err instanceof Error ? err.message : "Select failed",
+                );
+            }
+        },
+
+        deleteShotImage: async (image) => {
+            const prev = get().scenes;
+            // Decrement count optimistically. The selected-image swap
+            // can't be predicted client-side without the full variants
+            // list, so on success we patch it from the response.
+            set((s) => ({
+                scenes: s.scenes.map((sc) => ({
+                    ...sc,
+                    shots: sc.shots.map((sh) =>
+                        sh.uid === image.shotUid
+                            ? {
+                                  ...sh,
+                                  imageCount: Math.max(0, sh.imageCount - 1),
+                                  selectedImage: image.isSelected
+                                      ? null
+                                      : sh.selectedImage,
+                              }
+                            : sh,
+                    ),
+                })),
+            }));
+            try {
+                const res = await fetch(
+                    `/api/storyboards/images/${image.uid}`,
+                    { method: "DELETE" },
+                );
+                if (!res.ok) {
+                    const data = (await res.json().catch(() => ({}))) as {
+                        error?: string;
+                    };
+                    throw new Error(data.error ?? `Delete failed (${res.status})`);
+                }
+                // If a new selection was promoted server-side, we need
+                // its summary on the card. Easiest: refetch the shot's
+                // images and find the new selected one. Cheaper than a
+                // full board reload.
+                const data = (await res.json()) as { newSelectedUid: string | null };
+                if (image.isSelected && data.newSelectedUid) {
+                    const listRes = await fetch(
+                        `/api/storyboards/shots/${image.shotUid}/images`,
+                    );
+                    if (listRes.ok) {
+                        const { images } = (await listRes.json()) as {
+                            images: ShotImage[];
+                        };
+                        const next = images.find(
+                            (im) => im.uid === data.newSelectedUid,
+                        );
+                        if (next) {
+                            set((s) => ({
+                                scenes: s.scenes.map((sc) => ({
+                                    ...sc,
+                                    shots: sc.shots.map((sh) =>
+                                        sh.uid === image.shotUid
+                                            ? {
+                                                  ...sh,
+                                                  selectedImage: toSummary(next),
+                                              }
+                                            : sh,
+                                    ),
+                                })),
+                            }));
+                        }
+                    }
+                }
             } catch (err) {
                 set({ scenes: prev });
                 toast.error(err instanceof Error ? err.message : "Delete failed");
