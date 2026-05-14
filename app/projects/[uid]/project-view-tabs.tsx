@@ -48,7 +48,7 @@ export function ProjectViewTabs({ projectUid }: Props) {
                         href={tab.href}
                         prefetch
                         aria-current={tab.active ? "page" : undefined}
-                        className={`relative inline-flex h-9 items-center px-3 text-[13px] font-medium transition-colors ${
+                        className={`relative inline-flex h-10 items-center px-3 text-sm font-medium transition-colors sm:text-[15px] ${
                             tab.active
                                 ? "text-white"
                                 : "text-ws-icon hover:text-white"

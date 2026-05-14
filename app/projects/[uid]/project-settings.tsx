@@ -151,7 +151,7 @@ export function ProjectSettings({
                             title="Click to rename"
                             className="group flex min-w-0 items-center gap-1.5 truncate text-left"
                         >
-                            <h1 className="truncate text-lg font-semibold text-white sm:text-xl">
+                            <h1 className="truncate text-sm font-semibold text-white sm:text-base">
                                 {name}
                             </h1>
                         </button>
@@ -164,7 +164,7 @@ export function ProjectSettings({
                             aria-expanded={menuOpen}
                             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ws-icon transition-colors hover:bg-white/[0.06] hover:text-white"
                         >
-                            <DotsIcon size={18} />
+                            <DotsIcon size={18} className="rotate-90" />
                         </button>
                     </>
                 )}
