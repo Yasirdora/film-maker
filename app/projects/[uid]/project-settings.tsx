@@ -151,7 +151,7 @@ export function ProjectSettings({
                             title="Click to rename"
                             className="group flex min-w-0 items-center gap-1.5 truncate text-left"
                         >
-                            <h1 className="truncate text-[12px] font-semibold text-white sm:text-[13px]">
+                            <h1 className="truncate text-lg font-semibold text-white sm:text-xl">
                                 {name}
                             </h1>
                         </button>

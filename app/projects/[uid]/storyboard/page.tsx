@@ -47,14 +47,16 @@ export default async function StoryboardPage({ params }: PageProps) {
 
     return (
         <div className="flex h-dvh flex-col bg-ws-canvas pb-[66px] sm:pb-0">
-            <AppNav brandHref="/studio">
+            <AppNav brandHref="/studio" />
+
+            <div className="px-4 pt-4 sm:px-8 sm:pt-6">
                 <ProjectSettings
                     uid={project.uid}
                     name={project.name}
                     description={project.description}
                     pinnedAt={project.pinnedAt}
                 />
-            </AppNav>
+            </div>
 
             <ProjectViewTabs projectUid={project.uid} />
 
