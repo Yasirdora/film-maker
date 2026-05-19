@@ -23,6 +23,11 @@ import type { ClipBodyContext } from "@/components/editor/shared/ClipBlock";
 import type { MediaClip } from "@/lib/editor/types";
 import { useFilmstrip } from "@/lib/editor/filmstrip";
 
+/** Inner corner radius for clip-body chrome, matching the outer
+ *  ClipBlock geometry so the filmstrip / thumbnail meets the block
+ *  edge cleanly. */
+const CLIP_BODY_RADIUS = 6;
+
 export default function VideoClipBody({ clip, asset, width, height }: ClipBodyContext) {
   if (clip.kind !== "video" && clip.kind !== "image") return null;
   if (height <= 0 || width <= 0) return null;
@@ -88,7 +93,7 @@ function VideoFilmstripBody({
         position: "absolute",
         inset: 0,
         overflow: "hidden",
-        borderRadius: 6,
+        borderRadius: CLIP_BODY_RADIUS,
       }}
       aria-hidden="true"
     >
@@ -129,12 +134,10 @@ function VideoFilmstripBody({
 }
 
 /**
- * Binary-friendly closest-frame lookup. Frames are produced in
- * monotonically increasing `time` order by the generator, so a linear
- * scan from the previous tile's hit would also work — but the simple
- * `reduce` keeps the code trivial and the cost (8–64 ops per tile, a
- * couple dozen tiles at most) is negligible against everything else
- * the timeline does per frame.
+ * Returns the frame closest in time to `target`. Linear scan — frame
+ * counts are bounded (≤ ~64 per clip) and the timeline does this a
+ * couple of dozen times per render at most, so the simple form
+ * dominates a binary search in both code clarity and constant factors.
  */
 function pickClosestFrame(
   frames: ReadonlyArray<{ time: number; url: string }>,
@@ -167,7 +170,7 @@ function ImageBody({ asset }: { asset: ClipBodyContext["asset"] }) {
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        borderRadius: 6,
+        borderRadius: CLIP_BODY_RADIUS,
       }}
     />
   );
@@ -182,7 +185,7 @@ function Placeholder({ label }: { label: string }) {
         position: "absolute",
         inset: 0,
         background: "rgba(255,255,255,0.04)",
-        borderRadius: 6,
+        borderRadius: CLIP_BODY_RADIUS,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
