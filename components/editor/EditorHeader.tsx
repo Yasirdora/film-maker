@@ -75,7 +75,39 @@ const NAV: NavSection[] = [
             },
         ],
     },
-    { label: "Tools", href: "/editor", items: [] },
+    {
+        /* Hover-open dropdown of the currently-available editor tools.
+           Clicking the label itself still navigates to /editor (the
+           landing grid of every tool, live and coming-soon); the
+           dropdown surfaces the four shipped editors so users can
+           jump straight in without the extra hop. Add new tools here
+           as they ship; leave coming-soon ones in the /editor landing
+           tiles where the "soon" status reads clearly. */
+        label: "Tools",
+        href: "/editor",
+        items: [
+            {
+                label: "Video Editor",
+                href: "/editor/video",
+                description: "Compose, trim, export.",
+            },
+            {
+                label: "Photo Editor",
+                href: "/editor/photo",
+                description: "Open, adjust, export images.",
+            },
+            {
+                label: "Audio Editor",
+                href: "/editor/audio",
+                description: "Multi-track audio + record.",
+            },
+            {
+                label: "Media Converter",
+                href: "/editor/converter",
+                description: "Convert between formats.",
+            },
+        ],
+    },
     { label: "Plan", href: "/pricing", items: [] },
 ];
 

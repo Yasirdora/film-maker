@@ -70,12 +70,8 @@ export default function AudioEditorMount() {
           { label: "Audio Editor" },
         ]}
         badge="BETA"
-        leadingActions={
-          <>
-            <AudioEditorKebab />
-            <AudioEditorPageActions />
-          </>
-        }
+        pageMenu={<AudioEditorKebab />}
+        leadingActions={<AudioEditorPageActions />}
         actions={
           <>
             <AudioEditorUndoRedo />

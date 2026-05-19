@@ -134,6 +134,22 @@ const LAUNCHPAD_SECTIONS: LaunchpadSection[] = [
                 ),
             },
             {
+                id: "photo-editor",
+                title: "Photo Editor",
+                subtitle: "Open, adjust, export images",
+                href: "/editor/photo",
+                actionLabel: "Open",
+                /* Lucide `image` — landscape with a sun, the universal
+                   "photo" affordance across editing tools. */
+                icon: (
+                    <svg width="20" height="20" viewBox="2 2 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-5-5L5 21" />
+                    </svg>
+                ),
+            },
+            {
                 id: "audio-editor",
                 title: "Audio Editor",
                 subtitle: "Multi-track audio + record",

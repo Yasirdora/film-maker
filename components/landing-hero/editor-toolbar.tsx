@@ -82,6 +82,18 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
         ),
     },
     {
+        key: "photo",
+        label: "Photo Editor — open, adjust, export images",
+        href: "/editor/photo",
+        icon: (
+            <svg width="18" height="18" viewBox="2 2 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-5-5L5 21" />
+            </svg>
+        ),
+    },
+    {
         key: "audio",
         label: "Audio Editor — multi-track audio + record",
         href: "/editor/audio",

@@ -27,7 +27,11 @@ export default function EditorLayout({
     children,
 }: Readonly<{ children: React.ReactNode }>) {
     return (
-        <div className="min-h-dvh bg-ws-canvas text-white pb-[66px] sm:pb-0">
+        /* `bg-black` (not `bg-ws-canvas`) so the PageBar area sits on
+           the same surface as the editor body below it. Both video and
+           audio editors use `--color-ae-bg` (#000); matching the layout
+           removes the visible color step at the top of the page. */
+        <div className="min-h-dvh bg-black text-white pb-[66px] sm:pb-0">
             <AppNav />
             {children}
         </div>

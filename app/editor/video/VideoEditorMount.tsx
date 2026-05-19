@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import PageBar from "@/components/editor/PageBar";
+import PageKebabMenu from "@/components/editor/shared/PageKebabMenu";
 import { ClapperboardLoader } from "@/components/landing-hero/clapperboard-loader";
 import { useBootLoader } from "@/lib/editor/useBootLoader";
 import VideoEditorPageActions, {
@@ -69,6 +70,15 @@ export default function VideoEditorMount() {
           { label: "Video Editor" },
         ]}
         badge="ALPHA"
+        pageMenu={
+          <PageKebabMenu label="Video editor menu">
+            {/* Tool-specific items will land here as they ship. The
+                slot is wired now so the visual is in place. */}
+            <button type="button" className="ui-menu-item" disabled aria-disabled>
+              <span className="text-white/50">Tool actions coming soon</span>
+            </button>
+          </PageKebabMenu>
+        }
         leadingActions={<VideoEditorPageActions />}
         actions={
           <>

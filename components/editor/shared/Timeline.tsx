@@ -584,32 +584,18 @@ function DesktopTimeline({
       >
 
 
-        <div className="flex items-center gap-1">
-          <TimelineToolBtn
-            title="Zoom out"
-            onClick={() => zoomByFactor(1 / 1.5)}
-          >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M2 8h12" />
-            </svg>
-          </TimelineToolBtn>
-          <TimelineToolBtn
-            title="Zoom in"
-            onClick={() => zoomByFactor(1.5)}
-          >
-            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M2 8h12M8 2v12" />
-            </svg>
-          </TimelineToolBtn>
-          <TimelineToolBtn
-            title="Fit to screen"
-            onClick={() => setZoom(Math.max(2, panelWidth / Math.max(1, total)))}
-          >
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <path d="M2 2h4M10 2h4M2 2v4M14 2v4M2 14h4M10 14h4M2 14v-4M14 14v-4" />
-            </svg>
-          </TimelineToolBtn>
-        </div>
+        {/* Zoom rail: [−] [%] [+] — same pattern as the photo editor's
+            viewport HUD. Centre readout is the current zoom as a
+            percent of the "fit" zoom (100% = whole timeline visible).
+            Clicking it snaps back to fit. */}
+        <TimelineZoomRail
+          zoom={zoom}
+          panelWidth={panelWidth}
+          total={total}
+          onZoomOut={() => zoomByFactor(1 / 1.5)}
+          onZoomIn={() => zoomByFactor(1.5)}
+          onFit={() => setZoom(Math.max(2, panelWidth / Math.max(1, total)))}
+        />
       </div>
       {/* ── TOP BAR — header decoration + ruler. Lives above the body
            scroll so it never moves when the user scrolls vertically. ── */}
@@ -3157,6 +3143,118 @@ function LoopHandles({ loopIn, loopOut, zoom, onSetLoopIn, onSetLoopOut, onSetLo
         onMouseDown={(e) => startLoopEdgeDrag(e, "right", loopIn, loopOut, zoom, onSetLoopIn, onSetLoopOut, onSetLoopEnabled)}
       />
     </>
+  );
+}
+
+/* ── Zoom rail ────────────────────────────────────────────────────────
+ *
+ * `[−] [%] [+]` overlaid on the timeline ruler. Same visual language
+ * as the photo editor's viewport HUD so the three editors speak the
+ * same zoom-control dialect.
+ *
+ * The percent readout is `zoom / fitZoom` — "100%" means the whole
+ * timeline fits the visible panel.
+ *
+ * The percent button is a toggle with one-deep memory:
+ *   • At any zoom other than 100% — click snaps to 100% (fit) and
+ *     remembers the zoom you came from.
+ *   • At 100% — click restores the remembered zoom, putting you back
+ *     where you were before the snap.
+ * The +/- buttons don't touch the memory; only successive clicks on
+ * the % button consume / refill it. Mirrors the photo editor exactly.
+ *
+ * When the timeline is empty (`total = 0`) we render an em-dash in
+ * place of the number — fit is meaningless without content, but the
+ * +/- buttons still work to dial in a zoom by hand.
+ */
+function TimelineZoomRail({
+  zoom,
+  panelWidth,
+  total,
+  onZoomOut,
+  onZoomIn,
+  onFit,
+}: {
+  zoom: number;
+  panelWidth: number;
+  total: number;
+  onZoomOut: () => void;
+  onZoomIn: () => void;
+  onFit: () => void;
+}) {
+  const fitZoom = total > 0 && panelWidth > 0 ? panelWidth / total : 0;
+  const percent = fitZoom > 0 ? Math.round((zoom / fitZoom) * 100) : null;
+
+  const setZoomStore = useEditor((s) => s.setZoom);
+  const savedZoomRef = useRef<number | null>(null);
+  const handlePercentClick = useCallback(() => {
+    if (fitZoom <= 0) {
+      onFit();
+      return;
+    }
+    const atFit = Math.round((zoom / fitZoom) * 100) === 100;
+    if (atFit && savedZoomRef.current !== null) {
+      const restored = savedZoomRef.current;
+      savedZoomRef.current = null;
+      setZoomStore(restored);
+    } else {
+      savedZoomRef.current = zoom;
+      onFit();
+    }
+  }, [fitZoom, zoom, onFit, setZoomStore]);
+
+  return (
+    <div className="flex items-center">
+      <TimelineToolBtn title="Zoom out" onClick={onZoomOut}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M2 8h12" />
+        </svg>
+      </TimelineToolBtn>
+      <button
+        type="button"
+        onClick={handlePercentClick}
+        title={percent === 100 ? "Restore previous zoom" : "Fit timeline"}
+        aria-label={percent === 100 ? "Restore previous zoom" : "Fit timeline"}
+        style={{
+          /* Match `TimelineToolBtn` exactly — same height, radius,
+             idle / hover colors — so the three slots read as one
+             calibrated row. The only thing different is width: this
+             one auto-sizes to a 3-digit minimum so 1000% doesn't
+             twitch the layout. */
+          minWidth: 48,
+          height: 28,
+          padding: "0 8px",
+          borderRadius: 6,
+          border: "none",
+          background: "transparent",
+          color: "rgba(255,255,255,0.4)",
+          fontFamily: "inherit",
+          fontSize: 11,
+          fontWeight: 500,
+          letterSpacing: 0.2,
+          fontVariantNumeric: "tabular-nums",
+          cursor: "pointer",
+          transition: "background 0.12s, color 0.12s",
+        }}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = "rgba(255,255,255,0.1)";
+          el.style.color = "rgba(255,255,255,1)";
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.background = "transparent";
+          el.style.color = "rgba(255,255,255,0.4)";
+        }}
+      >
+        {percent === null ? "—" : `${percent}%`}
+      </button>
+      <TimelineToolBtn title="Zoom in" onClick={onZoomIn}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M2 8h12M8 2v12" />
+        </svg>
+      </TimelineToolBtn>
+    </div>
   );
 }
 

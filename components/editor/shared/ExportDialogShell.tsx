@@ -423,10 +423,15 @@ export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  disabled = false,
 }: {
   options: { value: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  /** When true the whole control is dimmed and non-interactive, but
+   *  still rendered (callers want the row layout to stay stable when
+   *  the control is contextually unavailable). */
+  disabled?: boolean;
 }) {
   return (
     <div
@@ -436,7 +441,10 @@ export function SegmentedControl<T extends string>({
         borderRadius: 10,
         padding: 3,
         gap: 2,
+        opacity: disabled ? 0.4 : 1,
+        pointerEvents: disabled ? "none" : undefined,
       }}
+      aria-disabled={disabled || undefined}
     >
       {options.map((opt) => {
         const selected = value === opt.value;
@@ -445,6 +453,7 @@ export function SegmentedControl<T extends string>({
             key={opt.value}
             type="button"
             onClick={() => onChange(opt.value)}
+            disabled={disabled}
             style={{
               flex: 1,
               height: 30,
@@ -454,15 +463,19 @@ export function SegmentedControl<T extends string>({
               color: selected ? "#fff" : "rgba(255,255,255,0.5)",
               fontSize: 12,
               fontWeight: 500,
-              cursor: "pointer",
+              cursor: disabled ? "not-allowed" : "pointer",
               transition: "all 0.15s",
               fontFamily: "inherit",
             }}
             onMouseEnter={(e) => {
-              if (!selected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
+              if (!disabled && !selected) {
+                (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
+              }
             }}
             onMouseLeave={(e) => {
-              if (!selected) (e.currentTarget as HTMLElement).style.background = "transparent";
+              if (!disabled && !selected) {
+                (e.currentTarget as HTMLElement).style.background = "transparent";
+              }
             }}
           >
             {opt.label}

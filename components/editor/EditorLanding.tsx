@@ -63,14 +63,14 @@ const TILES: ToolTile[] = [
         glyph: <ConverterGlyph />,
     },
     {
-        label: "Image editor",
-        description: "Crop, mask, filter, and layer stills on a canvas.",
-        href: "/editor/image",
+        label: "Photo editor",
+        description: "Open, adjust, and export images in your browser.",
+        href: "/editor/photo",
         accent: "text-rose-300",
         accentBorder: "group-hover:border-rose-300/60",
         accentBg: "group-hover:bg-rose-300/5",
         glyph: <ImageGlyph />,
-        status: "coming-soon",
+        status: "alpha",
     },
     {
         label: "Transcriber",

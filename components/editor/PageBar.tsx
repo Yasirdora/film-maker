@@ -20,8 +20,15 @@ export interface PageBarProps {
    */
   badge?: string;
   /**
-   * Slot rendered immediately after the breadcrumbs / badge — typically a
-   * compact page-level menu (e.g. a kebab for project actions).
+   * Page-level kebab slot, rendered immediately after the badge. Each
+   * editor uses this for tool-specific page actions (clear project,
+   * recent files, etc.) — see `<PageKebabMenu>` in
+   * `components/editor/shared`.
+   */
+  pageMenu?: ReactNode;
+  /**
+   * Slot rendered after the kebab — typically a compact tool row
+   * (select / range / blade, undo/redo group, etc.).
    */
   leadingActions?: ReactNode;
   /**
@@ -47,11 +54,12 @@ export interface PageBarProps {
 export default function PageBar({
   breadcrumbs,
   badge,
+  pageMenu,
   leadingActions,
   actions,
 }: PageBarProps) {
   return (
-    <div className="w-full border-b border-white/[0.04]">
+    <div className="w-full">
       <div className="flex items-center gap-2 sm:gap-3 px-4 sm:px-8 py-2 sm:py-2.5">
         <nav
           aria-label="Breadcrumb"
@@ -92,6 +100,9 @@ export default function PageBar({
             );
           })}
         </nav>
+        {pageMenu && (
+          <div className="flex items-center shrink-0 -ml-0.5">{pageMenu}</div>
+        )}
         {leadingActions && (
           <div className="flex items-center shrink-0">{leadingActions}</div>
         )}

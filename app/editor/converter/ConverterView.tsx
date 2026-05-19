@@ -14,6 +14,7 @@ import { ConversionResult, convertFile, fetchUrlAsFile } from "./conversion";
 import Lightbox, { LightboxItem } from "./Lightbox";
 import SelectFileMenu from "./SelectFileMenu";
 import PageBar, { type BreadcrumbItem } from "@/components/editor/PageBar";
+import PageKebabMenu from "@/components/editor/shared/PageKebabMenu";
 
 const MAX_FILES = 10;
 
@@ -472,7 +473,19 @@ export default function ConverterView({ config }: { config: CategoryConfig }) {
       />
 
       <div className="relative z-10 flex flex-col flex-1">
-        <PageBar breadcrumbs={breadcrumbs} />
+        <PageBar
+          breadcrumbs={breadcrumbs}
+          pageMenu={
+            <PageKebabMenu label="Converter menu">
+              {/* Tool-specific items will land here as they ship
+                  (clear queue, defaults, etc.). The slot is wired now
+                  so the visual is in place across every editor. */}
+              <button type="button" className="ui-menu-item" disabled aria-disabled>
+                <span className="text-white/50">Tool actions coming soon</span>
+              </button>
+            </PageKebabMenu>
+          }
+        />
 
         {/* Main */}
         <main className="flex-1 flex flex-col items-center pt-4 sm:pt-12 sm:px-4">

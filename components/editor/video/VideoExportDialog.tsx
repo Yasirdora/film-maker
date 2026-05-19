@@ -7,6 +7,18 @@
  * result, footer) lives in the shell and the format-specific shape is
  * driven by a single preset table.
  *
+ * Dual mode
+ * ---------
+ * A top-of-form "Export as video" checkbox flips this dialog between two
+ * modes:
+ *   • checked  (default) → video form (MP4/MOV + resolution + quality)
+ *   • unchecked          → audio form (MP3/WAV/FLAC/M4A + quality +
+ *                          channels), running `exportAudioProject` so
+ *                          the user can extract just the soundtrack
+ *                          without leaving the video editor.
+ * Title, file extension, last-export cache key, and result preview all
+ * follow the mode.
+ *
  * Cached result behavior
  * ----------------------
  * The last successful render is held in a session-scoped cache (see
@@ -21,6 +33,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEditor } from "@/lib/editor/store";
 import { exportProject, type ExportFormat } from "@/lib/editor/export";
+import {
+  exportAudioProject,
+  type AudioExportFormat,
+} from "@/lib/audio/export";
 import {
   setLastExport,
   useLastExport,
@@ -96,6 +112,12 @@ export default function VideoExportDialog({
   const [customFileName, setCustomFileName] = useState<string | null>(null);
   const fileName = customFileName ?? projectName ?? DEFAULT_FILE_NAME;
 
+  /* Mode toggle. `true` (default) = export video; `false` = audio-only.
+     Title, file extension, available form fields, cached-result panel
+     and the encoder called on submit all derive from this. */
+  const [exportAsVideo, setExportAsVideo] = useState(true);
+
+  /* ── video form state ──────────────────────────────────────────────── */
   /* Seeded from the current canvas size so the dialog opens on whichever
      preset preserves the project at 1:1 (or "Custom" for non-standard
      ratios). Re-synced on every reopen — see the effect below. */
@@ -104,15 +126,20 @@ export default function VideoExportDialog({
   );
   const [quality, setQuality] = useState<Quality>("high");
   /* Output container. MP4 is the fast WebAV-native path; MOV is a
-     cheap FFmpeg rewrap; WebM is a full re-encode (slow). The hint
-     below the select surfaces the WebM trade-off so the user isn't
-     surprised by the longer wait. */
+     cheap FFmpeg rewrap. The MOV path is a re-mux rather than a
+     re-encode, so picking it doesn't change encoding time. */
   const [format, setFormat] = useState<ExportFormat>("mp4");
 
-  /* The cached render (or null). When non-null the dialog opens straight
-     into the result panel; "Adjust settings" flips the view back to the
-     form without touching the cache. */
-  const cachedResult = useLastExport("video");
+  /* ── audio form state ──────────────────────────────────────────────── */
+  const [audioFormat, setAudioFormat] = useState<AudioExportFormat>("mp3");
+  const [audioBitrate, setAudioBitrate] = useState<number>(256);
+  const [channels, setChannels] = useState<1 | 2>(2);
+
+  /* Each mode caches independently — switching mode swaps which cached
+     render the "View last export" button surfaces. */
+  const cachedVideo = useLastExport("video");
+  const cachedAudio = useLastExport("audio");
+  const cachedResult = exportAsVideo ? cachedVideo : cachedAudio;
 
   /* Local view state — independent of the cache so "Adjust settings"
      can hide the result without discarding it. */
@@ -191,25 +218,38 @@ export default function VideoExportDialog({
     setProgress({ pct: 0, message: "Preparing…" });
     try {
       const state = useEditor.getState();
-      const blob = await exportProject(
-        state,
-        {
-          format,
-          width: preset.width ?? canvas.width,
-          height: preset.height ?? canvas.height,
-          fps: canvas.fps,
-          crf: QUALITY_TO_CRF[quality],
-        },
-        (p) => setProgress(p),
-      );
-      /* Writing to the cache automatically revokes the previous blob URL
-         (see last-export.ts), so we never accumulate stale blobs across
-         repeated exports. */
-      setLastExport("video", {
-        url: URL.createObjectURL(blob),
-        size: blob.size,
-        ext: format,
-      });
+      if (exportAsVideo) {
+        const blob = await exportProject(
+          state,
+          {
+            format,
+            width: preset.width ?? canvas.width,
+            height: preset.height ?? canvas.height,
+            fps: canvas.fps,
+            crf: QUALITY_TO_CRF[quality],
+          },
+          (p) => setProgress(p),
+        );
+        /* Writing to the cache automatically revokes the previous blob URL
+           (see last-export.ts), so we never accumulate stale blobs across
+           repeated exports. */
+        setLastExport("video", {
+          url: URL.createObjectURL(blob),
+          size: blob.size,
+          ext: format,
+        });
+      } else {
+        const blob = await exportAudioProject(
+          state,
+          { format: audioFormat, quality: audioBitrate, channels },
+          (p) => setProgress(p),
+        );
+        setLastExport("audio", {
+          url: URL.createObjectURL(blob),
+          size: blob.size,
+          ext: audioFormat,
+        });
+      }
       setView("result");
       setProgress(null);
     } catch (err) {
@@ -224,83 +264,186 @@ export default function VideoExportDialog({
      we hand it null so it falls back to the form / progress body. */
   const shellResult = view === "result" ? cachedResult : null;
 
+  /* WAV/FLAC are lossless — bitrate row is greyed out for them. */
+  const isAudioBitrateDisabled =
+    audioFormat === "wav" || audioFormat === "flac";
+
+  const currentExt = exportAsVideo ? format : audioFormat;
+  const title = exportAsVideo ? "Export Video" : "Export Audio";
+
   return (
     <ExportDialogShell
       open={open}
       onClose={handleClose}
-      title="Export Video"
+      title={title}
       progress={view === "progress" ? progress : null}
       result={shellResult}
-      renderPreview={(r) => (
-        <video
-          src={r.url}
-          controls
-          style={{ width: "100%", borderRadius: 8, background: "black" }}
-        />
-      )}
+      renderPreview={(r) =>
+        exportAsVideo ? (
+          <video
+            src={r.url}
+            controls
+            style={{ width: "100%", borderRadius: 8, background: "black" }}
+          />
+        ) : (
+          <audio
+            src={r.url}
+            controls
+            style={{ width: "100%", height: 32, outline: "none", borderRadius: 8 }}
+          />
+        )
+      }
       downloadFileName={fileName}
       onSubmit={handleExport}
       onReset={handleReset}
       onShowLastExport={cachedResult ? handleShowLastExport : undefined}
       error={error}
     >
+      <ModeCheckbox checked={exportAsVideo} onChange={setExportAsVideo} />
+
+      <FormDivider />
+
       <FormRow label="File Name">
         <FileNameInput
           value={fileName}
           onChange={setCustomFileName}
           inputRef={inputRef}
-          ext={format}
+          ext={currentExt}
         />
       </FormRow>
 
       <FormDivider />
 
-      <FormRow label="Format">
-        <SelectControl
-          value={format}
-          onChange={(v) => setFormat(v as ExportFormat)}
-          options={[
-            { value: "mp4", label: "MP4 — H.264 / AAC" },
-            { value: "mov", label: "MOV — QuickTime (H.264 / AAC)" },
-          ]}
-        />
-      </FormRow>
+      {exportAsVideo ? (
+        <>
+          <FormRow label="Format">
+            <SelectControl
+              value={format}
+              onChange={(v) => setFormat(v as ExportFormat)}
+              options={[
+                { value: "mp4", label: "MP4 — H.264 / AAC" },
+                { value: "mov", label: "MOV — QuickTime (H.264 / AAC)" },
+              ]}
+            />
+          </FormRow>
 
-      <FormRow label="Resolution">
-        <SegmentedControl<PresetId>
-          options={PRESETS.map((p) => ({ value: p.id, label: p.label }))}
-          value={presetId}
-          onChange={setPresetId}
-        />
-      </FormRow>
+          <FormRow label="Resolution">
+            <SegmentedControl<PresetId>
+              options={PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+              value={presetId}
+              onChange={setPresetId}
+            />
+          </FormRow>
 
-      {/* When the user picks "Custom" the actual dimensions live on the
-          canvas, not in the preset table — surface them inline so the
-          user knows what they're about to render at without bouncing
-          back to the PageBar's canvas pill. The label is left-padded
-          to align with the controls column above. */}
-      {presetId === "source" && (
-        <CustomResolutionHint
-          width={canvas.width}
-          height={canvas.height}
-        />
+          {/* When the user picks "Custom" the actual dimensions live on the
+              canvas, not in the preset table — surface them inline so the
+              user knows what they're about to render at without bouncing
+              back to the PageBar's canvas pill. */}
+          {presetId === "source" && (
+            <CustomResolutionHint
+              width={canvas.width}
+              height={canvas.height}
+            />
+          )}
+
+          <FormRow label="Quality">
+            <SelectControl
+              value={quality}
+              onChange={(v) => setQuality(v as Quality)}
+              options={[
+                { value: "high", label: "High" },
+                { value: "medium", label: "Medium" },
+                { value: "low", label: "Low" },
+              ]}
+            />
+          </FormRow>
+        </>
+      ) : (
+        <>
+          <FormRow label="Format">
+            <SegmentedControl<AudioExportFormat>
+              options={[
+                { value: "mp3", label: "MP3" },
+                { value: "wav", label: "WAV" },
+                { value: "flac", label: "FLAC" },
+                { value: "m4a", label: "M4A" },
+              ]}
+              value={audioFormat}
+              onChange={setAudioFormat}
+            />
+          </FormRow>
+
+          <FormRow label="Quality" disabled={isAudioBitrateDisabled}>
+            <SelectControl
+              value={audioBitrate}
+              onChange={(v) => setAudioBitrate(Number(v))}
+              disabled={isAudioBitrateDisabled}
+              options={[
+                { value: "128", label: "128 kbps" },
+                { value: "192", label: "192 kbps" },
+                { value: "256", label: "256 kbps" },
+                { value: "320", label: "320 kbps" },
+              ]}
+            />
+          </FormRow>
+
+          <FormRow label="Channels">
+            <SegmentedControl<"1" | "2">
+              options={[
+                { value: "1", label: "Mono" },
+                { value: "2", label: "Stereo" },
+              ]}
+              value={String(channels) as "1" | "2"}
+              onChange={(v) => setChannels(Number(v) as 1 | 2)}
+            />
+          </FormRow>
+        </>
       )}
-
-      <FormRow label="Quality">
-        <SelectControl
-          value={quality}
-          onChange={(v) => setQuality(v as Quality)}
-          options={[
-            { value: "high", label: "High" },
-            { value: "medium", label: "Medium" },
-            { value: "low", label: "Low" },
-          ]}
-        />
-      </FormRow>
     </ExportDialogShell>
   );
 }
 
+/**
+ * Top-of-form mode toggle. Unchecking flips the dialog from "Export
+ * Video" to "Export Audio" — see the doc-comment on the parent.
+ */
+function ModeCheckbox({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        cursor: "pointer",
+        userSelect: "none",
+        fontSize: 13,
+        color: "rgba(255,255,255,0.9)",
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{
+          width: 16,
+          height: 16,
+          accentColor: "#ffffff",
+          cursor: "pointer",
+        }}
+      />
+      Export as video
+      <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 12 }}>
+        — uncheck to export audio only
+      </span>
+    </label>
+  );
+}
 
 /**
  * Inline hint that mirrors the canvas dimensions back to the user when

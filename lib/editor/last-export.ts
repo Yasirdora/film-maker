@@ -18,9 +18,9 @@
  * reload anyway, so persisting across sessions would require uploading
  * to R2 — out of scope here).
  *
- * The state is a small `{ video, audio }` record because the editor has
- * exactly two export flows. Adding a kind (e.g. "image-sequence") is a
- * one-line extension.
+ * The state is a small `{ video, audio, photo }` record covering the
+ * editor's three export flows. Adding a kind (e.g. "image-sequence")
+ * is a one-line extension.
  *
  * Subscriber model
  * ----------------
@@ -40,7 +40,7 @@
 
 import { useSyncExternalStore } from "react";
 
-export type ExportKind = "video" | "audio";
+export type ExportKind = "video" | "audio" | "photo";
 
 export type LastExportSnapshot = {
     /** Object-URL pointing at the rendered Blob. Survives until the next
@@ -60,6 +60,7 @@ export type LastExportSnapshot = {
 const state: Record<ExportKind, LastExportSnapshot | null> = {
     video: null,
     audio: null,
+    photo: null,
 };
 
 const listeners = new Set<() => void>();
