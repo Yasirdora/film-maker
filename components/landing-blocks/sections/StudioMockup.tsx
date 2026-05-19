@@ -14,10 +14,10 @@ interface MockProject {
 }
 
 const PROJECTS: MockProject[] = [
-  { title: "Follow the light", detail: "Music · 01:35", tone: "magenta", thumb: "/assets/mockup/Follow the light.jpeg" },
-  { title: "Mercedes Benz", detail: "Commercial · 00:30", tone: "amber", thumb: "/assets/mockup/Mercedes Benz.jpeg" },
-  { title: "The detour", detail: "Narrative · 01:15", tone: "indigo", thumb: "/assets/mockup/The detour.jpeg" },
-  { title: "Digging to Survive", detail: "Doc · 08:14", tone: "teal", thumb: "/assets/mockup/Digging to Survive.jpeg" },
+  { title: "Follow the light", detail: "Music · 01:35", tone: "magenta", thumb: "/assets/mockup/Follow the light.webp" },
+  { title: "Mercedes Benz", detail: "Commercial · 00:30", tone: "amber", thumb: "/assets/mockup/Mercedes Benz.webp" },
+  { title: "The detour", detail: "Narrative · 01:15", tone: "indigo", thumb: "/assets/mockup/The detour.webp" },
+  { title: "Digging to Survive", detail: "Doc · 08:14", tone: "teal", thumb: "/assets/mockup/Digging to Survive.webp" },
 ];
 
 export default function StudioMockup({ mode }: { mode: Mode }) {

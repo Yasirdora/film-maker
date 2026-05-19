@@ -1,0 +1,6 @@
+# Cloudflare Workers Assets — header rules for /public/*.
+# Read by Workers Assets at deploy time (same format as Cloudflare Pages).
+# Files outside /assets fall through to platform defaults.
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
