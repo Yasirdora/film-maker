@@ -17,7 +17,6 @@
  */
 
 import type { ReactNode } from "react";
-import clsx from "clsx";
 
 import { ClapperboardLoader } from "./clapperboard-loader";
 import { useLoaderPhase, useRevealOnScroll } from "./hooks";
@@ -32,22 +31,19 @@ export function LandingPageShell({ children }: LandingPageShellProps) {
     const loader = useLoaderPhase();
     const reveal = useRevealOnScroll(loader.mainInteractive);
 
-    // Loader is rendered unconditionally so server and client agree at
-    // hydration time. The `loaderOverlaySkipped` CSS class hides it
-    // instantly (no transition) for repeat / reduced-motion visitors,
-    // so the cost of the always-mounted SVG is just one inert overlay
-    // node — not a visible flash.
+    // The loader is a fullscreen overlay (opaque `--lp-bg`, z-index 10000)
+    // that visually covers the page until its fade-out begins, so `<main>`
+    // is allowed to paint immediately underneath it. Keeping the hero in
+    // the render tree from first paint is what lets the browser fire LCP
+    // at ~1.2 s instead of waiting on the loader's 3 s state machine —
+    // users still see the same pulse → clap → fade-out reveal because the
+    // overlay sits above. `inert` keeps focus and pointer events trapped
+    // outside the page until the loader hands off.
     return (
         <>
             <ClapperboardLoader phase={loader.phase} />
 
-            <main
-                className={clsx(
-                    styles.page,
-                    loader.mainInteractive ? styles.pageReady : styles.pageHidden,
-                )}
-                inert={!loader.mainInteractive}
-            >
+            <main className={styles.page} inert={!loader.mainInteractive}>
                 <RevealProvider value={reveal}>{children}</RevealProvider>
             </main>
         </>

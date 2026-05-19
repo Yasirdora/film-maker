@@ -2,8 +2,7 @@
    Landing-hero — page-level shell.
    ----------------------------------------------------------------------------
    This module only owns rules that LandingPage itself renders:
-     • `.page` — the main element wrapping the whole hero tree, including
-       the loader-gated visibility (.pageHidden / .pageReady).
+     • `.page` — the main element wrapping the whole hero tree.
      • `.hero` — the rounded-corner hero shell with its bottom row.
 
    Per-component styles live next to each component (announcement-banner,
@@ -21,22 +20,6 @@
     overflow-x: clip;
     min-height: 100svh;
     font-family: var(--font-google-sans), system-ui, sans-serif;
-}
-
-/* Content is kept fully hidden while the clapperboard loader is
-   active, so the hero video and copy never peek through the fade.
-   `visibility: hidden` preserves layout to avoid a shift when the
-   content swaps in. */
-.pageHidden {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
-.pageReady {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.4s var(--lp-ease, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 /* ── Hero shell ────────────────────────────────────────────────────────── */
