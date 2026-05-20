@@ -387,6 +387,23 @@
     }
 }
 
+/* The app is always dark — data-theme="dark" is hardcoded on <html>.
+   Matching on the attribute ensures dark tokens apply even when the
+   user's system theme is light. The media query is kept as a fallback. */
+[data-theme="dark"] {
+    --background: #0a0a0a;
+    --foreground: #fafafa;
+    --muted: #a3a3a3;
+    --border: #262626;
+    --destructive: #f87171;
+    --success: #4ade80;
+    --focus-ring: rgba(255, 255, 255, 0.25);
+
+    --card-bg: rgba(18, 18, 20, 0.65);
+    --card-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 24px 48px rgba(0, 0, 0, 0.5);
+}
+
 @media (prefers-color-scheme: dark) {
     :root {
         --background: #0a0a0a;
