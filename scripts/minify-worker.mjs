@@ -28,14 +28,25 @@ const TARGETS = [
 // Pattern match: OpenNext emits this exact case-branch. Replacing the
 // `import(...)` expression with a throw keeps the switch's control flow
 // intact (TDZ-safe, no shape change) while removing the dead reference.
-const VERCEL_OG_PATCH = {
-    // Matches the OpenNext `externalImport` case-branch regardless of
-    // the minified variable name (raw, qe, etc.) or whitespace.
-    pattern:
-        /case"next\/dist\/compiled\/@vercel\/og\/index\.node\.js":\s*[A-Za-z_$][\w$]*\s*=\s*await\s+import\("next\/dist\/compiled\/@vercel\/og\/index\.edge\.js"\)\s*;?/g,
-    replacement:
-        'case"next/dist/compiled/@vercel/og/index.node.js":throw new Error("@vercel/og is not used in this app");',
-};
+// OpenNext's externalImport helper has changed its pattern across versions.
+// We match both the switch-case form (older) and the ternary form (newer).
+const VERCEL_OG_PATCHES = [
+    {
+        // Older OpenNext: switch-case form
+        pattern:
+            /case"next\/dist\/compiled\/@vercel\/og\/index\.node\.js":\s*[A-Za-z_$][\w$]*\s*=\s*await\s+import\("next\/dist\/compiled\/@vercel\/og\/index\.edge\.js"\)\s*;?/g,
+        replacement:
+            'case"next/dist/compiled/@vercel/og/index.node.js":throw new Error("@vercel/og is not used in this app");',
+    },
+    {
+        // Newer OpenNext: ternary form — matches regardless of variable names.
+        // e.g.: lt==="next/dist/.../index.node.js"?Ce=await import("next/dist/.../index.edge.js"):Ce=await import(lt)
+        pattern:
+            /[A-Za-z_$][\w$]*==="next\/dist\/compiled\/@vercel\/og\/index\.node\.js"\?[A-Za-z_$][\w$]*=await import\("next\/dist\/compiled\/@vercel\/og\/index\.edge\.js"\):/g,
+        replacement:
+            '(void 0)===("next/dist/compiled/@vercel/og/index.node.js")?((()=>{throw new Error("@vercel/og is not used in this app")})(),undefined):',
+    },
+];
 
 function human(bytes) {
     return (bytes / 1024 / 1024).toFixed(2) + " MiB";
@@ -53,12 +64,14 @@ for (const relPath of TARGETS) {
 
     let src = readFileSync(path, "utf8");
 
-    const matches = src.match(VERCEL_OG_PATCH.pattern);
-    if (matches) {
-        src = src.replace(VERCEL_OG_PATCH.pattern, VERCEL_OG_PATCH.replacement);
-        console.log(
-            `[patch]  ${relPath}: stripped ${matches.length} dead @vercel/og import(s)`,
-        );
+    for (const { pattern, replacement } of VERCEL_OG_PATCHES) {
+        const matches = src.match(pattern);
+        if (matches) {
+            src = src.replace(pattern, replacement);
+            console.log(
+                `[patch]  ${relPath}: stripped ${matches.length} dead @vercel/og import(s)`,
+            );
+        }
     }
 
     const result = await build({
