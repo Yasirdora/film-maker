@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import VideoEditorMount from "./VideoEditorMount";
+import VideoEditorClient from "./VideoEditorClient";
 
 export const metadata: Metadata = {
   title: "Video Editor",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function VideoEditorPage() {
-  return <VideoEditorMount />;
+  return <VideoEditorClient />;
 }

@@ -11,8 +11,7 @@
  */
 
 import type { Metadata } from "next";
-
-import PhotoEditorMount from "./PhotoEditorMount";
+import PhotoEditorClient from "./PhotoEditorClient";
 
 export const metadata: Metadata = {
     title: "Photo Editor",
@@ -21,5 +20,6 @@ export const metadata: Metadata = {
 };
 
 export default function PhotoEditorPage() {
-    return <PhotoEditorMount />;
+    return <PhotoEditorClient />;
 }
+

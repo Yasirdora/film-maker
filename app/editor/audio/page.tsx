@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AudioEditorMount from "./AudioEditorMount";
+import AudioEditorClient from "./AudioEditorClient";
 
 export const metadata: Metadata = {
     title: "Audio Editor",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AudioEditorPage() {
-    return <AudioEditorMount />;
+    return <AudioEditorClient />;
 }

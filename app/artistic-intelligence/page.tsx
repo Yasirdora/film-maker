@@ -15,7 +15,7 @@ import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { AppNav } from "@/components/app-nav";
 import { EditorHeaderAuthSlot } from "@/components/editor/EditorHeaderAuthSlot";
-import { ArtisticIntelligenceWorkspace } from "./workspace";
+import ArtisticIntelligenceClient from "./ArtisticIntelligenceClient";
 
 export const metadata: Metadata = {
     title: "Artistic Intelligence",
@@ -30,7 +30,7 @@ export default async function ArtisticIntelligencePage() {
         return (
             <>
                 <AppNav hideArtisticIntelligenceIcon hideTopBar />
-                <ArtisticIntelligenceWorkspace
+                <ArtisticIntelligenceClient
                     viewer={{ type: "anonymous" }}
                     authSlot={<EditorHeaderAuthSlot />}
                 />
@@ -45,7 +45,7 @@ export default async function ArtisticIntelligencePage() {
     return (
         <>
             <AppNav hideArtisticIntelligenceIcon hideTopBar />
-            <ArtisticIntelligenceWorkspace
+            <ArtisticIntelligenceClient
                 viewer={{
                     type: "authenticated",
                     planId: balance.plan,
