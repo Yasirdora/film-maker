@@ -31,6 +31,7 @@ import {
 let bindArgs: unknown[][] = [];
 let firstReturnValue: unknown = null;
 let batchCalled = false;
+let batchShouldThrowUnique = false;
 
 function createMockStatement() {
     return {
@@ -49,7 +50,10 @@ const mockDb = {
     prepare: vi.fn(() => createMockStatement()),
     batch: vi.fn(async () => {
         batchCalled = true;
-        return [];
+        if (batchShouldThrowUnique) {
+            throw new Error("UNIQUE constraint failed: credit_transaction.stripe_session_id");
+        }
+        return [{ meta: { changes: 1 } }, { meta: { changes: 1 } }];
     }),
 };
 
@@ -61,6 +65,7 @@ beforeEach(() => {
     bindArgs = [];
     firstReturnValue = null;
     batchCalled = false;
+    batchShouldThrowUnique = false;
     vi.clearAllMocks();
 });
 
@@ -473,8 +478,7 @@ describe("grantSubscriptionCredits", () => {
     });
 
     it("is idempotent — skips on duplicate key", async () => {
-        // Mock: existing transaction found (already processed).
-        firstReturnValue = { id: 1 };
+        batchShouldThrowUnique = true;
 
         await grantSubscriptionCredits({
             userId: "u1",
@@ -483,8 +487,8 @@ describe("grantSubscriptionCredits", () => {
             description: "Indie plan — monthly credits",
         });
 
-        // batch should NOT be called — idempotency check short-circuited.
-        expect(batchCalled).toBe(false);
+        // batch was called but the UNIQUE error was swallowed — no exception.
+        expect(batchCalled).toBe(true);
     });
 });
 
@@ -529,7 +533,7 @@ describe("grantPurchasedCredits", () => {
     });
 
     it("is idempotent — skips on duplicate key", async () => {
-        firstReturnValue = { id: 1 }; // Already processed.
+        batchShouldThrowUnique = true;
 
         await grantPurchasedCredits({
             userId: "u1",
@@ -538,7 +542,7 @@ describe("grantPurchasedCredits", () => {
             description: "Purchased 50 credits ($7)",
         });
 
-        expect(batchCalled).toBe(false);
+        expect(batchCalled).toBe(true);
     });
 });
 
@@ -559,13 +563,13 @@ describe("downgradeToSolo", () => {
     });
 
     it("is idempotent — skips on duplicate key", async () => {
-        firstReturnValue = { id: 1 }; // Already processed.
+        batchShouldThrowUnique = true;
 
         await downgradeToSolo({
             userId: "u1",
             idempotencyKey: "downgrade_sub_123",
         });
 
-        expect(batchCalled).toBe(false);
+        expect(batchCalled).toBe(true);
     });
 });
