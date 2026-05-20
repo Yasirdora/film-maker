@@ -1,5 +1,5 @@
 /**
- * /api/auteur/conversations
+ * /api/artistic-intelligence/conversations
  *
  *   GET   — list the signed-in user's conversations (sidebar feed).
  *   POST  — create a new conversation. Supports both signed-in and
@@ -21,12 +21,12 @@ import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
 import { getBalance } from "@/lib/credits";
 import {
-    AUTEUR_MODES,
+    ARTISTIC_INTELLIGENCE_MODES,
     createConversation,
     isModeAllowedForPlan,
     listUserConversations,
     MAX_CONVERSATION_TITLE_LENGTH,
-} from "@/lib/auteur";
+} from "@/lib/artistic-intelligence";
 import { ensureAnonId } from "@/lib/anon-cookie";
 import { getProject } from "@/lib/projects";
 
@@ -50,7 +50,7 @@ export async function GET(): Promise<Response> {
 // ─── POST ───────────────────────────────────────────────────────────────────
 
 const CreateBody = z.object({
-    mode: z.enum(AUTEUR_MODES).default("chat"),
+    mode: z.enum(ARTISTIC_INTELLIGENCE_MODES).default("chat"),
     title: z.string().trim().max(MAX_CONVERSATION_TITLE_LENGTH).optional(),
     projectUid: z.string().min(1).optional(),
 });

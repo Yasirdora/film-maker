@@ -1,25 +1,25 @@
 /**
- * AuteurIcon — shared brand mark for the Auteur (AI assistant) destination.
+ * ArtisticIntelligenceIcon — shared brand mark for the Artistic Intelligence (AI assistant) destination.
  *
  * Uses `currentColor` so callers control color via their own text-color
- * utilities; the `.auteur-eye-open` / `.auteur-eye-closed` class hooks drive
+ * utilities; the `.artistic-intelligence-eye-open` / `.artistic-intelligence-eye-closed` class hooks drive
  * the blink animation defined in globals.css when an ancestor `.group` is
  * hovered or focus-visible.
  */
 
-interface AuteurIconProps {
+interface ArtisticIntelligenceIconProps {
     className?: string;
     size?: number;
     strokeWidth?: number;
     eyeStrokeWidth?: number;
 }
 
-export function AuteurIcon({
+export function ArtisticIntelligenceIcon({
     className,
     size = 24,
     strokeWidth = 1.5,
     eyeStrokeWidth = 2.25,
-}: AuteurIconProps) {
+}: ArtisticIntelligenceIconProps) {
     return (
         <svg
             className={className}
@@ -40,25 +40,25 @@ export function AuteurIcon({
                 d="M8 9V13"
                 strokeWidth={eyeStrokeWidth}
                 strokeLinecap="round"
-                className="auteur-eye-open"
+                className="artistic-intelligence-eye-open"
             />
             <path
                 d="M14 9V13"
                 strokeWidth={eyeStrokeWidth}
                 strokeLinecap="round"
-                className="auteur-eye-open"
+                className="artistic-intelligence-eye-open"
             />
             <path
                 d="M8 10V11"
                 strokeWidth={eyeStrokeWidth}
                 strokeLinecap="round"
-                className="auteur-eye-closed"
+                className="artistic-intelligence-eye-closed"
             />
             <path
                 d="M14 10V11"
                 strokeWidth={eyeStrokeWidth}
                 strokeLinecap="round"
-                className="auteur-eye-closed"
+                className="artistic-intelligence-eye-closed"
             />
         </svg>
     );

@@ -4,9 +4,9 @@ import * as React from "react";
 import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { MessageStatus } from "@/lib/auteur";
+import type { MessageStatus } from "@/lib/artistic-intelligence";
 import { downloadPdf } from "@/lib/pdf";
-import styles from "./auteur.module.css";
+import styles from "./artistic-intelligence.module.css";
 
 export interface MessageBubbleProps {
     id: string;
@@ -60,7 +60,7 @@ export function MessageBubble({
                 )}
 
                 {isPending ? (
-                    <span className={styles.pendingCursor} aria-label="Auteur is thinking" />
+                    <span className={styles.pendingCursor} aria-label="Artistic Intelligence is thinking" />
                 ) : isUser ? (
                     <span className={styles.userContent}>{content}</span>
                 ) : (

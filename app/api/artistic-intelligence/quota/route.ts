@@ -1,5 +1,5 @@
 /**
- * GET /api/auteur/quota
+ * GET /api/artistic-intelligence/quota
  *
  * Returns the current anonymous free-reply allowance for the caller.
  * Signed-in users get `{ signedIn: true }` and should look at their
@@ -14,7 +14,7 @@ import { NextResponse } from "next/server";
 
 import { getSession } from "@/lib/auth-server";
 import { ensureAnonId } from "@/lib/anon-cookie";
-import { getAnonQuota } from "@/lib/auteur";
+import { getAnonQuota } from "@/lib/artistic-intelligence";
 
 export async function GET(request: Request): Promise<Response> {
     const session = await getSession();

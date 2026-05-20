@@ -37,7 +37,7 @@ export interface GenerationRow {
     sampleCount: number;
     status: "pending" | "done" | "failed";
     outputR2Keys: string[] | null;
-    /** Preview-quality URLs (1024px, used in auteur canvas + detail views). */
+    /** Preview-quality URLs (1024px, used in artistic-intelligence canvas + detail views). */
     outputUrls: string[] | null;
     /** Thumbnail URLs (400px, used in gallery grids + project cards). */
     thumbnailUrls: string[] | null;

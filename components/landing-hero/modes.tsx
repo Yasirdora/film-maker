@@ -2,7 +2,7 @@
  * Prompt-bar modes surfaced in the hero. Each mode advertises a
  * different destination for the submitted prompt:
  *
- *   • auteur — routes to /auteur (Film-maker's chat-style assistant)
+ *   • artistic-intelligence — routes to /artistic-intelligence (Film-maker's chat-style assistant)
  *   • help   — routes to a future docs/support surface
  *
  * The icons are inlined as SVG to avoid adding another icon import per
@@ -38,10 +38,10 @@ function buildQuery(prompt: string): string {
 
 export const HERO_MODES = [
     {
-        id: "auteur",
-        label: "Auteur AI",
+        id: "artistic-intelligence",
+        label: "Artistic Intelligence",
         description: "Visual & artistic intelligence",
-        href: (prompt) => `/auteur${buildQuery(prompt)}`,
+        href: (prompt) => `/artistic-intelligence${buildQuery(prompt)}`,
         icon: (
             <svg {...iconProps} aria-hidden="true">
                 <line x1="4" y1="21" x2="4" y2="14" />

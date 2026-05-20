@@ -37,14 +37,14 @@ export type AuditAction =
     | "plan.downgrade"
     | "user.login"
     | "user.logout"
-    | "auteur.reply";
+    | "artistic-intelligence.reply";
 
 export type AuditTargetType =
     | "project"
     | "generation"
     | "user"
     | "subscription"
-    | "auteur_conversation";
+    | "artistic-intelligence_conversation";
 
 // ─── Log function ──────────────────────────────────────────────────────────
 

@@ -2,7 +2,7 @@
 
 /**
  * AppBrandMark — compact clapperboard used across the app interior
- * (studio, project workspace, auteur, etc.).
+ * (studio, project workspace, artistic-intelligence, etc.).
  */
 
 import Link from "next/link";
@@ -15,7 +15,7 @@ interface AppBrandMarkProps {
     href?: string;
     /** Visual size. `default` pairs with the big welcome heading on
      *  /studio; `md` sits between default and sm for surfaces like
-     *  the auteur sidebar header that want a slightly bolder brand
+     *  the artistic-intelligence sidebar header that want a slightly bolder brand
      *  presence; `sm` is tuned for dense headers like the project
      *  workspace; `xs` matches the global top-nav clapperboard
      *  (32 / 36 px) so brand marks across surfaces stay consistent. */

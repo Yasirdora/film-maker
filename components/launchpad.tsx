@@ -5,7 +5,7 @@
  *
  * Triggered by the "Get Started" nav button or ⌘K / Ctrl+K. Built on
  * Radix Dialog primitives for focus trapping + a11y. When no search
- * result matches, we offer to hand the query to Auteur instead of a
+ * result matches, we offer to hand the query to Artistic Intelligence instead of a
  * dead-end empty state.
  */
 
@@ -13,13 +13,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
-import { AuteurIcon } from "./icons/auteur-icon";
+import { ArtisticIntelligenceIcon } from "./icons/artistic-intelligence-icon";
 
 // ─── Destination registry ───────────────────────────────────────────────────
 //
 // Items are grouped into sections so the panel scans top-down at a glance
 // instead of reading as a flat list. The first section has no `title` and
-// hosts Auteur alone — it's the brand's primary AI affordance and earns
+// hosts Artistic Intelligence alone — it's the brand's primary AI affordance and earns
 // its own breathing room above the labelled groups.
 //
 // Search collapses the structure: typing anything flattens the visible
@@ -62,12 +62,12 @@ const LAUNCHPAD_SECTIONS: LaunchpadSection[] = [
         id: "hero",
         items: [
             {
-                id: "auteur",
-                title: "Auteur",
+                id: "artistic-intelligence",
+                title: "Artistic Intelligence",
                 subtitle: "AI creative assistant",
-                href: "/auteur",
+                href: "/artistic-intelligence",
                 actionLabel: "Ask",
-                icon: <AuteurIcon size={20} strokeWidth={1.75} />,
+                icon: <ArtisticIntelligenceIcon size={20} strokeWidth={1.75} />,
             },
         ],
     },
@@ -303,15 +303,15 @@ function LaunchpadRowContent({
     );
 }
 
-function buildAuteurQueryHref(query: string): string {
-    return `/auteur?q=${encodeURIComponent(query)}`;
+function buildArtisticIntelligenceQueryHref(query: string): string {
+    return `/artistic-intelligence?q=${encodeURIComponent(query)}`;
 }
 
 // ─── Result list ────────────────────────────────────────────────────────────
 //
 // Pure presentation, takes its query from a parent. Lives as its own
 // component so the dialog body can compose a search input + this list
-// without duplicating the filtering / "ask Auteur" fallback logic.
+// without duplicating the filtering / "ask Artistic Intelligence" fallback logic.
 
 interface LaunchpadListProps {
     search: string;
@@ -345,9 +345,9 @@ function LaunchpadList({ search, onNavigate }: LaunchpadListProps) {
         );
     });
 
-    const auteurItem = LAUNCHPAD_ITEMS.find((item) => item.id === "auteur");
-    const showAskAuteur =
-        filtered.length === 0 && isSearching && auteurItem !== undefined;
+    const artisticIntelligenceItem = LAUNCHPAD_ITEMS.find((item) => item.id === "artistic-intelligence");
+    const showAskArtisticIntelligence =
+        filtered.length === 0 && isSearching && artisticIntelligenceItem !== undefined;
 
     return (
         // Grid overlay: invisible baseline sets a stable height from the
@@ -388,19 +388,19 @@ function LaunchpadList({ search, onNavigate }: LaunchpadListProps) {
                                 <ItemButton item={item} onNavigate={onNavigate} />
                             </li>
                         ))
-                    ) : showAskAuteur && auteurItem ? (
+                    ) : showAskArtisticIntelligence && artisticIntelligenceItem ? (
                         <li>
                             <button
                                 type="button"
                                 onClick={() =>
-                                    onNavigate(buildAuteurQueryHref(trimmedQuery))
+                                    onNavigate(buildArtisticIntelligenceQueryHref(trimmedQuery))
                                 }
                                 className={ROW_INTERACTIVE_CLASSES}
                             >
                                 <LaunchpadRowContent
-                                    item={auteurItem}
+                                    item={artisticIntelligenceItem}
                                     titleOverride={`“${trimmedQuery}”`}
-                                    actionLabelOverride="Ask Auteur AI"
+                                    actionLabelOverride="Ask Artistic Intelligence AI"
                                     actionLabelAlwaysVisible
                                 />
                             </button>

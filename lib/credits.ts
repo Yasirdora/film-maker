@@ -552,7 +552,7 @@ export async function deductCredits(params: {
 }
 
 /**
- * Deducts credits for an Auteur chat reply. Simpler than
+ * Deducts credits for an Artistic Intelligence chat reply. Simpler than
  * {@link deductCredits}:
  *   • Same two-pool math (subscription first, purchased second).
  *   • No daily/monthly counter bump — chat is not capped separately.
@@ -648,7 +648,7 @@ export async function deductChatCredits(params: {
 }
 
 /**
- * Refunds an Auteur chat deduction. Mirror of {@link deductChatCredits}
+ * Refunds an Artistic Intelligence chat deduction. Mirror of {@link deductChatCredits}
  * and used when a stream fails before producing any text. No counter
  * reversal because {@link deductChatCredits} never touched one.
  */
@@ -675,7 +675,7 @@ export async function refundChatCredits(params: {
             .prepare(
                 `INSERT INTO credit_transaction
                  (user_id, amount, type, description, pool, generation_id, created_at)
-                 VALUES (?, ?, 'refund', 'Auteur reply failed — credits refunded', NULL, NULL, ?)`,
+                 VALUES (?, ?, 'refund', 'Artistic Intelligence reply failed — credits refunded', NULL, NULL, ?)`,
             )
             .bind(userId, cost, now),
     ]);

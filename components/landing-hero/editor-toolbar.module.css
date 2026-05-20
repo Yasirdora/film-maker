@@ -1,7 +1,7 @@
 /* ============================================================================
    Editor toolbar — right-edge product rail on the hero.
    ----------------------------------------------------------------------------
-   Each slot is a real product destination (Auteur, Studio, Video / Audio
+   Each slot is a real product destination (Artistic Intelligence, Studio, Video / Audio
    editors, Media Converter) or a coming-soon marker (Apps, Academy).
    Hidden on narrow viewports because the rail stops adding signal once
    the hero stacks.

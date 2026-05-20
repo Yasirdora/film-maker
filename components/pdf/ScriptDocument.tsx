@@ -223,7 +223,7 @@ export function ScriptDocument({ title, mode, messages }: ScriptDocumentProps) {
                 <View style={s.header} fixed={false}>
                     <Text style={s.title}>{title}</Text>
                     <Text style={s.subtitle}>
-                        Auteur {modeLabel} &mdash;{" "}
+                        Artistic Intelligence {modeLabel} &mdash;{" "}
                         {new Date().toLocaleDateString("en-US", {
                             year: "numeric",
                             month: "long",
@@ -245,7 +245,7 @@ export function ScriptDocument({ title, mode, messages }: ScriptDocumentProps) {
                                 }
                                 minPresenceAhead={40}
                             >
-                                {msg.role === "user" ? "YOU" : "AUTEUR"}
+                                {msg.role === "user" ? "YOU" : "ARTISTIC INTELLIGENCE"}
                             </Text>
                             {table ? (
                                 <View style={s.table}>

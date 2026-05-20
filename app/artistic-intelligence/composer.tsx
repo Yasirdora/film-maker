@@ -16,8 +16,8 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { MAX_IMAGE_ATTACHMENTS_PER_MESSAGE } from "@/lib/auteur";
-import styles from "./auteur.module.css";
+import { MAX_IMAGE_ATTACHMENTS_PER_MESSAGE } from "@/lib/artistic-intelligence";
+import styles from "./artistic-intelligence.module.css";
 
 export interface Attachment {
     id: string;
@@ -29,7 +29,7 @@ export interface Attachment {
     filename: string;
 }
 
-interface AuteurComposerProps {
+interface ArtisticIntelligenceComposerProps {
     disabled?: boolean;
     isStreaming: boolean;
     placeholder: string;
@@ -43,7 +43,7 @@ interface AuteurComposerProps {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp"];
 
-export function AuteurComposer({
+export function ArtisticIntelligenceComposer({
     disabled,
     isStreaming,
     placeholder,
@@ -51,7 +51,7 @@ export function AuteurComposer({
     onStop,
     hint,
     hintAction,
-}: AuteurComposerProps) {
+}: ArtisticIntelligenceComposerProps) {
     const [value, setValue] = React.useState("");
     const [attachments, setAttachments] = React.useState<Attachment[]>([]);
     const [error, setError] = React.useState<string | null>(null);

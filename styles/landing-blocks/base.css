@@ -21,19 +21,19 @@
 /* Lock tile asset images/videos to fill their column's height — when
  * the text column gets tall (long title), the asset stretches via
  * object-fit: cover instead of leaving empty whitespace beside the text.
- * Covers the plain image case (BenefitsSection) and the auteur-floating
+ * Covers the plain image case (BenefitsSection) and the artistic-intelligence-floating
  * stage case (AutomationSection's writer video). */
 .tile5050-asset {
   height: 100%;
 }
 .tile5050-asset img,
 .tile5050-asset picture,
-.tile5050-asset .auteur-float-stage {
+.tile5050-asset .artistic-intelligence-float-stage {
   height: 100%;
   width: 100%;
   object-fit: cover;
 }
-.tile5050-asset .auteur-float-stage {
+.tile5050-asset .artistic-intelligence-float-stage {
   aspect-ratio: auto;
 }
 

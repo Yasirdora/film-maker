@@ -2,7 +2,7 @@
 
 /**
  * Prompt bar used as the hero's primary call-to-action and reused inside
- * the auteur landing tile.
+ * the artistic-intelligence landing tile.
  *
  * Structure note — the visible "textfield" IS the <input> element. All
  * the visual styling (border, background, shadow, height) lives on the

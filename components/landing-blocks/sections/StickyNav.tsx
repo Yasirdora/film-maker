@@ -29,9 +29,9 @@ const NAV_LINKS: NavLink[] = [
   { href: "#nextgen-ai", label: "Studio", ariaLabel: "Go to section: Studio" },
   { href: "#generation", label: "Generation", ariaLabel: "Go to section: Generation" },
   {
-    href: "#auteur",
-    label: "Auteur",
-    ariaLabel: "Go to section: Auteur, the AI agent for filmmakers",
+    href: "#artistic-intelligence",
+    label: "Artistic Intelligence",
+    ariaLabel: "Go to section: Artistic Intelligence, the AI agent for filmmakers",
     badge: true,
   },
 ];

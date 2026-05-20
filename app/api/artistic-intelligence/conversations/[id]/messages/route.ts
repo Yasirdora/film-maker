@@ -1,5 +1,5 @@
 /**
- * /api/auteur/conversations/[id]/messages
+ * /api/artistic-intelligence/conversations/[id]/messages
  *
  *   GET  — list all messages in a conversation. Anonymous callers must
  *          supply `?anonToken=` proving ownership; signed-in users are
@@ -56,7 +56,7 @@ import {
     touchConversation,
     updateAssistantMessage,
     updateConversationTitleInternal,
-} from "@/lib/auteur";
+} from "@/lib/artistic-intelligence";
 import { ensureAnonId } from "@/lib/anon-cookie";
 import {
     ChatStreamError,
@@ -212,7 +212,7 @@ export async function POST(
         const quota = await getAnonQuota(anonId);
         if (quota.remaining <= 0) {
             return jsonError(
-                `You've used your ${quota.limit} free Auteur replies. Sign in to continue.`,
+                `You've used your ${quota.limit} free Artistic Intelligence replies. Sign in to continue.`,
                 429,
                 { code: "anon_quota_exceeded", quota },
             );
@@ -228,7 +228,7 @@ export async function POST(
                 images: input.images,
             });
         } catch (err) {
-            console.error("[auteur/messages] image upload failed:", err);
+            console.error("[artistic-intelligence/messages] image upload failed:", err);
             return jsonError(
                 "Couldn't save your image attachments. Please try again.",
                 500,
@@ -323,7 +323,7 @@ export async function POST(
                     deduction = await deductChatCredits({
                         userId,
                         cost: chatCreditCost,
-                        description: `Auteur chat (${conversation.mode})`,
+                        description: `Artistic Intelligence chat (${conversation.mode})`,
                     });
                 } catch (err) {
                     await updateAssistantMessage({
@@ -445,7 +445,7 @@ export async function POST(
                         writeEvent({ type: "title", title: newTitle });
                     } catch (err) {
                         console.warn(
-                            "[auteur/messages] title generation failed:",
+                            "[artistic-intelligence/messages] title generation failed:",
                             err instanceof Error ? err.message : err,
                         );
                     }
@@ -475,8 +475,8 @@ export async function POST(
                 try {
                     await logAudit({
                         userId: userId ?? null,
-                        action: "auteur.reply",
-                        targetType: "auteur_conversation",
+                        action: "artistic-intelligence.reply",
+                        targetType: "artistic-intelligence_conversation",
                         targetId: conversationId,
                         metadata: {
                             mode: conversation.mode,
@@ -491,7 +491,7 @@ export async function POST(
                 }
             } catch (err) {
                 console.error(
-                    "[auteur/messages] stream error:",
+                    "[artistic-intelligence/messages] stream error:",
                     err instanceof Error ? err.message : err,
                 );
                 const message =
@@ -559,7 +559,7 @@ async function uploadImageAttachments(params: {
     for (let i = 0; i < params.images.length; i++) {
         const img = params.images[i];
         const extension = mimeToExtension(img.mimeType);
-        const key = `film-maker/v1/auteur/${params.conversationId}/${Date.now()}-${i}.${extension}`;
+        const key = `film-maker/v1/artistic-intelligence/${params.conversationId}/${Date.now()}-${i}.${extension}`;
         const binary = base64ToBytes(img.data);
         await r2.put(key, binary, {
             httpMetadata: { contentType: img.mimeType },

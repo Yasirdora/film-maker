@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Auteur Chat — CSS Module
+   Artistic Intelligence Chat — CSS Module
    ==========================================================================
    Monochromatic chat interface integrated with the global Film-maker
    design system. All accent colours derive from `var(--foreground)` so
@@ -15,45 +15,45 @@
 /* ── Light theme (default) ── */
 
 .page {
-    --auteur-bg: transparent;
-    --auteur-text: var(--foreground);
-    --auteur-text-muted: var(--muted);
-    --auteur-accent: var(--foreground);
-    --auteur-accent-hover: var(--foreground);
-    --auteur-ease: var(--ease-snappy, cubic-bezier(0.16, 1, 0.3, 1));
+    --artistic-intelligence-bg: transparent;
+    --artistic-intelligence-text: var(--foreground);
+    --artistic-intelligence-text-muted: var(--muted);
+    --artistic-intelligence-accent: var(--foreground);
+    --artistic-intelligence-accent-hover: var(--foreground);
+    --artistic-intelligence-ease: var(--ease-snappy, cubic-bezier(0.16, 1, 0.3, 1));
 
-    --auteur-user-bg: rgba(0, 0, 0, 0.04);
-    --auteur-user-text: var(--foreground);
-    --auteur-assistant-text: var(--foreground);
+    --artistic-intelligence-user-bg: rgba(0, 0, 0, 0.04);
+    --artistic-intelligence-user-text: var(--foreground);
+    --artistic-intelligence-assistant-text: var(--foreground);
 
-    --auteur-input-bg: var(--background);
-    --auteur-input-border: var(--border);
-    --auteur-input-text: var(--foreground);
-    --auteur-placeholder: var(--muted);
+    --artistic-intelligence-input-bg: var(--background);
+    --artistic-intelligence-input-border: var(--border);
+    --artistic-intelligence-input-text: var(--foreground);
+    --artistic-intelligence-placeholder: var(--muted);
 
-    --auteur-sidebar-bg: var(--card-bg, rgba(246, 246, 246, 0.8));
-    --auteur-sidebar-border: var(--border);
-    --auteur-sidebar-hover: rgba(0, 0, 0, 0.05);
-    --auteur-sidebar-active: color-mix(in srgb, var(--foreground) 6%, transparent);
+    --artistic-intelligence-sidebar-bg: var(--card-bg, rgba(246, 246, 246, 0.8));
+    --artistic-intelligence-sidebar-border: var(--border);
+    --artistic-intelligence-sidebar-hover: rgba(0, 0, 0, 0.05);
+    --artistic-intelligence-sidebar-active: color-mix(in srgb, var(--foreground) 6%, transparent);
 
-    --auteur-danger: var(--destructive);
+    --artistic-intelligence-danger: var(--destructive);
 
     display: flex;
     flex-direction: column;
     height: 100dvh;
     overflow: hidden;
-    background: var(--auteur-bg);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-bg);
+    color: var(--artistic-intelligence-text);
 }
 
 /* ── Dark theme ── */
 
 @media (prefers-color-scheme: dark) {
     .page {
-        --auteur-user-bg: rgba(255, 255, 255, 0.08);
-        --auteur-input-bg: rgba(255, 255, 255, 0.03);
-        --auteur-sidebar-hover: rgba(255, 255, 255, 0.06);
-        --auteur-sidebar-active: rgba(255, 255, 255, 0.08);
+        --artistic-intelligence-user-bg: rgba(255, 255, 255, 0.08);
+        --artistic-intelligence-input-bg: rgba(255, 255, 255, 0.03);
+        --artistic-intelligence-sidebar-hover: rgba(255, 255, 255, 0.06);
+        --artistic-intelligence-sidebar-active: rgba(255, 255, 255, 0.08);
     }
 }
 
@@ -101,8 +101,8 @@
 .sidebar {
     width: 260px;
     flex-shrink: 0;
-    background: var(--auteur-sidebar-bg);
-    border-right: 1px solid var(--auteur-sidebar-border);
+    background: var(--artistic-intelligence-sidebar-bg);
+    border-right: 1px solid var(--artistic-intelligence-sidebar-border);
     backdrop-filter: blur(20px) saturate(1.4);
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
     display: flex;
@@ -150,7 +150,7 @@
     font-size: 13px;
     font-weight: 600;
     letter-spacing: -0.01em;
-    color: var(--auteur-text, #fff);
+    color: var(--artistic-intelligence-text, #fff);
     line-height: 1.1;
     padding-bottom: 6px;
     white-space: nowrap;
@@ -174,7 +174,7 @@
 .expandChevron {
     position: absolute;
     right: -12px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
     transform: translateX(-4px);
@@ -196,14 +196,14 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     cursor: pointer;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
 .sidebarHeaderCollapse:hover {
-    background: var(--auteur-sidebar-hover);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-hover);
+    color: var(--artistic-intelligence-text);
 }
 
 /* Labels + badges: hide instantly on collapse, show with delay on expand */
@@ -322,7 +322,7 @@
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
     font-size: 14px;
     font-weight: 500;
     font-family: inherit;
@@ -345,7 +345,7 @@
 }
 
 .modeItem:hover:not(:disabled) {
-    background: var(--auteur-sidebar-hover);
+    background: var(--artistic-intelligence-sidebar-hover);
 }
 
 .modeItem:hover:not(:disabled) svg {
@@ -353,12 +353,12 @@
 }
 
 .modeItemActive {
-    background: var(--auteur-sidebar-active);
+    background: var(--artistic-intelligence-sidebar-active);
 }
 
 .modeItemActive svg {
     opacity: 1;
-    color: var(--auteur-accent);
+    color: var(--artistic-intelligence-accent);
 }
 
 .modeItemLocked {
@@ -366,7 +366,7 @@
 }
 
 .modeItemLocked .modeLabel {
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
 }
 
 .modeLockIcon {
@@ -389,10 +389,10 @@
     gap: 10px;
     width: 100%;
     padding: 10px 14px;
-    border: 1px solid var(--auteur-sidebar-border);
+    border: 1px solid var(--artistic-intelligence-sidebar-border);
     border-radius: 12px;
-    background: var(--auteur-input-bg);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-input-bg);
+    color: var(--artistic-intelligence-text);
     font-size: 14px;
     font-weight: 500;
     font-family: inherit;
@@ -403,12 +403,12 @@
 
 .sidebarNewChatBtn svg {
     flex-shrink: 0;
-    color: var(--auteur-accent);
+    color: var(--artistic-intelligence-accent);
 }
 
 .sidebarNewChatBtn:hover {
-    background: var(--auteur-sidebar-hover);
-    border-color: var(--auteur-input-border);
+    background: var(--artistic-intelligence-sidebar-hover);
+    border-color: var(--artistic-intelligence-input-border);
 }
 
 /* ── Section header ── */
@@ -427,7 +427,7 @@
     border: none;
     border-radius: 8px;
     background: transparent;
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
     font-size: 14px;
     font-weight: 500;
     font-family: inherit;
@@ -443,7 +443,7 @@
     margin-left: auto;
     font-size: 11px;
     font-weight: 600;
-    color: var(--auteur-accent);
+    color: var(--artistic-intelligence-accent);
     background: color-mix(in srgb, var(--foreground) 10%, transparent);
     padding: 1px 7px;
     border-radius: 6px;
@@ -472,7 +472,7 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     font-size: 13px;
     font-weight: 400;
     font-family: inherit;
@@ -506,13 +506,13 @@
 
 /* Subtle shimmer on "Drafting…" — auto-stops when the server returns a title. */
 .titleShimmer {
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     font-style: italic;
     background: linear-gradient(
         90deg,
-        var(--auteur-text-muted) 0%,
-        var(--auteur-text) 50%,
-        var(--auteur-text-muted) 100%
+        var(--artistic-intelligence-text-muted) 0%,
+        var(--artistic-intelligence-text) 50%,
+        var(--artistic-intelligence-text-muted) 100%
     );
     background-size: 200% 100%;
     background-clip: text;
@@ -527,20 +527,20 @@
 }
 
 .sidebarItem:hover {
-    background: var(--auteur-sidebar-hover);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-hover);
+    color: var(--artistic-intelligence-text);
 }
 
 .sidebarItemActive {
-    background: var(--auteur-sidebar-active);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-active);
+    color: var(--artistic-intelligence-text);
     font-weight: 500;
 }
 
 .sidebarEmpty {
     padding: 10px;
     font-size: 12.5px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     opacity: 0.6;
 }
 
@@ -553,7 +553,7 @@
     width: 22px;
     height: 22px;
     border-radius: 6px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     background: transparent;
     border: none;
     opacity: 0;
@@ -568,8 +568,8 @@
 }
 
 .moreBtn:hover {
-    background: var(--auteur-sidebar-hover);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-hover);
+    color: var(--artistic-intelligence-text);
 }
 
 /* ── Context menu ── */
@@ -580,7 +580,7 @@
     z-index: 100;
 }
 
-/* Auteur context / title menus — *positioning only*. The visual
+/* Artistic Intelligence context / title menus — *positioning only*. The visual
  * surface comes from the global `.ui-menu` class (see globals.css).
  * Items use `.ui-menu-item` / `.ui-menu-item-danger`; dividers use
  * `.ui-menu-divider`. */
@@ -612,7 +612,7 @@
     padding: 6px;
     width: 32px;
     height: 32px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -621,8 +621,8 @@
 }
 
 .topBarIconBtn:hover {
-    color: var(--auteur-text);
-    background: var(--auteur-sidebar-hover);
+    color: var(--artistic-intelligence-text);
+    background: var(--artistic-intelligence-sidebar-hover);
 }
 
 .topBarTitleWrap {
@@ -635,7 +635,7 @@
 .topBarTitle {
     font-size: 12px;
     font-weight: 600;
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
     max-width: min(360px, 60vw);
     white-space: nowrap;
     overflow: hidden;
@@ -721,15 +721,15 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     cursor: pointer;
     padding: 0;
     transition: background 0.15s ease, color 0.15s ease;
 }
 
 .topBarDotsBtn:hover {
-    background: var(--auteur-sidebar-hover);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-hover);
+    color: var(--artistic-intelligence-text);
 }
 
 .backBtn {
@@ -785,21 +785,21 @@
     align-items: center;
     gap: 12px;
     font-size: 12.5px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
 }
 
 .topBarPill {
     padding: 4px 10px;
     border-radius: 999px;
-    background: var(--auteur-sidebar-hover);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-sidebar-hover);
+    color: var(--artistic-intelligence-text);
     font-weight: 500;
     letter-spacing: 0.02em;
 }
 
 .topBarPillWarn {
     background: color-mix(in srgb, var(--foreground) 8%, transparent);
-    color: var(--auteur-accent);
+    color: var(--artistic-intelligence-accent);
 }
 
 /* ── Messages ── */
@@ -834,7 +834,7 @@
     justify-content: center;
     gap: 20px;
     padding: 24px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     text-align: center;
 }
 
@@ -870,7 +870,7 @@
 .emptyTitle {
     font-size: 22px;
     font-weight: 600;
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
     letter-spacing: -0.01em;
 }
 
@@ -1183,7 +1183,7 @@
 .message {
     display: flex;
     gap: 12px;
-    animation: messageIn 0.3s var(--auteur-ease) both;
+    animation: messageIn 0.3s var(--artistic-intelligence-ease) both;
 }
 
 @keyframes messageIn {
@@ -1207,14 +1207,14 @@
 }
 
 .bubbleUser {
-    background: var(--auteur-user-bg);
-    color: var(--auteur-user-text);
+    background: var(--artistic-intelligence-user-bg);
+    color: var(--artistic-intelligence-user-text);
     border-bottom-right-radius: 6px;
     white-space: pre-wrap;
 }
 
 .bubbleAssistant {
-    color: var(--auteur-assistant-text);
+    color: var(--artistic-intelligence-assistant-text);
     border-bottom-left-radius: 6px;
     padding-left: 0;
     padding-right: 0;
@@ -1225,11 +1225,11 @@
     margin-top: 6px;
     font-size: 12px;
     font-style: italic;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
 }
 
 .bubbleStatusError {
-    color: var(--auteur-danger);
+    color: var(--artistic-intelligence-danger);
 }
 
 /* ── Message images (in user bubbles) ── */
@@ -1255,7 +1255,7 @@
     display: inline-block;
     width: 6px;
     height: 16px;
-    background: var(--auteur-accent);
+    background: var(--artistic-intelligence-accent);
     border-radius: 2px;
     margin-left: 2px;
     vertical-align: text-bottom;
@@ -1271,7 +1271,7 @@
     display: inline-block;
     width: 6px;
     height: 16px;
-    background: var(--auteur-accent);
+    background: var(--artistic-intelligence-accent);
     border-radius: 2px;
     animation: blink 0.8s steps(2) infinite;
 }
@@ -1300,7 +1300,7 @@
 .markdown code.inlineCode {
     padding: 0.1em 0.4em;
     border-radius: 4px;
-    background: var(--auteur-input-bg);
+    background: var(--artistic-intelligence-input-bg);
     font-size: 0.92em;
     font-family: var(--font-mono), ui-monospace, monospace;
 }
@@ -1308,8 +1308,8 @@
 .markdown pre {
     margin: 0.75em 0;
     padding: 14px 16px;
-    background: var(--auteur-input-bg);
-    border: 1px solid var(--auteur-input-border);
+    background: var(--artistic-intelligence-input-bg);
+    border: 1px solid var(--artistic-intelligence-input-border);
     border-radius: 12px;
     overflow-x: auto;
     font-size: 13px;
@@ -1350,7 +1350,7 @@
     border-radius: 6px;
     border: none;
     background: rgba(0, 0, 0, 0.08);
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     font-size: 11px;
     font-weight: 600;
     font-family: inherit;
@@ -1367,7 +1367,7 @@
 
 .codeBlockBtn:hover {
     background: rgba(0, 0, 0, 0.14);
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -1388,7 +1388,7 @@
     max-width: 760px;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--auteur-input-border);
+    border: 1px solid var(--artistic-intelligence-input-border);
     border-radius: 12px;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
     transition: border-color 0.25s ease, box-shadow 0.25s ease;
@@ -1450,7 +1450,7 @@
     gap: 4px;
     margin: 0 4px 4px;
     padding: 6px 6px 6px 18px;
-    background: var(--auteur-bg, transparent);
+    background: var(--artistic-intelligence-bg, transparent);
     border-radius: 10px;
 }
 
@@ -1470,15 +1470,15 @@
     border-radius: 8px;
     border: none;
     background: transparent;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     cursor: pointer;
     transition: color 0.12s ease, background 0.12s ease;
     padding: 0;
 }
 
 .attachBtn:hover:not(:disabled) {
-    background: var(--auteur-input-border);
-    color: var(--auteur-text);
+    background: var(--artistic-intelligence-input-border);
+    color: var(--artistic-intelligence-text);
 }
 
 .attachBtn:disabled {
@@ -1490,7 +1490,7 @@
     flex: 1;
     background: transparent;
     border: none;
-    color: var(--auteur-input-text);
+    color: var(--artistic-intelligence-input-text);
     font-size: 15px;
     line-height: 1.5;
     resize: none;
@@ -1502,7 +1502,7 @@
 }
 
 .textarea::placeholder {
-    color: var(--auteur-placeholder);
+    color: var(--artistic-intelligence-placeholder);
 }
 
 .sendBtn {
@@ -1513,7 +1513,7 @@
     height: 36px;
     border-radius: 10px;
     border: none;
-    background: var(--auteur-accent);
+    background: var(--artistic-intelligence-accent);
     color: var(--background);
     cursor: pointer;
     flex-shrink: 0;
@@ -1522,7 +1522,7 @@
 }
 
 .sendBtn:hover:not(:disabled) {
-    background: var(--auteur-accent-hover);
+    background: var(--artistic-intelligence-accent-hover);
 }
 
 .sendBtn:active {
@@ -1535,24 +1535,24 @@
 }
 
 .stopBtn {
-    background: var(--auteur-text-muted);
+    background: var(--artistic-intelligence-text-muted);
     opacity: 1;
 }
 
 .stopBtn:hover:not(:disabled) {
-    background: var(--auteur-text);
+    background: var(--artistic-intelligence-text);
 }
 
 .composerError {
     padding: 0 14px 10px;
     font-size: 12px;
-    color: var(--auteur-danger);
+    color: var(--artistic-intelligence-danger);
 }
 
 .composerHint {
     padding: 4px 14px 10px;
     font-size: 12px;
-    color: var(--auteur-text-muted);
+    color: var(--artistic-intelligence-text-muted);
     display: flex;
     gap: 6px;
     align-items: center;
@@ -1560,7 +1560,7 @@
 }
 
 .composerHint a {
-    color: var(--auteur-accent);
+    color: var(--artistic-intelligence-accent);
     text-decoration: none;
 }
 
@@ -1580,7 +1580,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    color: var(--auteur-text);
+    color: var(--artistic-intelligence-text);
     font-size: 13px;
 }
 
@@ -1595,7 +1595,7 @@
     gap: 6px;
     padding: 8px 16px;
     border-radius: 10px;
-    background: var(--auteur-accent);
+    background: var(--artistic-intelligence-accent);
     color: var(--background);
     font-size: 13px;
     font-weight: 600;
@@ -1605,7 +1605,7 @@
 }
 
 .authGateLink:hover {
-    background: var(--auteur-accent-hover);
+    background: var(--artistic-intelligence-accent-hover);
 }
 
 /* ── Mobile sidebar drawer ── */

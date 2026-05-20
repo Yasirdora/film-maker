@@ -2,7 +2,7 @@
  * Editor toolbar — right-edge rail introducing the product surface.
  *
  * Replaces the earlier purely-decorative rail of art-directed icons.
- * Each slot now points to a real destination in the product (Auteur,
+ * Each slot now points to a real destination in the product (Artistic Intelligence,
  * Studio, Video / Audio editors, Media Converter) or to a coming-soon
  * tool (Apps, Film-maker Academy) so visitors can see at a glance what
  * the app contains and click straight through. Icon set mirrors the
@@ -18,7 +18,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import clsx from "clsx";
 
-import { AuteurIcon } from "@/components/icons/auteur-icon";
+import { ArtisticIntelligenceIcon } from "@/components/icons/artistic-intelligence-icon";
 import styles from "./editor-toolbar.module.css";
 
 interface ToolbarItem {
@@ -45,10 +45,10 @@ const studioIcon: ReactNode = (
 
 const TOOLBAR_ITEMS: ToolbarItem[] = [
     {
-        key: "auteur",
-        label: "Auteur — AI creative assistant",
-        href: "/auteur",
-        icon: <AuteurIcon size={18} strokeWidth={1.75} />,
+        key: "artistic-intelligence",
+        label: "Artistic Intelligence — AI creative assistant",
+        href: "/artistic-intelligence",
+        icon: <ArtisticIntelligenceIcon size={18} strokeWidth={1.75} />,
     },
     {
         key: "studio",

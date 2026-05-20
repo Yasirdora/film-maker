@@ -42,9 +42,9 @@ import { getSessionCookie } from "better-auth/cookies";
  */
 const PROTECTED_PREFIXES = [
     "/studio",
-    // `/auteur` is intentionally NOT protected — it's the Auteur chat
+    // `/artistic-intelligence` is intentionally NOT protected — it's the Artistic Intelligence chat
     // workspace, which supports anonymous visitors under a free-reply
-    // quota (see lib/auteur.ts ANON_FREE_RESPONSES). Sign-in-only
+    // quota (see lib/artistic-intelligence.ts ANON_FREE_RESPONSES). Sign-in-only
     // capabilities (conversation history, credits) are gated inside
     // the page's client workspace, not at the route level.
     "/credits",

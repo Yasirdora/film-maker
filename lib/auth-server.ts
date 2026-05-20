@@ -7,7 +7,7 @@
  *     Used by /welcome.
  *   • `requireOnboardedUser()` — user is authenticated, onboarded, AND
  *     on the allowlist (if ALLOWED_EMAILS is set). Used by /studio,
- *     /auteur, /credits, and every other protected page.
+ *     /artistic-intelligence, /credits, and every other protected page.
  *
  * Access control:
  *   If the `ALLOWED_EMAILS` env var is set (comma-separated list of

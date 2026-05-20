@@ -1,5 +1,5 @@
 /**
- * Auteur sidebar.
+ * Artistic Intelligence sidebar.
  *
  * Layout (top-to-bottom, vertically stacked, 220 px wide):
  *
@@ -15,26 +15,26 @@
 
 import * as React from "react";
 import { formatTimeAgo } from "@/lib/utils";
-import type { AuteurMode } from "@/lib/auteur";
+import type { ArtisticIntelligenceMode } from "@/lib/artistic-intelligence";
 import { AppBrandMark } from "@/components/app-brand-mark";
 import { ModeNav } from "./mode-switcher";
-import styles from "./auteur.module.css";
+import styles from "./artistic-intelligence.module.css";
 
 export interface SidebarConversation {
     id: string;
     title: string;
-    mode: AuteurMode;
+    mode: ArtisticIntelligenceMode;
     updatedAt: number;
     isAnonymous: boolean;
     pinnedAt: number | null;
     archivedAt: number | null;
 }
 
-interface AuteurSidebarProps {
-    mode: AuteurMode;
-    onModeChange: (next: AuteurMode) => void;
-    unlockedModes: ReadonlySet<AuteurMode>;
-    onLockedMode?: (locked: AuteurMode) => void;
+interface ArtisticIntelligenceSidebarProps {
+    mode: ArtisticIntelligenceMode;
+    onModeChange: (next: ArtisticIntelligenceMode) => void;
+    unlockedModes: ReadonlySet<ArtisticIntelligenceMode>;
+    onLockedMode?: (locked: ArtisticIntelligenceMode) => void;
     conversations: SidebarConversation[];
     activeId: string | null;
     onSelect: (id: string) => void;
@@ -49,7 +49,7 @@ interface AuteurSidebarProps {
 
 const PLACEHOLDER_TITLE = "Drafting…";
 
-export function AuteurSidebar({
+export function ArtisticIntelligenceSidebar({
     mode,
     onModeChange,
     unlockedModes,
@@ -64,7 +64,7 @@ export function AuteurSidebar({
     collapsed = false,
     onToggleCollapse,
     mobileOpen,
-}: AuteurSidebarProps) {
+}: ArtisticIntelligenceSidebarProps) {
     const [menu, setMenu] = React.useState<{
         id: string;
         top: number;
@@ -77,7 +77,7 @@ export function AuteurSidebar({
             className={`${styles.sidebar}${collapsed ? ` ${styles.sidebarCollapsed}` : ""}`}
         >
             {/* Sidebar header: [logo] Artistic Intelligence [toggle].
-                Owns the brand identity for the whole /auteur surface so
+                Owns the brand identity for the whole /artistic-intelligence surface so
                 the main area's top bar can carry just the chat title +
                 auth cluster. When collapsed the label hides and the
                 brand mark doubles as the expand affordance (chevron

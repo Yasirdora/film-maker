@@ -154,7 +154,7 @@ export default function StudioMockup({ mode }: { mode: Mode }) {
               <circle cx="12" cy="12" r="10" />
               <path d="M10 15V9l5 3-5 3z" />
             </svg>
-            <span>Auteur</span>
+            <span>Artistic Intelligence</span>
           </div>
           <div className="studio-mock-tab-icon">
             <svg

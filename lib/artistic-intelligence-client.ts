@@ -1,10 +1,10 @@
 /**
- * Auteur — client-only helpers.
+ * Artistic Intelligence — client-only helpers.
  *
  * Anonymous visitors can't be remembered server-side by anything other
  * than the `fm_anon_id` cookie, so the conversation ownership tokens
  * handed back at creation time live in localStorage under
- * `fm_auteur_anon`. The shape is a plain id → token map:
+ * `fm_artistic_intelligence_anon`. The shape is a plain id → token map:
  *
  *   {
  *     "a1b2c3": "deadbeef…",
@@ -12,12 +12,12 @@
  *   }
  *
  * When the user signs in we POST every (id, token) pair to
- * /api/auteur/conversations/claim; successfully-claimed rows are
+ * /api/artistic-intelligence/conversations/claim; successfully-claimed rows are
  * removed from local storage so subsequent sessions don't try to
  * re-claim them.
  */
 
-const STORAGE_KEY = "fm_auteur_anon";
+const STORAGE_KEY = "fm_artistic_intelligence_anon";
 
 export type AnonTokenMap = Record<string, string>;
 

@@ -1,11 +1,11 @@
 /**
- * Auteur workspace — the interactive chat shell.
+ * Artistic Intelligence workspace — the interactive chat shell.
  *
  * Layout mirrors ConveX's: a 260 px sidebar on the left (mode nav +
  * new-chat + history), a chat pane on the right (top bar + scrolling
  * messages + composer card). The rendering details — streaming caret,
  * title shimmer, orange accent, 18/6 px bubble radius — live in
- * {@link ./auteur.module.css}; this file is the runtime glue that
+ * {@link ./artistic-intelligence.module.css}; this file is the runtime glue that
  * drives state, SSE consumption, anonymous-token persistence,
  * claim-on-signup, and plan gating.
  */
@@ -15,22 +15,22 @@
 import * as React from "react";
 import { toast } from "sonner";
 import {
-    AUTEUR_MODES,
+    ARTISTIC_INTELLIGENCE_MODES,
     isModeAllowedForPlan,
-    type AuteurMode,
+    type ArtisticIntelligenceMode,
     type MessageStatus,
-} from "@/lib/auteur";
+} from "@/lib/artistic-intelligence";
 import {
     clearAnonTokens,
     forgetAnonToken,
     getAnonToken,
     readAnonTokens,
     rememberAnonToken,
-} from "@/lib/auteur-client";
-import { AuteurSidebar, type SidebarConversation } from "./auteur-sidebar";
+} from "@/lib/artistic-intelligence-client";
+import { ArtisticIntelligenceSidebar, type SidebarConversation } from "./sidebar";
 import { MessageBubble } from "./message-bubble";
-import { AuteurComposer, type Attachment } from "./auteur-composer";
-import { AuteurIcon } from "@/components/icons/auteur-icon";
+import { ArtisticIntelligenceComposer, type Attachment } from "./composer";
+import { ArtisticIntelligenceIcon } from "@/components/icons/artistic-intelligence-icon";
 import {
     DotsIcon,
     PinIcon,
@@ -40,7 +40,7 @@ import {
 import { InlineRenameForm } from "@/components/inline-rename-form";
 import { downloadPdf } from "@/lib/pdf";
 import { setCredits as setCreditStore } from "@/lib/credit-store";
-import styles from "./auteur.module.css";
+import styles from "./artistic-intelligence.module.css";
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +123,7 @@ const ACTIVE_STATUSES: MessageStatus[] = ["pending", "streaming"];
 
 // ─── Empty-state copy per mode ──────────────────────────────────────────────
 const MODE_EMPTY_STATE: Record<
-    AuteurMode,
+    ArtisticIntelligenceMode,
     { title: string; description: string }
 > = {
     chat: {
@@ -142,13 +142,13 @@ const MODE_EMPTY_STATE: Record<
     },
 };
 
-const MODE_PLACEHOLDER: Record<AuteurMode, string> = {
-    chat: "Ask Auteur…",
+const MODE_PLACEHOLDER: Record<ArtisticIntelligenceMode, string> = {
+    chat: "Ask Artistic Intelligence…",
     script: "Describe the scene to write…",
     storyboard: "Describe the sequence to storyboard…",
 };
 
-const MODE_LABEL: Record<AuteurMode, string> = {
+const MODE_LABEL: Record<ArtisticIntelligenceMode, string> = {
     chat: "Chat",
     script: "Script",
     storyboard: "Storyboard",
@@ -156,13 +156,13 @@ const MODE_LABEL: Record<AuteurMode, string> = {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
+export function ArtisticIntelligenceWorkspace({ viewer, authSlot }: WorkspaceProps) {
     const [conversations, setConversations] = React.useState<
         Record<string, ConversationState>
     >({});
     const [order, setOrder] = React.useState<string[]>([]);
     const [activeId, setActiveId] = React.useState<string | null>(null);
-    const [mode, setMode] = React.useState<AuteurMode>("chat");
+    const [mode, setMode] = React.useState<ArtisticIntelligenceMode>("chat");
     const [isStreaming, setIsStreaming] = React.useState(false);
     const [sidebarOpenMobile, setSidebarOpenMobile] = React.useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
@@ -175,7 +175,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
 
     // History View state
     const [historySearch, setHistorySearch] = React.useState("");
-    const [historyFilter, setHistoryFilter] = React.useState<AuteurMode | "all">(
+    const [historyFilter, setHistoryFilter] = React.useState<ArtisticIntelligenceMode | "all">(
         "all",
     );
 
@@ -184,10 +184,10 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
     const shouldScrollInstantRef = React.useRef(true);
 
-    const unlockedModes = React.useMemo<ReadonlySet<AuteurMode>>(
+    const unlockedModes = React.useMemo<ReadonlySet<ArtisticIntelligenceMode>>(
         () =>
             new Set(
-                AUTEUR_MODES.filter((m) =>
+                ARTISTIC_INTELLIGENCE_MODES.filter((m) =>
                     viewer.type === "authenticated"
                         ? isModeAllowedForPlan(m, viewer.planId)
                         : m === "chat",
@@ -212,7 +212,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                 if (claims.length > 0) {
                     try {
                         const res = await fetch(
-                            "/api/auteur/conversations/claim",
+                            "/api/artistic-intelligence/conversations/claim",
                             {
                                 method: "POST",
                                 headers: {
@@ -228,7 +228,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                 }
             } else {
                 try {
-                    const res = await fetch("/api/auteur/quota");
+                    const res = await fetch("/api/artistic-intelligence/quota");
                     if (res.ok) {
                         const data = (await res.json()) as {
                             signedIn?: boolean;
@@ -243,13 +243,13 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
 
             if (viewer.type === "authenticated") {
                 try {
-                    const res = await fetch("/api/auteur/conversations");
+                    const res = await fetch("/api/artistic-intelligence/conversations");
                     if (!res.ok) return;
                     const data = (await res.json()) as {
                         conversations: Array<{
                             id: string;
                             title: string;
-                            mode: AuteurMode;
+                            mode: ArtisticIntelligenceMode;
                             updatedAt: number;
                             pinnedAt: number | null;
                             archivedAt: number | null;
@@ -288,7 +288,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                         try {
                             const token = tokens[id];
                             const res = await fetch(
-                                `/api/auteur/conversations/${id}/messages?anonToken=${encodeURIComponent(
+                                `/api/artistic-intelligence/conversations/${id}/messages?anonToken=${encodeURIComponent(
                                     token,
                                 )}`,
                             );
@@ -412,7 +412,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                 const token = existing.isAnonymous ? getAnonToken(id) : null;
                 const qs = token ? `?anonToken=${encodeURIComponent(token)}` : "";
                 const res = await fetch(
-                    `/api/auteur/conversations/${id}/messages${qs}`,
+                    `/api/artistic-intelligence/conversations/${id}/messages${qs}`,
                 );
                 if (!res.ok) return;
                 const body = (await res.json()) as { messages: Message[] };
@@ -438,9 +438,9 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     );
 
     const createConversation = React.useCallback(
-        async (nextMode: AuteurMode): Promise<string | null> => {
+        async (nextMode: ArtisticIntelligenceMode): Promise<string | null> => {
             try {
-                const res = await fetch("/api/auteur/conversations", {
+                const res = await fetch("/api/artistic-intelligence/conversations", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ mode: nextMode }),
@@ -456,7 +456,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                     conversation: {
                         id: string;
                         title: string;
-                        mode: AuteurMode;
+                        mode: ArtisticIntelligenceMode;
                         updatedAt: number;
                     };
                     anonToken: string | null;
@@ -496,7 +496,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     }, [createConversation, mode]);
 
     const handleModeChange = React.useCallback(
-        (next: AuteurMode) => {
+        (next: ArtisticIntelligenceMode) => {
             setMode(next);
             if (!active) return;
             if ((active.messages?.length ?? 0) === 0) {
@@ -509,7 +509,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     );
 
     const handleLockedMode = React.useCallback(
-        (locked: AuteurMode) => {
+        (locked: ArtisticIntelligenceMode) => {
             const label = MODE_LABEL[locked];
             if (viewer.type === "anonymous") {
                 toast.info(`Sign in to use ${label} mode.`);
@@ -525,7 +525,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
             const trimmed = nextTitle.trim();
             if (trimmed.length === 0) return;
             try {
-                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                const res = await fetch(`/api/artistic-intelligence/conversations/${id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ title: trimmed }),
@@ -564,7 +564,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
             }
 
             try {
-                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                const res = await fetch(`/api/artistic-intelligence/conversations/${id}`, {
                     method: "DELETE",
                 });
                 if (!res.ok) {
@@ -592,7 +592,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
             if (!current) return;
             const nextPinned = !current.pinnedAt;
             try {
-                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                const res = await fetch(`/api/artistic-intelligence/conversations/${id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ pinned: nextPinned }),
@@ -617,7 +617,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
             if (!current) return;
             const nextArchived = !current.archivedAt;
             try {
-                const res = await fetch(`/api/auteur/conversations/${id}`, {
+                const res = await fetch(`/api/artistic-intelligence/conversations/${id}`, {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ archived: nextArchived }),
@@ -647,7 +647,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     const handleStop = React.useCallback(() => {
         if (!activeId) return;
         streamAbortRef.current?.abort();
-        void fetch(`/api/auteur/conversations/${activeId}/stop`, {
+        void fetch(`/api/artistic-intelligence/conversations/${activeId}/stop`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -687,7 +687,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
 
             try {
                 const res = await fetch(
-                    `/api/auteur/conversations/${targetId}/messages`,
+                    `/api/artistic-intelligence/conversations/${targetId}/messages`,
                     {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -835,9 +835,9 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
     }, [conversations, selectConversation]);
 
     // ─── Homepage prompt handoff (?q=…) ────────────────────────────────────
-    // The landing hero pushes /auteur?q=<prompt>. Drain the query param,
+    // The landing hero pushes /artistic-intelligence?q=<prompt>. Drain the query param,
     // create a fresh conversation, and fire handleSend — matches ConveX's
-    // initial-prompt handler (app/auteur/page.tsx).
+    // initial-prompt handler (app/artistic-intelligence/page.tsx).
     const handledInitialPromptRef = React.useRef(false);
     React.useEffect(() => {
         if (handledInitialPromptRef.current) return;
@@ -903,7 +903,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                 )}
 
                 {/* Unified Sidebar (Desktop & Mobile) */}
-                <AuteurSidebar
+                <ArtisticIntelligenceSidebar
                     mode={mode}
                     onModeChange={(next) => {
                         handleModeChange(next);
@@ -1020,7 +1020,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                     <div className={styles.inputArea}>
                         {showQuotaGate && (
                             <AuthGate
-                                text={`You've used all ${anonQuota?.limit ?? 3} free Auteur replies.`}
+                                text={`You've used all ${anonQuota?.limit ?? 3} free Artistic Intelligence replies.`}
                                 ctaLabel="Sign in to continue"
                                 ctaHref="/login"
                             />
@@ -1033,7 +1033,7 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
                             />
                         )}
 
-                        <AuteurComposer
+                        <ArtisticIntelligenceComposer
                             disabled={showQuotaGate || showLowCreditGate}
                             isStreaming={isStreaming}
                             placeholder={MODE_PLACEHOLDER[mode]}
@@ -1051,12 +1051,12 @@ export function AuteurWorkspace({ viewer, authSlot }: WorkspaceProps) {
 
 // ─── Empty state ────────────────────────────────────────────────────────────
 
-function EmptyState({ mode }: { mode: AuteurMode }) {
+function EmptyState({ mode }: { mode: ArtisticIntelligenceMode }) {
     const copy = MODE_EMPTY_STATE[mode];
     return (
         <div className={styles.emptyState}>
             <div className={`${styles.emptyIconWrap} group`}>
-                <AuteurIcon
+                <ArtisticIntelligenceIcon
                     size={56}
                     strokeWidth={1.25}
                     eyeStrokeWidth={2}
@@ -1124,7 +1124,7 @@ function ChatTopBarTitle({
         }
         try {
             const res = await fetch(
-                `/api/auteur/conversations/${conversation.id}`,
+                `/api/artistic-intelligence/conversations/${conversation.id}`,
                 {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
@@ -1247,10 +1247,10 @@ function HistoryView({
     onNewChat,
 }: {
     conversations: ConversationState[];
-    activeMode: AuteurMode | "all";
+    activeMode: ArtisticIntelligenceMode | "all";
     searchQuery: string;
     onSearchChange: (v: string) => void;
-    onFilterChange: (m: AuteurMode | "all") => void;
+    onFilterChange: (m: ArtisticIntelligenceMode | "all") => void;
     onSelect: (id: string) => void;
     onNewChat: () => void;
 }) {

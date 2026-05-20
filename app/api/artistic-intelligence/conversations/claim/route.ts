@@ -1,5 +1,5 @@
 /**
- * POST /api/auteur/conversations/claim
+ * POST /api/artistic-intelligence/conversations/claim
  *
  * Transfers anonymous conversations to the signed-in user. Called
  * immediately after sign-in with the (id, anonToken) pairs the client
@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import { getSession } from "@/lib/auth-server";
 import { validateOrigin } from "@/lib/security";
-import { claimAnonymousConversations } from "@/lib/auteur";
+import { claimAnonymousConversations } from "@/lib/artistic-intelligence";
 
 const MAX_CLAIMS_PER_REQUEST = 100;
 

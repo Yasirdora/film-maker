@@ -9,11 +9,11 @@
 "use client";
 
 import * as React from "react";
-import type { AuteurMode } from "@/lib/auteur";
-import styles from "./auteur.module.css";
+import type { ArtisticIntelligenceMode } from "@/lib/artistic-intelligence";
+import styles from "./artistic-intelligence.module.css";
 
 interface ModeEntry {
-    id: AuteurMode;
+    id: ArtisticIntelligenceMode;
     label: string;
     icon: React.ReactNode;
 }
@@ -54,10 +54,10 @@ const MODES: ModeEntry[] = [
 ];
 
 interface ModeNavProps {
-    mode: AuteurMode;
-    onChange: (next: AuteurMode) => void;
-    unlockedModes: ReadonlySet<AuteurMode>;
-    onLockedClick?: (mode: AuteurMode) => void;
+    mode: ArtisticIntelligenceMode;
+    onChange: (next: ArtisticIntelligenceMode) => void;
+    unlockedModes: ReadonlySet<ArtisticIntelligenceMode>;
+    onLockedClick?: (mode: ArtisticIntelligenceMode) => void;
 }
 
 export function ModeNav({
@@ -67,7 +67,7 @@ export function ModeNav({
     onLockedClick,
 }: ModeNavProps) {
     return (
-        <nav className={styles.modeNav} aria-label="Auteur mode">
+        <nav className={styles.modeNav} aria-label="Artistic Intelligence mode">
             {MODES.map((m) => {
                 const isActive = m.id === mode;
                 const isLocked = !unlockedModes.has(m.id);

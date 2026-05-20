@@ -43,11 +43,11 @@ interface NavSection {
 const NAV: NavSection[] = [
     {
         label: "Artistic Intelligence",
-        href: "/auteur",
+        href: "/artistic-intelligence",
         items: [
             {
                 label: "AI Assistant",
-                href: "/auteur",
+                href: "/artistic-intelligence",
                 description: "Chat with the AI filmmaker.",
             },
             {
@@ -159,7 +159,7 @@ export function EditorHeader({
         <header
             id="app-nav-root"
             /* z-[60] so dropdowns clear sibling chrome that also sits at
-               z-50 with its own stacking context (e.g. the auteur sidebar
+               z-50 with its own stacking context (e.g. the artistic-intelligence sidebar
                which uses backdrop-filter). Still well below modals
                (launchpad z-200, in-sidebar popovers z-1000). */
             className="sticky top-0 z-[60] w-full border-b border-white/[0.04] bg-ws-canvas"

@@ -1,7 +1,7 @@
 /**
  * Anonymous visitor cookie.
  *
- * The Auteur chat lets signed-out users send a small number of messages
+ * The Artistic Intelligence chat lets signed-out users send a small number of messages
  * before they must sign in. We key that quota off an opaque
  * `fm_anon_id` cookie — not the IP, because CGNAT would lock out real
  * users, and not a localStorage value, because then every tab of the

@@ -430,13 +430,13 @@
     display: none !important;
   }
 
-  /* ---------- Ask Auteur link below the FAQ ---------- */
+  /* ---------- Ask Artistic Intelligence link below the FAQ ---------- */
 
-  [data-theme="light"] .faq-ask-auteur a {
+  [data-theme="light"] .faq-ask-artistic-intelligence a {
     color: #1967d2;
   }
-  [data-theme="light"] .faq-ask-auteur a:hover,
-  [data-theme="light"] .faq-ask-auteur a:focus-visible {
+  [data-theme="light"] .faq-ask-artistic-intelligence a:hover,
+  [data-theme="light"] .faq-ask-artistic-intelligence a:focus-visible {
     color: #174ea6;
   }
 

@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * AuteurWriterStage — the looping writer clip + floating overlays
- * inside the Auteur tile.
+ * ArtisticIntelligenceWriterStage — the looping writer clip + floating overlays
+ * inside the Artistic Intelligence tile.
  *
  * Extracted so the playback can be gated on viewport visibility
  * (parent is a server component). Without this, the video autoplays
@@ -12,14 +12,14 @@
 
 import { useEffect, useRef } from "react";
 
-import { AuteurIcon } from "../../icons/auteur-icon";
+import { ArtisticIntelligenceIcon } from "../../icons/artistic-intelligence-icon";
 import { HeroPrompt } from "@/components/landing-hero/hero-prompt";
 import { useInView } from "../shared/use-in-view";
 
 const ASSET_SRC = "/assets/Ysrdora.webm";
-const PROMPT_PLACEHOLDER = "Draft a treatment with Auteur";
+const PROMPT_PLACEHOLDER = "Draft a treatment with Artistic Intelligence";
 
-export function AuteurWriterStage() {
+export function ArtisticIntelligenceWriterStage() {
     const stageRef = useRef<HTMLDivElement>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const inView = useInView(stageRef, { threshold: 0.25 });
@@ -35,10 +35,10 @@ export function AuteurWriterStage() {
     }, [inView]);
 
     return (
-        <div ref={stageRef} className="auteur-float-stage">
+        <div ref={stageRef} className="artistic-intelligence-float-stage">
             <video
                 ref={videoRef}
-                className="auteur-float-video"
+                className="artistic-intelligence-float-video"
                 src={ASSET_SRC}
                 muted
                 loop
@@ -46,13 +46,13 @@ export function AuteurWriterStage() {
                 preload="metadata"
                 aria-label="Writer working on a couch with a tablet and notebook."
             />
-            <div className="auteur-float-icon" aria-hidden="true">
-                <AuteurIcon size={48} />
+            <div className="artistic-intelligence-float-icon" aria-hidden="true">
+                <ArtisticIntelligenceIcon size={48} />
             </div>
-            <div className="auteur-float-prompt">
+            <div className="artistic-intelligence-float-prompt">
                 <HeroPrompt
                     placeholder={PROMPT_PLACEHOLDER}
-                    wrapperClassName="auteur-float-prompt-bar"
+                    wrapperClassName="artistic-intelligence-float-prompt-bar"
                 />
             </div>
         </div>

@@ -1,5 +1,5 @@
 /**
- * POST /api/auteur/conversations/[id]/stop
+ * POST /api/artistic-intelligence/conversations/[id]/stop
  *
  * Marks the most recent in-flight assistant reply as `stopped`. The
  * streaming endpoint detects this on its next DB read and closes the
@@ -18,7 +18,7 @@ import { validateOrigin } from "@/lib/security";
 import {
     ConversationAccessError,
     markAssistantStopped,
-} from "@/lib/auteur";
+} from "@/lib/artistic-intelligence";
 
 const Body = z.object({
     anonToken: z.string().min(16).max(256).optional(),

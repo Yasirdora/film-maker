@@ -4,7 +4,7 @@
  * Shared credit balance store.
  *
  * Replaces the per-component `useState(totalCredits)` pattern so that
- * every consumer — nav menu, project workspace, composer, Auteur —
+ * every consumer — nav menu, project workspace, composer, Artistic Intelligence —
  * sees the same live number without a page refresh.
  *
  * SSR strategy:
@@ -63,7 +63,7 @@ export function adjustCredits(delta: number): void {
 /**
  * Set the credit count to an absolute value. Used by:
  *   • `CreditHydrator` — seeds from server-rendered props
- *   • Auteur SSE — pushes real-time balance from the server
+ *   • Artistic Intelligence SSE — pushes real-time balance from the server
  */
 export function setCredits(value: number): void {
     creditStore.setState(value);

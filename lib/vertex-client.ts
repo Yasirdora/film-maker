@@ -5,7 +5,7 @@
  *
  *   • `:generateContent`       — one-shot Gemini chat (title gen, Nano Banana
  *                                 image-from-content).
- *   • `:streamGenerateContent` — SSE-streamed Gemini chat (Auteur).
+ *   • `:streamGenerateContent` — SSE-streamed Gemini chat (Artistic Intelligence).
  *   • `:predict`               — Imagen text-to-image.
  *   • `:predictLongRunning` +  — Veo video generation (submit + poll).
  *     `:fetchPredictOperation`

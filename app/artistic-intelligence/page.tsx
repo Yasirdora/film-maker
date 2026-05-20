@@ -1,11 +1,11 @@
 /**
- * /auteur — Auteur chat workspace.
+ * /artistic-intelligence — Artistic Intelligence chat workspace.
  *
  * Available to every visitor — signed-in users get persistent history
  * and plan-based mode unlocks, signed-out visitors get three free
  * replies in chat mode (quota lives behind an HttpOnly cookie). The
  * server component only needs the session + plan to seed the client
- * workspace; everything else is fetched over /api/auteur/* from the
+ * workspace; everything else is fetched over /api/artistic-intelligence/* from the
  * browser.
  */
 
@@ -15,22 +15,22 @@ import { getSession } from "@/lib/auth-server";
 import { getBalance } from "@/lib/credits";
 import { AppNav } from "@/components/app-nav";
 import { EditorHeaderAuthSlot } from "@/components/editor/EditorHeaderAuthSlot";
-import { AuteurWorkspace } from "./auteur-workspace";
+import { ArtisticIntelligenceWorkspace } from "./workspace";
 
 export const metadata: Metadata = {
-    title: "Auteur",
+    title: "Artistic Intelligence",
     description:
-        "Chat with Auteur, Film-maker's AI creative director — craft advice, screenplays, shot lists, and storyboards.",
+        "Chat with Artistic Intelligence, Film-maker's AI creative director — craft advice, screenplays, shot lists, and storyboards.",
 };
 
-export default async function AuteurPage() {
+export default async function ArtisticIntelligencePage() {
     const session = await getSession();
 
     if (!session?.user) {
         return (
             <>
-                <AppNav hideAuteurIcon hideTopBar />
-                <AuteurWorkspace
+                <AppNav hideArtisticIntelligenceIcon hideTopBar />
+                <ArtisticIntelligenceWorkspace
                     viewer={{ type: "anonymous" }}
                     authSlot={<EditorHeaderAuthSlot />}
                 />
@@ -44,8 +44,8 @@ export default async function AuteurPage() {
 
     return (
         <>
-            <AppNav hideAuteurIcon hideTopBar />
-            <AuteurWorkspace
+            <AppNav hideArtisticIntelligenceIcon hideTopBar />
+            <ArtisticIntelligenceWorkspace
                 viewer={{
                     type: "authenticated",
                     planId: balance.plan,

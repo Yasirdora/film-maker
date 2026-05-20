@@ -168,34 +168,34 @@
 }
 
 
-/* Auteur "alive" blink — swaps a tall "open" eye stroke for a short
+/* Artistic Intelligence "alive" blink — swaps a tall "open" eye stroke for a short
    "closed" eye stroke by cross-fading their opacities. Both strokes share
    the same round caps and stroke width, so the transition reads as the
    eye truly shortening (not squishing). The two keyframe curves are
    synchronized inverses: the open stroke fades out as the closed stroke
    fades in, held briefly at closed, then reversed. */
-.auteur-eye-closed {
+.artistic-intelligence-eye-closed {
     opacity: 0;
 }
 
-@keyframes auteur-eye-close {
+@keyframes artistic-intelligence-eye-close {
     0%, 100% { opacity: 1; }
     25%, 40% { opacity: 0; }
 }
 
-@keyframes auteur-eye-open {
+@keyframes artistic-intelligence-eye-open {
     0%, 100% { opacity: 0; }
     25%, 40% { opacity: 1; }
 }
 
-.group:hover .auteur-eye-open,
-.group:focus-visible .auteur-eye-open {
-    animation: auteur-eye-close 520ms ease-in-out 1s;
+.group:hover .artistic-intelligence-eye-open,
+.group:focus-visible .artistic-intelligence-eye-open {
+    animation: artistic-intelligence-eye-close 520ms ease-in-out 1s;
 }
 
-.group:hover .auteur-eye-closed,
-.group:focus-visible .auteur-eye-closed {
-    animation: auteur-eye-open 520ms ease-in-out 1s;
+.group:hover .artistic-intelligence-eye-closed,
+.group:focus-visible .artistic-intelligence-eye-closed {
+    animation: artistic-intelligence-eye-open 520ms ease-in-out 1s;
 }
 
 /* Google-style four-dot pulse loader. Each dot uses one of Google's
@@ -759,7 +759,7 @@ textarea:focus-visible,
 }
 
 /* Global scrollbar styling — applied to every scrollable element so
- * the chrome reads identically across editor, auteur, studio, the
+ * the chrome reads identically across editor, artistic-intelligence, studio, the
  * launchpad, etc. Idle: invisible thumb (no chrome creeps into
  * content). Hover-over-scroller: thumb fades in. Hover-on-thumb:
  * thumb brightens. Mirrored for light vs. dark schemes so it stays
@@ -824,7 +824,7 @@ html {
 /* Canonical menu styling                                            */
 /*                                                                   */
 /* One look for every dropdown / context / kebab menu across the     */
-/* product — nav profile, project actions, auteur title + sidebar    */
+/* product — nav profile, project actions, artistic-intelligence title + sidebar    */
 /* context menus, editor track / clip / loop / viewport menus, gen   */
 /* gallery card menu. The Launchpad command palette is intentionally */
 /* excluded (different UX paradigm).                                 */

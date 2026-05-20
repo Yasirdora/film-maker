@@ -1,8 +1,8 @@
 /**
- * Auteur chat — server-only data access.
+ * Artistic Intelligence chat — server-only data access.
  *
- * Wraps the `auteur_conversation`, `auteur_message`, and
- * `auteur_anon_quota` tables. Every mutation verifies caller access
+ * Wraps the `artistic_intelligence_conversation`, `artistic_intelligence_message`, and
+ * `artistic_intelligence_anon_quota` tables. Every mutation verifies caller access
  * via {@link requireConversationAccess} before touching rows:
  *
  *   • Authenticated users own rows via `user_id`.
@@ -16,7 +16,7 @@
  * no-one can claim someone else's threads.
  *
  * The free-response cap for signed-out visitors is enforced by the
- * `auteur_anon_quota` counter, keyed on a cookie value (`fm_anon_id`).
+ * `artistic_intelligence_anon_quota` counter, keyed on a cookie value (`fm_anon_id`).
  * IP is captured for abuse audits but is not the quota key — CGNAT
  * would block legitimate users if it were.
  */
@@ -27,13 +27,13 @@ import { isFreePlan } from "./constants";
 
 // ─── Modes ──────────────────────────────────────────────────────────────────
 
-export const AUTEUR_MODES = ["chat", "script", "storyboard"] as const;
-export type AuteurMode = (typeof AUTEUR_MODES)[number];
+export const ARTISTIC_INTELLIGENCE_MODES = ["chat", "script", "storyboard"] as const;
+export type ArtisticIntelligenceMode = (typeof ARTISTIC_INTELLIGENCE_MODES)[number];
 
-export function isAuteurMode(value: unknown): value is AuteurMode {
+export function isArtisticIntelligenceMode(value: unknown): value is ArtisticIntelligenceMode {
     return (
         typeof value === "string" &&
-        (AUTEUR_MODES as readonly string[]).includes(value)
+        (ARTISTIC_INTELLIGENCE_MODES as readonly string[]).includes(value)
     );
 }
 
@@ -48,7 +48,7 @@ export function isAuteurMode(value: unknown): value is AuteurMode {
  * still plan-based so the gate flips automatically the day paid plans
  * open up.
  */
-export function isModeAllowedForPlan(mode: AuteurMode, planId: string): boolean {
+export function isModeAllowedForPlan(mode: ArtisticIntelligenceMode, planId: string): boolean {
     if (mode === "chat") return true;
     return !isFreePlan(planId);
 }
@@ -82,7 +82,7 @@ export interface ConversationRow {
     userId: string | null;
     anonToken: string | null;
     title: string;
-    mode: AuteurMode;
+    mode: ArtisticIntelligenceMode;
     projectId: number | null;
     pinnedAt: number | null;
     archivedAt: number | null;
@@ -93,7 +93,7 @@ export interface ConversationRow {
 export interface ConversationSummary {
     id: string;
     title: string;
-    mode: AuteurMode;
+    mode: ArtisticIntelligenceMode;
     pinnedAt: number | null;
     archivedAt: number | null;
     updatedAt: number;
@@ -138,7 +138,7 @@ function mapConversation(r: RawConversation): ConversationRow {
         userId: r.user_id,
         anonToken: r.anon_token,
         title: r.title,
-        mode: isAuteurMode(r.mode) ? r.mode : "chat",
+        mode: isArtisticIntelligenceMode(r.mode) ? r.mode : "chat",
         projectId: r.project_id,
         pinnedAt: r.pinned_at,
         archivedAt: r.archived_at,
@@ -200,7 +200,7 @@ export async function requireConversationAccess(params: {
         .prepare(
             `SELECT id, user_id, anon_token, title, mode, project_id,
                     pinned_at, archived_at, created_at, updated_at
-               FROM auteur_conversation
+               FROM artistic_intelligence_conversation
               WHERE id = ?
               LIMIT 1`,
         )
@@ -226,7 +226,7 @@ export async function requireConversationAccess(params: {
 
 export async function createConversation(params: {
     userId: string | null;
-    mode: AuteurMode;
+    mode: ArtisticIntelligenceMode;
     projectId?: number | null;
     title?: string;
 }): Promise<{ conversation: ConversationRow; anonToken: string | null }> {
@@ -241,7 +241,7 @@ export async function createConversation(params: {
 
     await db
         .prepare(
-            `INSERT INTO auteur_conversation
+            `INSERT INTO artistic_intelligence_conversation
              (id, user_id, anon_token, title, mode, project_id, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         )
@@ -285,7 +285,7 @@ export async function listUserConversations(
     const { results } = await db
         .prepare(
             `SELECT id, title, mode, pinned_at, archived_at, updated_at
-               FROM auteur_conversation
+               FROM artistic_intelligence_conversation
               WHERE user_id = ?
                 ${options.includeArchived ? "" : "AND archived_at IS NULL"}
               ORDER BY
@@ -307,7 +307,7 @@ export async function listUserConversations(
     return results.map((r) => ({
         id: r.id,
         title: r.title,
-        mode: isAuteurMode(r.mode) ? r.mode : "chat",
+        mode: isArtisticIntelligenceMode(r.mode) ? r.mode : "chat",
         pinnedAt: r.pinned_at,
         archivedAt: r.archived_at,
         updatedAt: r.updated_at,
@@ -330,7 +330,7 @@ export async function renameConversation(params: {
     const db = await getDb();
     await db
         .prepare(
-            `UPDATE auteur_conversation
+            `UPDATE artistic_intelligence_conversation
                 SET title = ?, updated_at = ?
               WHERE id = ?`,
         )
@@ -355,7 +355,7 @@ export async function setConversationPinned(params: {
     const db = await getDb();
     await db
         .prepare(
-            `UPDATE auteur_conversation
+            `UPDATE artistic_intelligence_conversation
                 SET pinned_at = ?, updated_at = ?
               WHERE id = ?`,
         )
@@ -380,7 +380,7 @@ export async function setConversationArchived(params: {
     const db = await getDb();
     await db
         .prepare(
-            `UPDATE auteur_conversation
+            `UPDATE artistic_intelligence_conversation
                 SET archived_at = ?, updated_at = ?
               WHERE id = ?`,
         )
@@ -403,9 +403,9 @@ export async function deleteConversation(params: {
     });
 
     const db = await getDb();
-    // ON DELETE CASCADE on auteur_message FK removes messages too.
+    // ON DELETE CASCADE on artistic_intelligence_message FK removes messages too.
     await db
-        .prepare(`DELETE FROM auteur_conversation WHERE id = ?`)
+        .prepare(`DELETE FROM artistic_intelligence_conversation WHERE id = ?`)
         .bind(params.conversationId)
         .run();
 }
@@ -422,7 +422,7 @@ export async function updateConversationTitleInternal(
     const db = await getDb();
     await db
         .prepare(
-            `UPDATE auteur_conversation
+            `UPDATE artistic_intelligence_conversation
                 SET title = ?, updated_at = ?
               WHERE id = ?`,
         )
@@ -438,7 +438,7 @@ export async function touchConversation(conversationId: string): Promise<void> {
     const db = await getDb();
     await db
         .prepare(
-            `UPDATE auteur_conversation SET updated_at = ? WHERE id = ?`,
+            `UPDATE artistic_intelligence_conversation SET updated_at = ? WHERE id = ?`,
         )
         .bind(Date.now(), conversationId)
         .run();
@@ -467,7 +467,7 @@ export async function claimAnonymousConversations(params: {
     for (const { conversationId, anonToken } of params.claims) {
         const result = await db
             .prepare(
-                `UPDATE auteur_conversation
+                `UPDATE artistic_intelligence_conversation
                     SET user_id = ?, anon_token = NULL, updated_at = ?
                   WHERE id = ?
                     AND user_id IS NULL
@@ -511,7 +511,7 @@ export async function listMessages(
             `SELECT id, conversation_id, role, content, status, image_r2_keys, created_at
                FROM (
                    SELECT id, conversation_id, role, content, status, image_r2_keys, created_at
-                     FROM auteur_message
+                     FROM artistic_intelligence_message
                     WHERE conversation_id = ?
                     ORDER BY created_at DESC, id DESC
                     LIMIT ?
@@ -535,7 +535,7 @@ export async function insertUserMessage(params: {
 
     await db
         .prepare(
-            `INSERT INTO auteur_message
+            `INSERT INTO artistic_intelligence_message
              (id, conversation_id, role, content, status, image_r2_keys, created_at)
              VALUES (?, ?, 'user', ?, 'complete', ?, ?)`,
         )
@@ -571,7 +571,7 @@ export async function insertAssistantPlaceholder(params: {
 
     await db
         .prepare(
-            `INSERT INTO auteur_message
+            `INSERT INTO artistic_intelligence_message
              (id, conversation_id, role, content, status, image_r2_keys, created_at)
              VALUES (?, ?, 'assistant', '', 'pending', NULL, ?)`,
         )
@@ -597,7 +597,7 @@ export async function updateAssistantMessage(params: {
     const db = await getDb();
     // Don't overwrite a user-initiated 'stopped' with a late completion.
     const current = await db
-        .prepare(`SELECT status FROM auteur_message WHERE id = ?`)
+        .prepare(`SELECT status FROM artistic_intelligence_message WHERE id = ?`)
         .bind(params.messageId)
         .first<{ status: string }>();
 
@@ -605,7 +605,7 @@ export async function updateAssistantMessage(params: {
 
     await db
         .prepare(
-            `UPDATE auteur_message SET content = ?, status = ? WHERE id = ?`,
+            `UPDATE artistic_intelligence_message SET content = ?, status = ? WHERE id = ?`,
         )
         .bind(params.content, params.status, params.messageId)
         .run();
@@ -627,10 +627,10 @@ export async function markAssistantStopped(params: {
     // is currently watching.
     await db
         .prepare(
-            `UPDATE auteur_message
+            `UPDATE artistic_intelligence_message
                 SET status = 'stopped'
               WHERE id = (
-                SELECT id FROM auteur_message
+                SELECT id FROM artistic_intelligence_message
                  WHERE conversation_id = ?
                    AND role = 'assistant'
                    AND status IN ('pending', 'streaming')
@@ -654,7 +654,7 @@ export async function getAnonQuota(anonId: string): Promise<AnonQuotaStatus> {
     const db = await getDb();
     const row = await db
         .prepare(
-            `SELECT responses_used FROM auteur_anon_quota WHERE anon_id = ?`,
+            `SELECT responses_used FROM artistic_intelligence_anon_quota WHERE anon_id = ?`,
         )
         .bind(anonId)
         .first<{ responses_used: number }>();
@@ -690,20 +690,20 @@ export async function consumeAnonQuota(params: {
     // (WHERE false) paths — which we interpret as quota exceeded.
     const result = await db
         .prepare(
-            `INSERT INTO auteur_anon_quota
+            `INSERT INTO artistic_intelligence_anon_quota
              (anon_id, responses_used, first_ip, created_at, updated_at)
              VALUES (?, 1, ?, ?, ?)
              ON CONFLICT(anon_id) DO UPDATE SET
-                 responses_used = auteur_anon_quota.responses_used + 1,
+                 responses_used = artistic_intelligence_anon_quota.responses_used + 1,
                  updated_at     = excluded.updated_at
-             WHERE auteur_anon_quota.responses_used < ?`,
+             WHERE artistic_intelligence_anon_quota.responses_used < ?`,
         )
         .bind(params.anonId, params.ip, now, now, ANON_FREE_RESPONSES)
         .run();
 
     if ((result.meta?.changes ?? 0) === 0) {
         throw new AnonQuotaExceededError(
-            `You've used your ${ANON_FREE_RESPONSES} free Auteur replies. Sign in to continue.`,
+            `You've used your ${ANON_FREE_RESPONSES} free Artistic Intelligence replies. Sign in to continue.`,
         );
     }
 
@@ -711,7 +711,7 @@ export async function consumeAnonQuota(params: {
     // under concurrent requests.
     const row = await db
         .prepare(
-            `SELECT responses_used FROM auteur_anon_quota WHERE anon_id = ?`,
+            `SELECT responses_used FROM artistic_intelligence_anon_quota WHERE anon_id = ?`,
         )
         .bind(params.anonId)
         .first<{ responses_used: number }>();

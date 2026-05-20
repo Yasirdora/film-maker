@@ -3,10 +3,10 @@
  *
  *   • Desktop & tablet: editor-style horizontal top bar (brand + nav
  *     dropdowns at lg+, right-cluster auth + Launchpad pill at sm+).
- *   • Mobile (< sm): bottom tab bar with Auteur, Apps (Launchpad),
+ *   • Mobile (< sm): bottom tab bar with Artistic Intelligence, Apps (Launchpad),
  *     Projects, and Profile/Sign-in.
  *
- * Mounts on every interior page (studio, projects, pricing, auteur,
+ * Mounts on every interior page (studio, projects, pricing, artistic-intelligence,
  * editor/*) so the chrome reads identically across the product. The
  * Launchpad itself is mounted once at the root by `LaunchpadHost`; all
  * trigger surfaces here just call into its context.
@@ -28,16 +28,16 @@ import { EditorHeaderAuthSlot } from "./editor/EditorHeaderAuthSlot";
 import { NavAppsButton } from "./nav-apps-button";
 import { NavProfileMenu } from "./nav-profile-menu";
 import { NavScrollState } from "./nav-scroll-state";
-import { AuteurIcon } from "./icons/auteur-icon";
+import { ArtisticIntelligenceIcon } from "./icons/artistic-intelligence-icon";
 
 import styles from "./app-nav.module.css";
 
 interface AppNavProps {
-    /** Hide the bottom-tab Auteur icon — used on /auteur itself. */
-    hideAuteurIcon?: boolean;
+    /** Hide the bottom-tab Artistic Intelligence icon — used on /artistic-intelligence itself. */
+    hideArtisticIntelligenceIcon?: boolean;
     /**
      * Skip rendering the desktop top bar entirely. The page is expected
-     * to provide its own chrome (e.g. /auteur, which has a full-height
+     * to provide its own chrome (e.g. /artistic-intelligence, which has a full-height
      * sidebar with its own branding and section nav). CreditHydrator
      * and the mobile bottom tab bar are still rendered so data seeding
      * and mobile-only navigation aren't lost.
@@ -50,7 +50,7 @@ interface AppNavProps {
 }
 
 export async function AppNav({
-    hideAuteurIcon = false,
+    hideArtisticIntelligenceIcon = false,
     hideTopBar = false,
     brandHref,
     children,
@@ -85,7 +85,7 @@ export async function AppNav({
             <NavScrollState />
 
             {/* Top bar. Pages that own their full-screen chrome (e.g.
-                /auteur with its sidebar + unified top bar) pass
+                /artistic-intelligence with its sidebar + unified top bar) pass
                 `hideTopBar` to suppress this entirely. Those pages are
                 responsible for rendering their own auth slot. */}
             {!hideTopBar && (
@@ -103,14 +103,14 @@ export async function AppNav({
                 className="fixed bottom-0 left-0 right-0 z-50 flex h-[calc(66px+env(safe-area-inset-bottom,0px))] shrink-0 items-center justify-around px-1 pb-[env(safe-area-inset-bottom,0px)] sm:hidden"
                 aria-label="Main Navigation"
             >
-                {!hideAuteurIcon && (
+                {!hideArtisticIntelligenceIcon && (
                     <Link
-                        href="/auteur"
+                        href="/artistic-intelligence"
                         className="relative flex flex-col items-center justify-center w-[25%] h-full gap-1 group text-[#e5e7eb] transition-colors hover:text-white"
-                        aria-label="Auteur"
+                        aria-label="Artistic Intelligence"
                     >
-                        <AuteurIcon />
-                        <span className="text-[11px] font-medium">Auteur</span>
+                        <ArtisticIntelligenceIcon />
+                        <span className="text-[11px] font-medium">Artistic Intelligence</span>
                     </Link>
                 )}
 

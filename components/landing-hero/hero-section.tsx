@@ -7,7 +7,7 @@
  * page.
  *
  * The Solo CTA replaced the earlier prompt bar (HeroPrompt) because:
- *   1. An identical prompt bar already lives in the Auteur section
+ *   1. An identical prompt bar already lives in the Artistic Intelligence section
  *      further down the page — the duplication diluted both.
  *   2. The hero's job is to answer "what do I do next?" — a free-plan
  *      CTA does that with zero cognitive overhead, while a prompt bar

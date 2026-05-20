@@ -1,5 +1,5 @@
 /**
- * /api/auteur/conversations/[id]
+ * /api/artistic-intelligence/conversations/[id]
  *
  *   PATCH  — rename or pin/unpin (signed-in users only).
  *   DELETE — remove the conversation and all its messages.
@@ -22,7 +22,7 @@ import {
     renameConversation,
     setConversationArchived,
     setConversationPinned,
-} from "@/lib/auteur";
+} from "@/lib/artistic-intelligence";
 
 interface RouteContext {
     params: Promise<{ id: string }>;
