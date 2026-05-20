@@ -15,9 +15,6 @@
  * `showMobileTab={false}` so the trigger appears only at `sm+`.
  */
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-
 import { useLaunchpad } from "./launchpad-host";
 
 interface NavAppsButtonProps {
@@ -26,26 +23,6 @@ interface NavAppsButtonProps {
 
 export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {}) {
     const { openLaunchpad } = useLaunchpad();
-
-    /* Gate the sparkle animation to the Studio page only. Everywhere
-       else the icon is static — the sparkle is a "welcome to your
-       projects hub" beat, not a global decoration. Matched by prefix
-       so `/studio`, `/studio/archived`, etc. all qualify. */
-    const pathname = usePathname();
-    const shouldAnimate = pathname?.startsWith("/studio") ?? false;
-
-    /* Bumping `starKey` remounts the sparkle SVG, which restarts its CSS
-       animation. The 100ms delay matches the StudioMockup section — it
-       gives the DOM a beat to commit before the animation runs, so the
-       motion is visible from frame one instead of racing first paint
-       (which is what was making the animation appear "broken").
-       Only schedule the bump on Studio routes — see `shouldAnimate`. */
-    const [starKey, setStarKey] = useState(0);
-    useEffect(() => {
-        if (!shouldAnimate) return;
-        const id = window.setTimeout(() => setStarKey((k) => k + 1), 100);
-        return () => window.clearTimeout(id);
-    }, [shouldAnimate]);
 
     return (
         <>
@@ -89,7 +66,6 @@ export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {})
                 title="Open Launchpad"
             >
                 <svg
-                    key={starKey}
                     width="16"
                     height="16"
                     viewBox="0 0 24 24"
@@ -98,7 +74,7 @@ export function NavAppsButton({ showMobileTab = true }: NavAppsButtonProps = {})
                     strokeWidth="1.75"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className={`${shouldAnimate ? "nav-star-twinkle " : ""}text-[#0a0a0a] flex-shrink-0`}
+                    className="text-[#0a0a0a] flex-shrink-0"
                     aria-hidden="true"
                 >
                     <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4L12 2z" />

@@ -167,27 +167,6 @@
     animation: auth-card-entrance 1s var(--ease-snappy) forwards;
 }
 
-@keyframes clapperboard-clap {
-    0% {
-        transform: rotate(-15deg);
-    }
-    30% {
-        transform: rotate(-45deg);
-    }
-    35% {
-        transform: rotate(0deg);
-    }
-    45% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(-15deg);
-    }
-}
-
-.clapperboard-clap {
-    animation: clapperboard-clap 0.8s ease-in-out forwards;
-}
 
 /* Auteur "alive" blink — swaps a tall "open" eye stroke for a short
    "closed" eye stroke by cross-fading their opacities. Both strokes share
@@ -945,46 +924,6 @@ html {
     background: rgba(255, 255, 255, 0.06);
 }
 
-/* One-shot entrance for the nav Launchpad trigger's sparkle.
- *
- * Ported verbatim from the StudioMockup section's `starEnter`
- * animation (styles/landing-blocks/components.css, ~line 3428) —
- * the same motion the marketing mockup uses on its "Start" button
- * star. Keeping it identical means the nav trigger and the mockup
- * speak the same visual language.
- *
- *   • Full 360° rotation so the motion is unambiguous on a
- *     4-fold-symmetric icon.
- *   • Scale 1 → 1.4 → 1 — a clear "pop" through the midpoint.
- *   • A glow halo (drop-shadow) that peaks at the midpoint and
- *     fades away by the end, so the star reads as truly sparkling
- *     rather than just spinning.
- *   • 1.8 s with ease-in-out so the rotation feels deliberate. */
-@keyframes nav-star-twinkle {
-    0% {
-        transform: scale(1) rotate(0deg);
-        filter: drop-shadow(0 0 0 transparent);
-    }
-    50% {
-        transform: scale(1.4) rotate(180deg);
-        filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
-    }
-    100% {
-        transform: scale(1) rotate(360deg);
-        filter: drop-shadow(0 0 0 transparent);
-    }
-}
-.nav-star-twinkle {
-    transform-origin: 50% 50%;
-    animation: nav-star-twinkle 1.8s ease-in-out forwards;
-}
-@media (prefers-reduced-motion: reduce) {
-    /* Don't animate for users who opted out — just show the icon at rest. */
-    .nav-star-twinkle {
-        animation: none;
-        opacity: 1;
-    }
-}
 
 /* ─── Editor keyframes ──────────────────────────────────────────────── */
 

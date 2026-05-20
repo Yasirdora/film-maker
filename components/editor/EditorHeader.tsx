@@ -3,7 +3,7 @@
 /**
  * EditorHeader — universal top bar for `/editor/*` routes.
  *
- *   • Animated clapperboard brand mark on the left.
+ *   • Static clapperboard brand mark on the left.
  *   • Click-toggle nav dropdowns (Artistic Intelligence, Video, Image,
  *     Audio, Media Converter) with category descriptions.
  *   • `rightSlot` — auth-aware cluster injected by the server layout
@@ -23,10 +23,7 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import {
-    ClapperboardIcon,
-    type ClapperboardIconHandle,
-} from "@/components/icons/clapperboard-icon";
+import { ClapperboardIcon } from "@/components/icons/clapperboard-icon";
 
 // ─── Nav data ───────────────────────────────────────────────────────────────
 
@@ -46,17 +43,7 @@ interface NavSection {
 const NAV: NavSection[] = [
     {
         label: "Artistic Intelligence",
-        href: "/studio",
-        items: [
-            {
-                label: "AI Studio",
-                href: "/studio",
-                description: "Generate, refine, and direct.",
-            },
-        ],
-    },
-    {
-        label: "Auteur",
+        href: "/auteur",
         items: [
             {
                 label: "AI Assistant",
@@ -75,6 +62,7 @@ const NAV: NavSection[] = [
             },
         ],
     },
+    { label: "Studio", href: "/studio", items: [] },
     {
         /* Hover-open dropdown of the currently-available editor tools.
            Clicking the label itself still navigates to /editor (the
@@ -135,8 +123,6 @@ export function EditorHeader({
     rightSlot,
 }: EditorHeaderProps) {
     const [openSection, setOpenSection] = useState<string | null>(null);
-    const clapRef = useRef<ClapperboardIconHandle>(null);
-    const replayClap = useCallback(() => clapRef.current?.clap(), []);
     const navRootRef = useRef<HTMLDivElement>(null);
 
     const pathname = usePathname();
@@ -186,14 +172,10 @@ export function EditorHeader({
                 <Link
                     href={brandHref}
                     aria-label="Film-maker — home"
-                    onMouseEnter={replayClap}
-                    onFocus={replayClap}
-                    className="group inline-flex items-center shrink-0"
+                    className="inline-flex items-center shrink-0"
                 >
                     <ClapperboardIcon
-                        ref={clapRef}
-                        autoClap
-                        className="h-auto overflow-visible text-white opacity-80 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] group-hover:scale-110 group-hover:opacity-100 w-8 sm:w-9"
+                        className="h-auto overflow-visible text-white opacity-80 w-8 sm:w-9"
                     />
                 </Link>
 
@@ -245,7 +227,7 @@ function NavMenu({
     // The "Artistic Intelligence" section anchors the brand experience —
     // always-underlined as a visual cue. Other sections show an indicator
     // only when their dropdown is open.
-    const isPrimary = section.label === "Artistic Intelligence";
+    const isPrimary = section.label === "Artistic Intelligence" || section.label === "Studio";
     const hasDropdown = section.items.length > 0;
 
     /* Hover-open dropdowns suffer from an 8px gap between the label and
@@ -272,7 +254,9 @@ function NavMenu({
             <Link
                 href={section.href}
                 onClick={onItemNavigate}
-                className="relative inline-flex items-center gap-1 px-3 py-2 text-[14px] font-medium text-[#8e8e93] hover:text-white transition-colors"
+                className={`relative inline-flex items-center gap-1 px-3 py-2 text-[14px] transition-colors ${
+                    isPrimary ? "font-semibold text-white" : "font-medium text-[#8e8e93] hover:text-white"
+                }`}
             >
                 {section.label}
             </Link>
