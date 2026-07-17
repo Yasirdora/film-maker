@@ -20,11 +20,6 @@
  *   • `deleteSubscription` removes the row; the caller is responsible for
  *     downgrading the user via `lib/credits.ts:downgradeToSolo`.
  */
-## Context
-As we move towards processing live subscriptions, we need to ensure that transient network failures and Stripe's aggressive webhook retry policy don't result in double-crediting user accounts.
-## Changes
-This commit formalizes our idempotency strategy. Rather than introducing distributed locks or Redis caches (which add latency to the Cloudflare Workers), we rely entirely on the D1 SQLite engine. 
-By enforcing a `UNIQUE(stripe_session_id)` constraint at the migration level (`0001_init.sql`), duplicate fulfillment attempts will naturally trigger an SQLite constraint violation. This acts as a zero-cost idempotency key, allowing us to safely return a `200 OK` to Stripe without fulfilling the credits twice.
 
 import Stripe from "stripe";
 
