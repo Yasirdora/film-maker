@@ -139,6 +139,7 @@ export async function checkIpRateLimit(
 // ─── Pre-configured rate limit configs ─────────────────────────────────────
 
 const HOUR_MS = 60 * 60 * 1000;
+const QUARTER_HOUR_MS = 15 * 60 * 1000;
 
 export const RATE_LIMITS = {
     waitlist: {
@@ -158,5 +159,15 @@ export const RATE_LIMITS = {
         endpoint: "signup",
         maxRequests: 5,
         windowMs: HOUR_MS,
+    },
+    // Tighter window for login attempts — if someone is cycling through
+    // email addresses trying to trigger magic links, we want to catch
+    // that faster than the 1-hour general window. 8 attempts in 15 min
+    // is generous for legitimate use (typos, multiple devices) but will
+    // trip on automated enumeration.
+    loginPerIp: {
+        endpoint: "login",
+        maxRequests: 8,
+        windowMs: QUARTER_HOUR_MS,
     },
 } as const satisfies Record<string, IpRateLimitConfig>;
