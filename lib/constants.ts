@@ -63,7 +63,7 @@ export const R2_STORAGE_BASE_URL = "https://storage.film-maker.net";
 // Pricing is in USD (cents). Stripe Tax handles per-country VAT/GST at
 // checkout, so we quote a single USD price everywhere.
 //
-// v0 is image-only. Features like "4K export", "scene generation", "priority
+// v0 is image-only. Featu like "4K export", "scene generation", "priority
 // queue" are kept on higher tiers as upgrade hooks for v1 when video lands.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -343,11 +343,12 @@ export function isVideoModelAllowedForPlan(
 }
 
 /**
- * Computes the credit cost for a video generation.
+ * IMPORTANT: Resolution multipliers must stay in sync with the
+ * atomic credit deduction query in lib/credits.ts.
+ * Changing values here without updating the SQL CASE expression
+ * will cause incorrect billing.
  *
- * cost = model.creditBase × sampleCount
- *
- * Video resolution is fixed by the model, so no resolution multiplier.
+ * @see lib/credits.ts — deductCredits()
  */
 export function computeVideoCreditCost(
     modelId: string,
