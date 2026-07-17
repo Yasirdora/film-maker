@@ -35,6 +35,10 @@ export type AuditAction =
     | "credits.grant"
     | "plan.upgrade"
     | "plan.downgrade"
+    | "stripe.webhook.received"
+    | "stripe.webhook.fulfilled"
+    | "stripe.webhook.duplicate_skipped"
+    | "stripe.webhook.failed"
     | "user.login"
     | "user.logout"
     | "artistic-intelligence.reply";
@@ -44,6 +48,7 @@ export type AuditTargetType =
     | "generation"
     | "user"
     | "subscription"
+    | "stripe_event"
     | "artistic-intelligence_conversation";
 
 // ─── Log function ──────────────────────────────────────────────────────────
